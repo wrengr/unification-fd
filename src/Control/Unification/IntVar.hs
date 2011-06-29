@@ -1,0 +1,210 @@
+
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# OPTIONS_GHC -Wall -fwarn-tabs #-}
+----------------------------------------------------------------
+--                                                  ~ 2011.06.28
+-- |
+-- Module      :  Control.Unification.IntVar
+-- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
+-- License     :  BSD
+-- Maintainer  :  wren@community.haskell.org
+-- Stability   :  experimental
+-- Portability :  semi-portable (MPTCs, FlexibleInstances)
+--
+-- This module defines a state monad for functional pointers
+-- represented by integers as keys into an @IntMap@. This technique
+-- was independently re-discovered by Dijkstra et al. This module
+-- expands on their approach by using a state monad transformer,
+-- which can be made into a backtracking state monad by setting the
+-- underlying monad to some 'MonadLogic'. The @logict@ library is
+-- described by Kiselyov et al., and Ralf Hinze's two-continuation
+-- monad is also discussed in Naylor et al. (in Appendix 1).
+--
+--     * Atze Dijkstra, Arie Middelkoop, S. Doaitse Swierstra (2008)
+--         /Efficient Functional Unification and Substitution/,
+--         Technical Report UU-CS-2008-027, Utrecht University.
+--
+--     * Oleg Kiselyov, Chung-chieh Shan, Daniel P. Friedman, and
+--         Amr Sabry (2005) /Backtracking, Interleaving, and/
+--         /Terminating Monad Transformers/, ICFP.
+--
+--     * Matthew Naylor, Emil Axelsson, and Colin Runciman (2007)
+--         /A Functional-Logic Library for Wired/, Haskell'07, ACM.
+----------------------------------------------------------------
+module Control.Unification.IntVar
+    ( IntVar()
+    , IntBindingState()
+    , IntBindingT()
+    , runIntBindingT
+    , evalIntBindingT
+    , execIntBindingT
+    ) where
+
+import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
+
+import qualified Data.IntMap as IM
+import Control.Applicative
+import Control.Monad       (MonadPlus(..), liftM)
+import Control.Monad.Trans (MonadTrans(..))
+import Control.Monad.State (MonadState(..), StateT, runStateT, evalStateT, execStateT, gets)
+import Control.Monad.Logic (MonadLogic(..))
+import Control.Unification.Classes
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+-- | A ``mutable'' unification variable implemented by an integer.
+-- This provides an entirely pure alternative to truly mutable
+-- alternatives like @STVar@, which can make backtracking easier.
+newtype IntVar t = IntVar Int
+    deriving (Show)
+
+
+instance Variable IntVar where
+    eqV (IntVar i) (IntVar j) = i == j
+    
+    getVarID (IntVar v) = v
+
+
+----------------------------------------------------------------
+-- | Binding state for 'IntVar'.
+data IntBindingState t = IntBindingState
+    { nextFreeVar :: {-# UNPACK #-} !Int
+    , varBindings :: IM.IntMap t
+    }
+
+
+-- | The initial @IntBindingState@.
+emptyIntBindingState :: IntBindingState t
+emptyIntBindingState = IntBindingState minBound IM.empty
+
+
+----------------------------------------------------------------
+-- | A monad for storing 'IntVar' bindings, implemented as a 'StateT'.
+-- For a plain state monad, set @m = Identity@; for a backtracking
+-- state monad, set @m = Logic@.
+newtype IntBindingT t m a = IBT { unIBT :: StateT (IntBindingState t) m a }
+
+-- For portability reasons, we're intentionally avoiding
+-- -XDeriveFunctor, -XGeneralizedNewtypeDeriving, and the like.
+
+instance (Functor m) => Functor (IntBindingT t m) where
+    fmap f = IBT . fmap f . unIBT
+
+-- BUG: can't reduce dependency to Applicative because of StateT's instance.
+instance (Functor m, Monad m) => Applicative (IntBindingT t m) where
+    pure    = IBT . pure
+    x <*> y = IBT (unIBT x <*> unIBT y)
+    x  *> y = IBT (unIBT x  *> unIBT y)
+    x <*  y = IBT (unIBT x <*  unIBT y)
+
+instance (Monad m) => Monad (IntBindingT t m) where
+    return  = IBT . return
+    m >>= f = IBT (unIBT m >>= unIBT . f)
+
+instance MonadTrans (IntBindingT t) where
+    lift = IBT . lift
+
+-- BUG: can't reduce dependency to Alternative because of StateT's instance.
+instance (Functor m, MonadPlus m) => Alternative (IntBindingT t m) where
+    empty   = IBT empty
+    x <|> y = IBT (unIBT x <|> unIBT y)
+
+instance (MonadPlus m) => MonadPlus (IntBindingT t m) where
+    mzero       = IBT mzero
+    mplus ml mr = IBT (mplus (unIBT ml) (unIBT mr))
+
+instance (Monad m) => MonadState (IntBindingState t) (IntBindingT t m) where
+    get = IBT get
+    put = IBT . put
+
+-- N.B., we already have (MonadLogic m) => MonadLogic (StateT s m),
+-- provided that logict is compiled against the same mtl/monads-fd
+-- we're getting StateT from. Otherwise we'll get a bunch of warnings
+-- here.
+instance (MonadLogic m) => MonadLogic (IntBindingT t m) where
+    msplit (IBT m) = IBT (coerce `liftM` msplit m)
+        where
+        coerce Nothing        = Nothing
+        coerce (Just (a, m')) = Just (a, IBT m')
+    
+    interleave (IBT l) (IBT r) = IBT (interleave l r)
+    
+    IBT m >>- f = IBT (m >>- (unIBT . f))
+    
+    ifte (IBT b) t (IBT f) = IBT (ifte b (unIBT . t) f)
+    
+    once (IBT m) = IBT (once m)
+
+----------------------------------------------------------------
+
+runIntBindingT :: IntBindingT t m a -> m (a, IntBindingState t)
+runIntBindingT (IBT m) = runStateT m emptyIntBindingState
+
+
+-- | N.B., you should explicitly apply bindings before calling this
+-- function, or else the bindings will be lost
+evalIntBindingT :: (Monad m) => IntBindingT t m a -> m a
+evalIntBindingT (IBT m) = evalStateT m emptyIntBindingState
+
+
+execIntBindingT :: (Monad m) => IntBindingT t m a -> m (IntBindingState t)
+execIntBindingT (IBT m) = execStateT m emptyIntBindingState
+
+----------------------------------------------------------------
+
+instance (Applicative m, Monad m) =>
+    BindingReader IntVar t (IntBindingT t m)
+    where
+    lookupVar (IntVar v) = IBT $ gets (IM.lookup v . varBindings)
+
+
+instance (Applicative m, Monad m) =>
+    BindingGenerator IntVar t (IntBindingT t m)
+    where
+    freeVar = IBT $ do
+        ibs <- get
+        let v = nextFreeVar ibs
+        if v == maxBound
+            then fail "freeVar: no more variables!"
+            else do
+                put $ ibs { nextFreeVar = v+1 }
+                return $ IntVar v
+    
+    newVar t = IBT $ do
+        ibs <- get
+        let v = nextFreeVar ibs
+        if v == maxBound
+            then fail "newVar: no more variables!"
+            else do
+                let bs' = IM.insert v t (varBindings ibs)
+                put $ ibs { nextFreeVar = v+1, varBindings = bs' }
+                return $ IntVar v
+
+
+instance (Applicative m, Monad m) =>
+    BindingWriter IntVar t (IntBindingT t m)
+    where
+    bindVar (IntVar v) t = IBT $ do
+        ibs <- get
+        let bs = varBindings ibs
+        let (mt, bs') = IM.insertLookupWithKey (\_ _ -> id) v t bs
+        put $ ibs { varBindings = bs' }
+        return mt
+    
+    bindVar_ (IntVar v) t = IBT $ do
+        ibs <- get
+        put $ ibs { varBindings = IM.insert v t (varBindings ibs) }
+    
+    unbindVar (IntVar v) = IBT $ do
+        ibs <- get
+        let bs = varBindings ibs
+        let (mt,bs') = IM.updateLookupWithKey (\_ _ -> Nothing) v bs
+        put $ ibs { varBindings = bs' }
+        return mt
+    
+    unbindVar_ (IntVar v) = IBT $ do
+        ibs <- get
+        put $ ibs { varBindings = IM.delete v (varBindings ibs) }
+
+----------------------------------------------------------------
+----------------------------------------------------------- fin.

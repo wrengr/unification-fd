@@ -1,0 +1,11 @@
+Debugging:
+    * Combine the test suite into a single executable and then do:
+        $> darcs setpref test "runhaskell Tests.hs"
+    * Also, tell Setup.hs so that `cabal test` and `runhaskell
+      Setup.hs test` call the test suite.
+
+Enhancements:
+
+Sooner than later:
+
+Eventually:

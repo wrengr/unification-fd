@@ -1,0 +1,26 @@
+=== Haskell unification package AUTHORS/THANKS file ===
+
+The unification package was written by wren ng thornton and is
+released under the terms in the LICENSE file.
+
+
+=== Related Work and Prior Art ===
+
+I first started implementing unification algorithms for the Dyna2
+project where I worked with Nathaniel W. Filardo and Jason Eisner
+(though this code is only loosely based on that work). The two-level
+types approach was adapted from Tim Sheard[1], the idea of functional
+pointers were independently discovered by Dijkstra et al[2] after
+their apperance in Dyna2, Edward Kmett pointed out the weighted
+extension to path compression (popular in the union--find literature),
+and the functor coproduct code is adapted from Wouter Swierstra[3].
+
+[1] Tim Sheard (2001) /Generic Unification via Two-Level Types and/
+        /Paramterized Modules/, ICFP.
+
+[2] Atze Dijkstra, Arie Middelkoop, S. Doaitse Swierstra (2008)
+        /Efficient Functional Unification and Substitution/, Technical
+        Report UU-CS-2008-027, Utrecht University.
+
+[3] Wouter Swierstra (2008) /Data types a la carte/, Functional
+        Pearl. JFP 18: 423--436.

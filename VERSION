@@ -1,0 +1,4 @@
+0.4.0 (2011-06-18):
+    - Removed heterogeneous unification, and rewrote practically everything.
+0.3.6 (2011-06-18):
+    - Forked from the Dyna2 project.

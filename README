@@ -1,0 +1,55 @@
+unification
+===========
+
+This is a simple package and should be easy to install. You should
+be able to use one of the following standard methods to install it.
+
+    -- With cabal-install and without the source:
+    $> cabal install unification
+    
+    -- With cabal-install and with the source already:
+    $> cd unification
+    $> cabal install
+    
+    -- Without cabal-install, but with the source already:
+    $> runhaskell Setup.hs configure --user
+    $> runhaskell Setup.hs build
+    $> runhaskell Setup.hs test
+    $> runhaskell Setup.hs haddock --hyperlink-source
+    $> runhaskell Setup.hs install
+
+The test step is optional and currently does nothing. If you see
+some stray lines that look like this:
+
+    mkUsageInfo: internal name? t{tv a7XM}
+
+Feel free to ignore them. They shouldn't cause any problems, even
+though they're unsightly. This should be fixed in newer versions
+of GHC. For more details, see:
+
+    http://hackage.haskell.org/trac/ghc/ticket/3955
+
+If you get a bunch of type errors about there being no MonadLogic
+instance for StateT, this means that your copy of the logict library
+is not compiled against the same mtl that we're using. To fix this,
+update logict to use the same mtl.
+
+
+Portability
+===========
+
+An attempt has been made to keep this library portable, but it does
+rely on some common language extensions as well as a couple which
+are only known to be supported by GHC. All required language
+extensions are: 
+
+    CPP                   -- Control.Monad.EitherK: but not necessary.
+    RankNTypes            -- Control.Monad.BacktrackST requires a rank-3 type.
+    Rank2Types
+    TypeOperators         -- For making Data.Functor.Coproduct pretty.
+    MultiParamTypeClasses
+    FlexibleContexts
+    FlexibleInstances
+    UndecidableInstances  -- Data.Functor.Fixedpoint: instance Show (Fix f)
+
+----------------------------------------------------------- fin.
