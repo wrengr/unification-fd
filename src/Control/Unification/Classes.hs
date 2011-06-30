@@ -1,6 +1,7 @@
 
 {-# LANGUAGE Rank2Types
            , MultiParamTypeClasses
+           , FunctionalDependencies
            , FlexibleInstances
            , FlexibleContexts
            #-}
@@ -8,14 +9,14 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 
 ----------------------------------------------------------------
---                                                  ~ 2011.06.28
+--                                                  ~ 2011.06.30
 -- |
 -- Module      :  Control.Unification.Classes
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
--- Portability :  semi-portable (Rank2Types, MPTCs, FlexibleInstances,...)
+-- Portability :  semi-portable (Rank2Types, MPTCs, fundeps,...)
 --
 -- This module defines ...
 ----------------------------------------------------------------
@@ -49,7 +50,9 @@ import Control.Monad.Logic (Logic(..), LogicT(..))
 -- TODO: since nearly all the readers will (semi)prune paths, should this just be combined with the BindingWriter class? Or maybe we should move semipruning into here?
 --
 -- | A class for reading from bindings stored in a monad.
-class (Variable v, Applicative m, Monad m) => BindingReader v t m where
+class (Variable v, Applicative m, Monad m) =>
+    BindingReader v t m | m -> v t
+    where
     -- | Given a variable pointing to @t@, return the @t@ it's bound
     -- to, or @Nothing@ if the variable is unbound.
     lookupVar :: v t -> m (Maybe t)
@@ -67,7 +70,9 @@ class (Variable v, Functor m, Monad m) => BindingReifyer v t m where
 -- | A class for non-destructive modification of the bindings stored
 -- in a monad, namely allocating new free and bound unification
 -- variables.
-class (Variable v, Applicative m, Monad m) => BindingGenerator v t m where
+class (Variable v, Applicative m, Monad m) =>
+    BindingGenerator v t m | m -> v t
+    where
     -- | Generate a new free variable guaranteed to be fresh in
     -- @m@.
     freeVar :: m (v t)
@@ -79,7 +84,9 @@ class (Variable v, Applicative m, Monad m) => BindingGenerator v t m where
 
 -- | A class for potentially destructive modification of the bindings
 -- stored in a monad.
-class (Variable v, Applicative m, Monad m) => BindingWriter v t m where
+class (Variable v, Applicative m, Monad m) =>
+    BindingWriter v t m | m -> v t
+    where
     -- | Bind a variable to a term, returning the old binding if
     -- any.
     bindVar :: v t -> t -> m (Maybe t)
@@ -127,6 +134,9 @@ class (Traversable t) => Unifiable t where
     -- (e.g., with 'more' to pair off the corresponding sub-terms,
     -- or 'success' if the constructors have no sub-terms).
     match :: t a -> t b -> More a b
+    
+    -- Perhaps this would be enough for the aggressive obs.sharing? (in conjunction with traverse/mapM)
+    zipMatch :: t a -> t b -> Maybe (t (a,b))
 
 
 -- | An implementation of unification variables.

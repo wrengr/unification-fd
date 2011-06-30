@@ -1,8 +1,11 @@
 
+-- This is for the Show (MutTerm v t) instance
+{-# LANGUAGE UndecidableInstances #-}
+
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.06.29
+--                                                  ~ 2011.06.30
 -- |
 -- Module      :  Control.Unification
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
@@ -32,7 +35,8 @@ module Control.Unification
     
     -- * Operations on two terms
     -- eqT         -- derived (==) @ (Fix f) given (Unifiable f)
-    -- equals      -- equality under bindings
+    -- equals      -- (raw) equality under bindings
+    -- equiv       -- alpha equivalence under bindings
     , unify1
     , unify2
     , unify3
@@ -61,6 +65,12 @@ data MutTerm v t
     = MutVar  !(v (MutTerm v t))
     | MutTerm !(t (MutTerm v t))
 
+instance (Show (v (MutTerm v t)), Show (t (MutTerm v t))) =>
+    Show (MutTerm v t)
+    where
+    show (MutVar  v) = show v
+    show (MutTerm t) = show t
+
 
 -- | /O(n)/. Embed a pure term as a mutable term.
 unfreeze :: (Functor t) => Fix t -> MutTerm v t
@@ -85,6 +95,14 @@ data UnificationFailure v t
     | NonUnifiable (MutTerm v t) (MutTerm v t)
     | UnknownError String
 
+-- Can't derive this for some reason...
+instance (Show (MutTerm v t), Show (v (MutTerm v t))) =>
+    Show (UnificationFailure v t)
+    where
+    show (OccursIn     v  t)  = "OccursIn ("++show v++") ("++show t++")"
+    show (NonUnifiable tl tr) = "NonUnifiable ("++show tl++") ("++show tr++")"
+    show (UnknownError msg)   = "UnknownError: "++msg
+
 -- This instance (and the constructor) is just for supporting MTL's 'ErrorT'.
 instance Error (UnificationFailure v t) where
     noMsg  = UnknownError ""
@@ -107,7 +125,8 @@ prune
     ::  ( BindingReader v (MutTerm v t) m
         , BindingWriter v (MutTerm v t) m
         )
-    => MutTerm v t -> m (MutTerm v t)
+    => MutTerm v t     -- ^
+    -> m (MutTerm v t) -- ^
 prune t0 =
     case t0 of
     MutTerm _ -> return t0
@@ -127,7 +146,9 @@ occursIn
         , BindingWriter v (MutTerm v t) m
         , BindingReader v (MutTerm v t) m
         )
-    => v (MutTerm v t) -> MutTerm v t -> m Bool
+    => v (MutTerm v t) -- ^
+    -> MutTerm v t     -- ^
+    -> m Bool          -- ^
 occursIn v t0 = do
     t <- prune t0
     case t of
@@ -146,7 +167,8 @@ semiprune
     ::  ( BindingReader v (MutTerm v t) m
         , BindingWriter v (MutTerm v t) m
         )
-    => MutTerm v t -> m (MutTerm v t)
+    => MutTerm v t     -- ^
+    -> m (MutTerm v t) -- ^
 semiprune =
     \t0 ->
         case t0 of
@@ -185,7 +207,8 @@ getFreeVars
         , BindingReader v (MutTerm v t) m
         , BindingWriter v (MutTerm v t) m -- for semiprune
         )
-    => MutTerm v t -> m [v (MutTerm v t)]
+    => MutTerm v t         -- ^
+    -> m [v (MutTerm v t)] -- ^
 getFreeVars =
     \t0 -> IM.elems <$> evalStateT (go t0) IS.empty
     where
@@ -220,7 +243,8 @@ applyBindings
         , BindingWriter v (MutTerm v t) m -- for semiprune
         , MonadError (UnificationFailure v t) m
         )
-    => MutTerm v t -> m (MutTerm v t)
+    => MutTerm v t     -- ^
+    -> m (MutTerm v t) -- ^
 applyBindings =
     \t0 -> evalStateT (go t0) IM.empty
     where
@@ -259,7 +283,8 @@ freshen
         , BindingGenerator v (MutTerm v t) m
         , MonadError (UnificationFailure v t) m
         )
-    => MutTerm v t -> m (MutTerm v t)
+    => MutTerm v t     -- ^
+    -> m (MutTerm v t) -- ^
 freshen =
     \t0 -> evalStateT (go t0) IM.empty
     where
@@ -296,7 +321,9 @@ acyclicBindVar_
         , BindingReader v (MutTerm v t) m
         , MonadError (UnificationFailure v t) m
         )
-    => v (MutTerm v t) -> MutTerm v t -> m ()
+    => v (MutTerm v t) -- ^
+    -> MutTerm v t     -- ^
+    -> m ()            -- ^
 acyclicBindVar_ v t = do
     b <- v `occursIn` t
     if b
@@ -304,13 +331,25 @@ acyclicBindVar_ v t = do
         else v `bindVar_` t
 
 
+-- | A simple (yet relatively naive) implementation of unification.
+-- Uses the occurs-check and full pruning. This is the same algorithm
+-- presented by Sheard (2001), which is a Haskell version of the
+-- implementation by Cardelli (1987).
+--
+--     * Tim Sheard (2001) /Generic Unification via Two-Level Types/
+--         /and Parameterized Modules/, Functional Pearl, ICFP.
+--
+--     * Luca Cardelli (1987) /Basic polymorphic typechecking/.
+--         Science of Computer Programming, 8(2):147--172.
 unify1
     ::  ( Unifiable t
         , BindingWriter v (MutTerm v t) m
         , BindingReader v (MutTerm v t) m
         , MonadError (UnificationFailure v t) m
         )
-    => MutTerm v t -> MutTerm v t -> m ()
+    => MutTerm v t -- ^
+    -> MutTerm v t -- ^
+    -> m ()        -- ^
 unify1 tl0 tr0 = do
     tl <- prune tl0
     tr <- prune tr0
@@ -327,13 +366,17 @@ unify1 tl0 tr0 = do
             Just pairs -> mapM_ (uncurry unify1) pairs
 
 
+-- | Extend 'unify1' with some observable sharing by using semipruning
+-- instead of full pruning. Still uses the occurs check.
 unify2
     ::  ( Unifiable t
         , BindingWriter v (MutTerm v t) m
         , BindingReader v (MutTerm v t) m
         , MonadError (UnificationFailure v t) m
         )
-    => MutTerm v t -> MutTerm v t -> m ()
+    => MutTerm v t -- ^
+    -> MutTerm v t -- ^
+    -> m ()        -- ^
 unify2 tl0 tr0 = do
     tl <- semiprune tl0
     tr <- semiprune tr0
@@ -368,13 +411,16 @@ unify2 tl0 tr0 = do
 
 
 -- TODO: verify whether this is still correct.
+-- | Extend 'unify2' by using visited-sets instead of the occurs-check.
 unify3
     ::  ( Unifiable t
         , BindingWriter v (MutTerm v t) m
         , BindingReader v (MutTerm v t) m
         , MonadError (UnificationFailure v t) m
         )
-    => MutTerm v t -> MutTerm v t -> m ()
+    => MutTerm v t -- ^
+    -> MutTerm v t -- ^
+    -> m ()        -- ^
 unify3 = \tl0 tr0 -> evalStateT (go tl0 tr0) IM.empty
     where
     -- This only checks that you haven't looked it up before. Don't
@@ -426,6 +472,33 @@ unify3 = \tl0 tr0 -> evalStateT (go tl0 tr0) IM.empty
                 case getMore $ match tl' tr' of
                 Nothing    -> lift . throwError $ NonUnifiable tl0 tr0
                 Just pairs -> mapM_ (uncurry go) pairs
+
+{-
+-- | A variant of 'unify1'; proof of concept for aggressive observable
+-- sharing. However, we also need to update the bindings with the
+-- observed sharing; which this function doesn't do.
+unify1_5
+    ::  ( Unifiable t
+        , BindingWriter v (MutTerm v t) m
+        , BindingReader v (MutTerm v t) m
+        , MonadError (UnificationFailure v t) m
+        )
+    => MutTerm v t -> MutTerm v t -> m (MutTerm v t)
+unify1_5 tl0 tr0 = do
+    tl <- prune tl0
+    tr <- prune tr0
+    case (tl, tr) of
+        -- N.B., because of full pruning, we know all MutVars here are unbound.
+        (MutVar vl, MutVar vr)
+            | vl `eqV` vr ->                            return tl
+            | otherwise   -> vl `bindVar_` tr        >> return tl
+        (MutVar vl, _)    -> vl `acyclicBindVar_` tr >> return tl
+        (_, MutVar vr)    -> vr `acyclicBindVar_` tl >> return tr
+        (MutTerm tl', MutTerm tr') ->
+            case zipMatch tl' tr' of
+            Nothing  -> throwError $ NonUnifiable tl tr
+            Just tlr -> MutTerm <$> mapM (uncurry unify1_5) tlr
+-- -}
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

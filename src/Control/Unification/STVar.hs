@@ -1,15 +1,20 @@
 
-{-# LANGUAGE Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE Rank2Types
+           , MultiParamTypeClasses
+           , UndecidableInstances
+           , FlexibleInstances
+           #-}
+
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.06.28
+--                                                  ~ 2011.06.30
 -- |
 -- Module      :  Control.Unification.STVar
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
--- Portability :  semi-portable (Rank2Types, MPTCs, FlexibleInstances)
+-- Portability :  semi-portable (Rank2Types, MPTCs, Undecidable-, FlexibleInstances)
 --
 -- This module defines an implementation of mutable unification
 -- variables using the 'ST' monad.

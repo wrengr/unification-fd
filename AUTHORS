@@ -9,14 +9,14 @@ released under the terms in the LICENSE file.
 I first started implementing unification algorithms for the Dyna2
 project where I worked with Nathaniel W. Filardo and Jason Eisner
 (though this code is only loosely based on that work). The two-level
-types approach was adapted from Tim Sheard[1], the idea of functional
-pointers were independently discovered by Dijkstra et al[2] after
-their apperance in Dyna2, Edward Kmett pointed out the weighted
-extension to path compression (popular in the union--find literature),
+types approach was adapted from Tim Sheard[1]; the idea of functional
+pointers were independently discovered by Dijkstra et al.[2] after
+their apperance in Dyna2; Edward Kmett pointed out the weighted
+extension to path compression (popular in the union--find literature);
 and the functor coproduct code is adapted from Wouter Swierstra[3].
 
 [1] Tim Sheard (2001) /Generic Unification via Two-Level Types and/
-        /Paramterized Modules/, ICFP.
+        /Parameterized Modules/, Functional Pearl, ICFP.
 
 [2] Atze Dijkstra, Arie Middelkoop, S. Doaitse Swierstra (2008)
         /Efficient Functional Unification and Substitution/, Technical

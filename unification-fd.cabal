@@ -1,14 +1,13 @@
 ----------------------------------------------------------------
--- wren ng thornton <wren@community.haskell.org>    ~ 2011.06.28
+-- wren ng thornton <wren@community.haskell.org>    ~ 2011.06.30
 ----------------------------------------------------------------
 
-Name:           unification
+Name:           unification-fd
 Version:        0.4.0
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
 -- and source-repository:.
 Cabal-Version:  >= 1.6
--- We need a custom build in order to define __HADDOCK__
-Build-Type:     Custom
+Build-Type:     Simple
 Stability:      experimental
 Copyright:      Copyright (c) 2007--2011 wren ng thornton
 License:        BSD3

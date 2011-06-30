@@ -1,11 +1,15 @@
 Debugging:
+    * Create a test suite to be sure of correctness & usability.
     * Combine the test suite into a single executable and then do:
         $> darcs setpref test "runhaskell Tests.hs"
     * Also, tell Setup.hs so that `cabal test` and `runhaskell
       Setup.hs test` call the test suite.
 
 Enhancements:
+    * Finish implementing aggressive observable sharing
+    * Implement weighted-union ala union--find
 
 Sooner than later:
 
 Eventually:
+    * Move old code to ./test/ or ./experiments/ or something

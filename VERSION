@@ -1,4 +1,6 @@
-0.4.0 (2011-06-18):
+0.4.0 (2011-XX-XX):
     - Removed heterogeneous unification, and rewrote practically everything.
+    - Added semipruning instead of full pruning.
+    - Added visited-sets instead of occurs-checks.
 0.3.6 (2011-06-18):
     - Forked from the Dyna2 project.

@@ -1,8 +1,7 @@
 
--- This is for the Show (Fix f) instance
+-- For the Show (Fix f) instance
 {-# LANGUAGE UndecidableInstances #-}
-
--- This is for 'build'
+-- For 'build' and 'hmap'
 {-# LANGUAGE Rank2Types #-}
 -- To parse rules. The language extension is for hackery in rules.
 {-# OPTIONS_GHC -O2 -fglasgow-exts #-}
@@ -10,7 +9,7 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 
 ----------------------------------------------------------------
---                                                    2011.06.18
+--                                                    2011.06.30
 -- |
 -- Module      :  Data.Functor.Fixedpoint
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
@@ -27,7 +26,7 @@
 -- the utility of two-level recursive types, see:
 --
 --     * Tim Sheard (2001) /Generic Unification via Two-Level Types/
---         /and Paramterized Modules/. ICFP.
+--         /and Paramterized Modules/, Functional Pearl, ICFP.
 ----------------------------------------------------------------
 
 module Data.Functor.Fixedpoint
@@ -35,6 +34,7 @@ module Data.Functor.Fixedpoint
     -- * Fixed point operator for functors
       Fix(..)
     -- * Maps
+    , hmap,  hmapM
     , ymap,  ymapM
     -- * Builders
     , build
@@ -72,23 +72,73 @@ newtype Fix f = Fix { unFix :: f (Fix f) }
 instance (Show (f (Fix f))) => Show (Fix f) where
     show (Fix f) = show f
 
--- hmap :: (Functor f, Functor g) => (forall a. f a -> g a) -> Fix f -> Fix g
--- hmap eps = Fix . eps . fmap (hmap eps) . unFix = cata (Fix . eps)
---          = Fix . fmap (hmap eps) . eps . unFix = ana (eps . unFix)
+instance (Eq (f (Fix f))) => Eq (Fix f) where
+    Fix x == Fix y  =  x == y
+    Fix x /= Fix y  =  x /= y
+
+instance (Ord (f (Fix f))) => Ord (Fix f) where
+    Fix x `compare` Fix y  =  x `compare` y
+    Fix x >  Fix y         =  x >  y
+    Fix x >= Fix y         =  x >= y
+    Fix x <= Fix y         =  x <= y
+    Fix x <  Fix y         =  x <  y
+    Fix x `max` Fix y      =  Fix (max x y)
+    Fix x `min` Fix y      =  Fix (min x y)
 
 ----------------------------------------------------------------
+
+-- | A higher-order map taking a natural transformation @(f -> g)@
+-- and lifting it to operate on @Fix@.
+hmap :: (Functor f, Functor g) => (forall a. f a -> g a) -> Fix f -> Fix g
+hmap eps = ana (eps . unFix)
+    -- == cata (Fix . eps) -- But the anamorphism is a better producer.
+{-# INLINE [0] hmap #-}
+
+{-# RULES
+"hmap id"
+        hmap id = id
+
+"hmap-compose"
+    forall (eps :: forall a. g a -> h a) (eta :: forall a. f a -> g a).
+        hmap eps . hmap eta = hmap (eps . eta)
+    #-}
+
+
+-- | A monadic variant of 'hmap'.
+hmapM
+    :: (Functor f, Traversable g, Monad m)
+    => (forall a. f a -> m (g a)) -> Fix f -> m (Fix g)
+hmapM eps = anaM (eps . unFix)
+{-# INLINE [0] hmapM #-}
+
+{-# RULES
+"hmapM return"                                  hmapM return = return
+-- "hmapM-compose" forall eps eta. hmap eps <=< hmap eta = hmapM (eps <=< eta)
+    #-}
+
+
 -- | A version of 'fmap' for endomorphisms on the fixed point. That
 -- is, this maps the function over the first layer of recursive
 -- structure.
 ymap :: (Functor f) => (Fix f -> Fix f) -> Fix f -> Fix f
 ymap f = Fix . fmap f . unFix
-{-# INLINE ymap #-}
+{-# INLINE [0] ymap #-}
+
+{-# RULES
+"ymap id"                          ymap id = id
+"ymap-compose" forall f g. ymap f . ymap g = ymap (f . g)
+    #-}
 
 
 -- | A monadic variant of 'ymap'.
 ymapM :: (Traversable f, Monad m) => (Fix f -> m (Fix f)) -> Fix f -> m (Fix f)
 ymapM f = liftM Fix . mapM f . unFix
 {-# INLINE ymapM #-}
+
+{-# RULES
+"ymapM id"                          ymapM return = return
+-- "ymapM-compose" forall f g. ymapM f <=< ymapM g = ymapM (f <=< g)
+    #-}
 
 
 ----------------------------------------------------------------

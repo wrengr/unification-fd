@@ -13,12 +13,11 @@
 --
 -- This module defines a state monad for functional pointers
 -- represented by integers as keys into an @IntMap@. This technique
--- was independently re-discovered by Dijkstra et al. This module
--- expands on their approach by using a state monad transformer,
--- which can be made into a backtracking state monad by setting the
--- underlying monad to some 'MonadLogic'. The @logict@ library is
--- described by Kiselyov et al., and Ralf Hinze's two-continuation
--- monad is also discussed in Naylor et al. (in Appendix 1).
+-- was independently discovered by Dijkstra et al. This module
+-- extends the approach by using a state monad transformer, which
+-- can be made into a backtracking state monad by setting the
+-- underlying monad to some 'MonadLogic' (part of the @logict@
+-- library, described by Kiselyov et al.).
 --
 --     * Atze Dijkstra, Arie Middelkoop, S. Doaitse Swierstra (2008)
 --         /Efficient Functional Unification and Substitution/,
@@ -27,9 +26,6 @@
 --     * Oleg Kiselyov, Chung-chieh Shan, Daniel P. Friedman, and
 --         Amr Sabry (2005) /Backtracking, Interleaving, and/
 --         /Terminating Monad Transformers/, ICFP.
---
---     * Matthew Naylor, Emil Axelsson, and Colin Runciman (2007)
---         /A Functional-Logic Library for Wired/, Haskell'07, ACM.
 ----------------------------------------------------------------
 module Control.Unification.IntVar
     ( IntVar()

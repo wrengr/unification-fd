@@ -1,5 +1,5 @@
-unification
-===========
+unification-fd
+==============
 
 This is a simple package and should be easy to install. You should
 be able to use one of the following standard methods to install it.
@@ -38,18 +38,20 @@ update logict to use the same mtl.
 Portability
 ===========
 
-An attempt has been made to keep this library portable, but it does
-rely on some common language extensions as well as a couple which
-are only known to be supported by GHC. All required language
-extensions are: 
+An attempt has been made to keep this library as portable as possible,
+but it does rely on some common language extensions (i.e., ones
+implemented by Hugs as well as GHC) as well as a couple which are
+only known to be supported by GHC. All required language extensions
+are:
 
-    CPP                   -- Control.Monad.EitherK: but not necessary.
-    RankNTypes            -- Control.Monad.BacktrackST requires a rank-3 type.
+    CPP                    -- Control.Monad.EitherK: but not necessary.
+    RankNTypes             -- Control.Monad.BacktrackST requires a rank-3 type.
     Rank2Types
-    TypeOperators         -- For making Data.Functor.Coproduct pretty.
+    TypeOperators          -- Data.Functor.Coproduct: will probably be removed.
     MultiParamTypeClasses
+    FunctionalDependencies -- Alas, necessary for type inference
     FlexibleContexts
     FlexibleInstances
-    UndecidableInstances  -- Data.Functor.Fixedpoint: instance Show (Fix f)
+    UndecidableInstances
 
 ----------------------------------------------------------- fin.
