@@ -42,20 +42,22 @@ instance Unifiable S where
 
 type STerm = MutTerm IntVar S 
 
-test1 = print . runIdentity . evalIntBindingT $ eg1
+test1 = print . runIdentity . runIntBindingT $ eg1
     where
     eg1 = do
         -- Fundeps needed to avoid signatures for all calls to freeVar
         x <- freeVar
         y <- freeVar
-        z <- freeVar
-        let t1t0 = MutTerm$S "1" [MutTerm$S "0" []]
+        let t0   = MutTerm$S "0" []
+        let t10  = MutTerm$S "1" [MutTerm$S "0" []]
         let t1x  = MutTerm$S "1" [MutVar x]
         let t2xy = MutTerm$S "2" [MutVar x, MutVar y]
-        let t2zz = MutTerm$S "2" [MutVar z, MutVar z]
+        let t200 = MutTerm$S "2" [t0,t0]
         runErrorT $ do
-            unify1 t1t0 t1x
-            applyBindings t2xy
+            _ <- unify4 t10 t1x
+            _ <- unify4 (MutVar x) (MutVar y)
+            -- This should succeed, but will fail if the visited-set doesn't backtrack properly when comming up from recursion
+            unify4 t200 t2xy
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

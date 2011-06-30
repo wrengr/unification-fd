@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.06.28
+--                                                  ~ 2011.06.30
 -- |
 -- Module      :  Control.Unification.IntVar
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
@@ -38,12 +38,13 @@ module Control.Unification.IntVar
 
 import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 
+--import Data.Word             (Word)
 import qualified Data.IntMap as IM
 import Control.Applicative
-import Control.Monad       (MonadPlus(..), liftM)
-import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.State (MonadState(..), StateT, runStateT, evalStateT, execStateT, gets)
-import Control.Monad.Logic (MonadLogic(..))
+import Control.Monad         (MonadPlus(..), liftM)
+import Control.Monad.Trans   (MonadTrans(..))
+import Control.Monad.State   (MonadState(..), StateT, runStateT, evalStateT, execStateT, gets)
+import Control.Monad.Logic   (MonadLogic(..))
 import Control.Unification.Classes
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -54,6 +55,19 @@ import Control.Unification.Classes
 newtype IntVar t = IntVar Int
     deriving (Show)
 
+{-
+-- BUG: This part works, but we'd want to change Show IntBindingState too.
+
+instance Show (IntVar t) where
+    show (IntVar i) = "IntVar " ++ show (boundedInt2Word i)
+
+-- | Convert an integer to a word, via the continuous mapping that
+-- preserves @minBound@ and @maxBound@.
+boundedInt2Word :: Int -> Word
+boundedInt2Word i
+    | i < 0     = fromIntegral (i + maxBound + 1)
+    | otherwise = fromIntegral i + fromIntegral (maxBound :: Int) + 1
+-}
 
 instance Variable IntVar where
     eqV (IntVar i) (IntVar j) = i == j
@@ -67,6 +81,7 @@ data IntBindingState t = IntBindingState
     { nextFreeVar :: {-# UNPACK #-} !Int
     , varBindings :: IM.IntMap t
     }
+    deriving (Show)
 
 
 -- | The initial @IntBindingState@.

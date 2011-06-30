@@ -40,6 +40,7 @@ module Control.Unification
     , unify1
     , unify2
     , unify3
+    , unify4
     -- subsumes
     ) where
 
@@ -52,7 +53,7 @@ import Data.Functor.Fixedpoint
 import Data.Foldable
 import Data.Traversable
 import Control.Applicative
-import Control.Monad.Trans (lift)
+import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Error (MonadError(..), Error(..))
 import Control.Monad.State (MonadState(..), evalStateT)
 import Control.Monad.State.UnificationExtras
@@ -95,7 +96,7 @@ data UnificationFailure v t
     | NonUnifiable (MutTerm v t) (MutTerm v t)
     | UnknownError String
 
--- Can't derive this for some reason...
+-- Can't derive this... because it's an UndecidableInstance?
 instance (Show (MutTerm v t), Show (v (MutTerm v t))) =>
     Show (UnificationFailure v t)
     where
@@ -210,11 +211,11 @@ getFreeVars
     => MutTerm v t         -- ^
     -> m [v (MutTerm v t)] -- ^
 getFreeVars =
-    \t0 -> IM.elems <$> evalStateT (go t0) IS.empty
+    \t -> IM.elems <$> evalStateT (go t) IS.empty
     where
-    go t1 = do
-        t1' <- lift $ semiprune t1
-        case t1' of
+    go t0 = do
+        t1 <- lift $ semiprune t0
+        case t1 of
             MutTerm t -> fold <$> mapM go t -- TODO: use foldlM instead?
             MutVar  v -> do
                 seenVars <- get
@@ -241,16 +242,18 @@ applyBindings
     ::  ( Traversable t
         , BindingReader v (MutTerm v t) m
         , BindingWriter v (MutTerm v t) m -- for semiprune
-        , MonadError (UnificationFailure v t) m
+        , MonadTrans e
+        , Functor (e m) -- Monad (e m) should imply Functor damnit!
+        , MonadError (UnificationFailure v t) (e m)
         )
-    => MutTerm v t     -- ^
-    -> m (MutTerm v t) -- ^
+    => MutTerm v t       -- ^
+    -> e m (MutTerm v t) -- ^
 applyBindings =
-    \t0 -> evalStateT (go t0) IM.empty
+    \t -> evalStateT (go t) IM.empty
     where
-    go t1 = do
-        t1' <- lift $ semiprune t1
-        case t1' of
+    go t0 = do
+        t1 <- lift . lift $ semiprune t0
+        case t1 of
             MutTerm t -> MutTerm <$> mapM go t
             MutVar  v -> do
                 let i = getVarID v
@@ -259,9 +262,9 @@ applyBindings =
                     Just (Right t) -> return t
                     Just (Left  t) -> lift . throwError $ OccursIn v t
                     Nothing -> do
-                        mb' <- lift $ lookupVar v
+                        mb' <- lift . lift $ lookupVar v
                         case mb' of
-                            Nothing -> return t1'
+                            Nothing -> return t1
                             Just t  -> do
                                 modify' . IM.insert i $ Left t
                                 t' <- go t
@@ -281,16 +284,18 @@ freshen
         , BindingReader    v (MutTerm v t) m
         , BindingWriter    v (MutTerm v t) m -- for semiprune
         , BindingGenerator v (MutTerm v t) m
-        , MonadError (UnificationFailure v t) m
+        , MonadTrans e
+        , Functor (e m) -- Monad (e m) should imply Functor damnit!
+        , MonadError (UnificationFailure v t) (e m)
         )
-    => MutTerm v t     -- ^
-    -> m (MutTerm v t) -- ^
+    => MutTerm v t       -- ^
+    -> e m (MutTerm v t) -- ^
 freshen =
-    \t0 -> evalStateT (go t0) IM.empty
+    \t -> evalStateT (go t) IM.empty
     where
-    go t1 = do
-        t1' <- lift $ semiprune t1
-        case t1' of
+    go t0 = do
+        t1 <- lift . lift $ semiprune t0
+        case t1 of
             MutTerm t -> MutTerm <$> mapM go t
             MutVar  v -> do
                 let i = getVarID v
@@ -299,16 +304,16 @@ freshen =
                     Just (Right t) -> return t
                     Just (Left  t) -> lift . throwError $ OccursIn v t
                     Nothing -> do
-                        mb <- lift $ lookupVar v
+                        mb <- lift . lift $ lookupVar v
                         case mb of
                             Nothing -> do
-                                v' <- lift $ MutVar <$> freeVar
+                                v' <- lift . lift $ MutVar <$> freeVar
                                 put $ IM.insert i (Right v') seenVars
                                 return v'
                             Just t  -> do
                                 put $ IM.insert i (Left t) seenVars
                                 t' <- go t
-                                v' <- lift $ MutVar <$> newVar t'
+                                v' <- lift . lift $ MutVar <$> newVar t'
                                 modify' $ IM.insert i (Right v')
                                 return v'
 
@@ -319,16 +324,17 @@ acyclicBindVar_
     ::  ( Traversable t
         , BindingWriter v (MutTerm v t) m
         , BindingReader v (MutTerm v t) m
-        , MonadError (UnificationFailure v t) m
+        , MonadTrans e
+        , MonadError (UnificationFailure v t) (e m)
         )
     => v (MutTerm v t) -- ^
     -> MutTerm v t     -- ^
-    -> m ()            -- ^
+    -> e m ()          -- ^
 acyclicBindVar_ v t = do
-    b <- v `occursIn` t
+    b <- lift $ v `occursIn` t
     if b
         then throwError $ OccursIn v t
-        else v `bindVar_` t
+        else lift $ v `bindVar_` t
 
 
 -- | A simple (yet relatively naive) implementation of unification.
@@ -345,19 +351,20 @@ unify1
     ::  ( Unifiable t
         , BindingWriter v (MutTerm v t) m
         , BindingReader v (MutTerm v t) m
-        , MonadError (UnificationFailure v t) m
+        , MonadTrans e
+        , MonadError (UnificationFailure v t) (e m)
         )
     => MutTerm v t -- ^
     -> MutTerm v t -- ^
-    -> m ()        -- ^
+    -> e m ()      -- ^
 unify1 tl0 tr0 = do
-    tl <- prune tl0
-    tr <- prune tr0
+    tl <- lift $ prune tl0
+    tr <- lift $ prune tr0
     case (tl, tr) of
         -- N.B., because of full pruning, we know all MutVars here are unbound.
         (MutVar vl, MutVar vr)
             | vl `eqV` vr -> return ()
-            | otherwise   -> vl `bindVar_` tr
+            | otherwise   -> lift $ vl `bindVar_` tr
         (MutVar vl, _)    -> vl `acyclicBindVar_` tr
         (_, MutVar vr)    -> vr `acyclicBindVar_` tl
         (MutTerm tl', MutTerm tr') ->
@@ -372,34 +379,37 @@ unify2
     ::  ( Unifiable t
         , BindingWriter v (MutTerm v t) m
         , BindingReader v (MutTerm v t) m
-        , MonadError (UnificationFailure v t) m
+        , MonadTrans e
+        , MonadError (UnificationFailure v t) (e m)
         )
     => MutTerm v t -- ^
     -> MutTerm v t -- ^
-    -> m ()        -- ^
+    -> e m ()      -- ^
 unify2 tl0 tr0 = do
-    tl <- semiprune tl0
-    tr <- semiprune tr0
+    tl <- lift $ semiprune tl0
+    tr <- lift $ semiprune tr0
     case (tl, tr) of
         (MutVar vl, MutVar vr)
             | vl `eqV` vr -> return ()
             | otherwise   -> do
-                mtl <- lookupVar vl
-                mtr <- lookupVar vr
+                mtl <- lift $ lookupVar vl
+                mtr <- lift $ lookupVar vr
                 case (mtl, mtr) of
-                    (Nothing,  Nothing ) -> vl `bindVar_` tr
-                    (Nothing,  Just tr') -> vl `bindVar_` tr'
-                    (Just tl', Nothing ) -> vr `bindVar_` tl'
-                    (Just tl', Just tr') -> unify2 tl' tr' >> vl `bindVar_` tr
+                    (Nothing,  Nothing ) -> lift $ vl `bindVar_` tr
+                    (Nothing,  Just tr') -> lift $ vl `bindVar_` tr'
+                    (Just tl', Nothing ) -> lift $ vr `bindVar_` tl'
+                    (Just tl', Just tr') -> do
+                        unify2 tl' tr'
+                        lift $ vl `bindVar_` tr
         
         (MutVar vl, _) -> do
-            mtl <- lookupVar vl
+            mtl <- lift $ lookupVar vl
             case mtl of
                 Nothing  -> vl `acyclicBindVar_` tr
                 Just tl' -> unify2 tl' tr
         
         (_, MutVar vr) -> do
-            mtr <- lookupVar vr
+            mtr <- lift $ lookupVar vr
             case mtr of
                 Nothing  -> vr `acyclicBindVar_` tl
                 Just tr' -> unify2 tl tr'
@@ -410,95 +420,156 @@ unify2 tl0 tr0 = do
             Just pairs -> mapM_ (uncurry unify2) pairs
 
 
--- TODO: verify whether this is still correct.
+localState :: (MonadState s m) => m a -> m a
+localState m = do
+    s <- get
+    x <- m
+    put s
+    return x
+{-# INLINE localState #-}
+
+
+-- TODO: Verify this is still correct
 -- | Extend 'unify2' by using visited-sets instead of the occurs-check.
 unify3
     ::  ( Unifiable t
         , BindingWriter v (MutTerm v t) m
         , BindingReader v (MutTerm v t) m
-        , MonadError (UnificationFailure v t) m
+        , MonadTrans e
+        , Functor (e m) -- Monad (e m) should imply Functor damnit!
+        , MonadError (UnificationFailure v t) (e m)
         )
     => MutTerm v t -- ^
     -> MutTerm v t -- ^
-    -> m ()        -- ^
-unify3 = \tl0 tr0 -> evalStateT (go tl0 tr0) IM.empty
+    -> e m ()      -- ^
+unify3 =
+    \tl tr -> evalStateT (go tl tr) IM.empty
     where
-    -- This only checks that you haven't looked it up before. Don't
-    -- forget to update the seen-variables state before recursing
-    -- into the result term (if it exists).
-    occurs_lookupVar v = do
+    
+    v =: t = lift . lift $ v `bindVar_` t
+    {-# INLINE (=:) #-}
+    
+    v `seenAs` t = do
         mb <- IM.lookup (getVarID v) <$> get
         case mb of
-            Just t  -> lift . throwError $ OccursIn v t
-            Nothing -> lift $ lookupVar v
+            Just t' -> lift . throwError $ OccursIn v t'
+            Nothing -> modify' $ IM.insert (getVarID v) t
+    {-# INLINE seenAs #-}
     
+    -- :: StateT VisitedSet (ErrorT UnificationFailure m) ()
     go tl0 tr0 = do
-        -- TODO: we may want to move semiprune to a class, so that it can be lifted over the error throwing as well as the state.
-        tl <- lift $ semiprune tl0
-        tr <- lift $ semiprune tr0
-        case (tl, tr) of
+        tl1 <- lift . lift $ semiprune tl0
+        tr1 <- lift . lift $ semiprune tr0
+        case (tl1, tr1) of
             (MutVar vl, MutVar vr)
                 | vl `eqV` vr -> return ()
                 | otherwise   -> do
-                    mtl <- occurs_lookupVar vl
-                    mtr <- occurs_lookupVar vr
+                    mtl <- lift . lift $ lookupVar vl
+                    mtr <- lift . lift $ lookupVar vr
                     case (mtl, mtr) of
-                        (Nothing,  Nothing ) -> lift $ vl `bindVar_` tr0
-                        (Nothing,  Just tr') -> lift $ vl `bindVar_` tr'
-                        (Just tl', Nothing ) -> lift $ vr `bindVar_` tl'
+                        (Nothing,  Nothing ) -> vl =: tr1 -- or, vr =: tl1
+                        (Nothing,  Just _  ) -> vl =: tr1
+                        (Just _  , Nothing ) -> vr =: tl1
                         (Just tl', Just tr') -> do
-                            modify' $ IM.insert (getVarID vl) tl'
-                            modify' $ IM.insert (getVarID vr) tr'
-                            go tl' tr'
-                            lift $ vl `bindVar_` tr0
+                            localState $ do
+                                vl `seenAs` tl'
+                                vr `seenAs` tr'
+                                go tl' tr'
+                            vl =: tr1 -- or, vr =: tl1
             
             (MutVar vl, MutTerm _) -> do
-                mtl <- occurs_lookupVar vl
+                mtl <- lift . lift $ lookupVar vl
                 case mtl of
-                    Nothing  -> lift $ vl `bindVar_` tr0
-                    Just tl' -> do
-                        modify' $ IM.insert (getVarID vl) tl'
-                        go tl' tr0
+                    Nothing  -> vl =: tr1
+                    Just tl' -> localState $ do vl `seenAs` tl' ; go tl' tr1
             
             (MutTerm _, MutVar vr) -> do
-                mtr <- occurs_lookupVar vr
+                mtr <- lift . lift $ lookupVar vr
                 case mtr of
-                    Nothing  -> lift $ vr `bindVar_` tl0
-                    Just tr' -> do
-                        modify' $ IM.insert (getVarID vr) tr'
-                        go tl0 tr'
+                    Nothing  -> vr =: tl1
+                    Just tr' -> localState $ do vr `seenAs` tr' ; go tl1 tr'
             
             (MutTerm tl', MutTerm tr') ->
                 case getMore $ match tl' tr' of
-                Nothing    -> lift . throwError $ NonUnifiable tl0 tr0
+                Nothing    -> lift . throwError $ NonUnifiable tl1 tr1
                 Just pairs -> mapM_ (uncurry go) pairs
 
-{-
--- | A variant of 'unify1'; proof of concept for aggressive observable
--- sharing. However, we also need to update the bindings with the
--- observed sharing; which this function doesn't do.
-unify1_5
+
+-- TODO: keep in sync with unify3
+-- | A variant of 'unify3' which uses aggressive observable sharing.
+unify4
     ::  ( Unifiable t
         , BindingWriter v (MutTerm v t) m
         , BindingReader v (MutTerm v t) m
-        , MonadError (UnificationFailure v t) m
+        , MonadTrans e
+        , Functor (e m) -- Monad (e m) should imply Functor damnit!
+        , MonadError (UnificationFailure v t) (e m)
         )
-    => MutTerm v t -> MutTerm v t -> m (MutTerm v t)
-unify1_5 tl0 tr0 = do
-    tl <- prune tl0
-    tr <- prune tr0
-    case (tl, tr) of
-        -- N.B., because of full pruning, we know all MutVars here are unbound.
-        (MutVar vl, MutVar vr)
-            | vl `eqV` vr ->                            return tl
-            | otherwise   -> vl `bindVar_` tr        >> return tl
-        (MutVar vl, _)    -> vl `acyclicBindVar_` tr >> return tl
-        (_, MutVar vr)    -> vr `acyclicBindVar_` tl >> return tr
-        (MutTerm tl', MutTerm tr') ->
-            case zipMatch tl' tr' of
-            Nothing  -> throwError $ NonUnifiable tl tr
-            Just tlr -> MutTerm <$> mapM (uncurry unify1_5) tlr
--- -}
+    => MutTerm v t       -- ^
+    -> MutTerm v t       -- ^
+    -> e m (MutTerm v t) -- ^
+unify4 =
+    \tl tr -> evalStateT (go tl tr) IM.empty
+    where
+    
+    v =: t = lift . lift $ v `bindVar_` t
+    {-# INLINE (=:) #-}
+    
+    v `seenAs` t = do
+        mb <- IM.lookup (getVarID v) <$> get
+        case mb of
+            Just t' -> lift . throwError $ OccursIn v t'
+            Nothing -> modify' $ IM.insert (getVarID v) t
+    {-# INLINE seenAs #-}
+    
+    go tl0 tr0 = do
+        tl1 <- lift . lift $ semiprune tl0
+        tr1 <- lift . lift $ semiprune tr0
+        case (tl1, tr1) of
+            (MutVar vl, MutVar vr)
+                | vl `eqV` vr -> return tr1
+                | otherwise   -> do
+                    mtl <- lift . lift $ lookupVar vl
+                    mtr <- lift . lift $ lookupVar vr
+                    case (mtl, mtr) of
+                        (Nothing,  Nothing ) -> do vl =: tr1 ; return tr1
+                        (Nothing,  Just _  ) -> do vl =: tr1 ; return tr1
+                        (Just _  , Nothing ) -> do vr =: tl1 ; return tl1
+                        (Just tl', Just tr') -> do
+                            tlr <- localState $ do
+                                vl `seenAs` tl'
+                                vr `seenAs` tr'
+                                go tl' tr'
+                            vr =: tlr
+                            vl =: tr1
+                            return tr1
+            
+            (MutVar vl, MutTerm _) -> do
+                mtl <- lift . lift $ lookupVar vl
+                case mtl of
+                    Nothing  -> do vl =: tr1 ; return tl1
+                    Just tl' -> do
+                        tlr <- localState $ do
+                            vl `seenAs` tl'
+                            go tl' tr1
+                        vl =: tlr
+                        return tl1
+            
+            (MutTerm _, MutVar vr) -> do
+                mtr <- lift . lift $ lookupVar vr
+                case mtr of
+                    Nothing  -> do vr =: tl1 ; return tr1
+                    Just tr' -> do
+                        tlr <- localState $ do
+                            vr `seenAs` tr'
+                            go tl1 tr'
+                        vr =: tlr
+                        return tr1
+            
+            (MutTerm tl', MutTerm tr') ->
+                case zipMatch tl' tr' of
+                Nothing  -> lift . throwError $ NonUnifiable tl1 tr1
+                Just tlr -> MutTerm <$> mapM (uncurry go) tlr
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.
