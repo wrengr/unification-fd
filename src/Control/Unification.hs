@@ -536,11 +536,11 @@ unify4 =
                         (Nothing,  Just _  ) -> do vl =: tr1 ; return tr1
                         (Just _  , Nothing ) -> do vr =: tl1 ; return tl1
                         (Just tl', Just tr') -> do
-                            tlr <- localState $ do
+                            t <- localState $ do
                                 vl `seenAs` tl'
                                 vr `seenAs` tr'
                                 go tl' tr'
-                            vr =: tlr
+                            vr =: t
                             vl =: tr1
                             return tr1
             
@@ -549,10 +549,10 @@ unify4 =
                 case mtl of
                     Nothing  -> do vl =: tr1 ; return tl1
                     Just tl' -> do
-                        tlr <- localState $ do
+                        t <- localState $ do
                             vl `seenAs` tl'
                             go tl' tr1
-                        vl =: tlr
+                        vl =: t
                         return tl1
             
             (MutTerm _, MutVar vr) -> do
@@ -560,10 +560,10 @@ unify4 =
                 case mtr of
                     Nothing  -> do vr =: tl1 ; return tr1
                     Just tr' -> do
-                        tlr <- localState $ do
+                        t <- localState $ do
                             vr `seenAs` tr'
                             go tl1 tr'
-                        vr =: tlr
+                        vr =: t
                         return tr1
             
             (MutTerm tl', MutTerm tr') ->
