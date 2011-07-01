@@ -1,3 +1,15 @@
+=== Notes ===
+
+The following license applies to all code in this package. The
+module Control.Monad.MaybeK is derived from code on the Haskell
+Wiki[1] which was released under a simple permissive license[2].
+
+[1] <http://www.haskell.org/haskellwiki/Performance/Monads>
+[2] <http://www.haskell.org/haskellwiki/HaskellWiki:Copyrights>
+
+
+=== unification-fd license ===
+
 Copyright (c) 2007, 2008, 2011, wren ng thornton.
 ALL RIGHTS RESERVED.
 

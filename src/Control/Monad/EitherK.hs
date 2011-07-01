@@ -1,25 +1,19 @@
 
-{-# LANGUAGE CPP
-           , Rank2Types
-           , MultiParamTypeClasses
-           , FlexibleInstances
-           #-}
-
+-- The MPTCs and FlexibleInstances are only for
+-- mtl:Control.Monad.Error.MonadError
+{-# LANGUAGE Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
-
 ----------------------------------------------------------------
---                                                  ~ 2011.06.28
+--                                                  ~ 2011.06.30
 -- |
 -- Module      :  Control.Monad.EitherK
--- License     :  A simple permissive license
+-- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
--- Stability   :  stable
--- Portability :  semi-portable (CPP, Rank2Types, MPTCs, FlexibleInstances)
+-- Stability   :  provisional
+-- Portability :  semi-portable (Rank2Types, MPTCs, FlexibleInstances)
 --
 -- A continuation-passing variant of 'Either' for short-circuiting
--- at failure. This code is based on "Control.Monad.MaybeK" and
--- is released under the same simple permissive license
--- (<http://www.haskell.org/haskellwiki/HaskellWiki:Copyrights>).
+-- at failure. This code is based on "Control.Monad.MaybeK".
 ----------------------------------------------------------------
 module Control.Monad.EitherK
     (
@@ -27,9 +21,9 @@ module Control.Monad.EitherK
       EitherK()
     , runEitherK
     , toEitherK
+    , eitherK
     , throwEitherK
     , catchEitherK
-    , eitherK
     -- * The short-circuiting monad transformer
     , EitherKT()
     , runEitherKT
@@ -41,19 +35,18 @@ module Control.Monad.EitherK
     ) where
 
 import Data.Monoid         (Monoid(..))
-import Control.Monad       (MonadPlus(..), liftM)
+import Control.Applicative (Applicative(..), Alternative(..))
+import Control.Monad       (MonadPlus(..), liftM, ap)
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Error (MonadError(..))
-
-#ifdef __APPLICATIVE_IN_BASE__
-import Control.Monad       (ap)
-import Control.Applicative (Applicative(..), Alternative(..))
-#endif
+----------------------------------------------------------------
 ----------------------------------------------------------------
 
 -- | A continuation-passing encoding of 'Either' as an error monad;
 -- also known as @Codensity (Either e)@, if you're familiar with
--- that terminology.
+-- that terminology. N.B., this is not the 2-continuation implementation
+-- based on the Church encoding of @Either@. The latter tends to
+-- have worse performance than non-continuation based implementations.
 --
 -- This is generally more efficient than using @Either@ (or the
 -- MTL's @Error@) for two reasons. First is that it right associates
@@ -114,21 +107,19 @@ eitherK left right m =
 instance Functor (EitherK e) where
     fmap f (EK m) = EK (\k -> m (k . f))
 
-#ifdef __APPLICATIVE_IN_BASE__
 instance Applicative (EitherK e) where
     pure  = return
     (<*>) = ap
-
-instance (Monoid e) => Alternative (EitherK e) where
-    empty = mzero
-    (<|>) = mplus
-#endif
 
 instance Monad (EitherK e) where
     return a   = EK (\k -> k a)
     EK m >>= f = EK (\k -> m (\a -> case f a of EK n -> n k))
     -- Using case instead of let seems to improve performance
     -- considerably by removing excessive laziness.
+
+instance (Monoid e) => Alternative (EitherK e) where
+    empty = mzero
+    (<|>) = mplus
 
 instance (Monoid e) => MonadPlus (EitherK e) where
     mzero       = throwEitherK mempty
@@ -198,20 +189,18 @@ catchEitherKT m handler = EKT $ \k -> do
 instance Functor (EitherKT e m) where
     fmap f (EKT m) = EKT (\k -> m (k . f))
 
-#ifdef __APPLICATIVE_IN_BASE__
 instance Applicative (EitherKT e m) where
     pure  = return
     (<*>) = ap
+
+instance Monad (EitherKT e m) where
+    return a    = EKT (\k -> k a)
+    EKT m >>= f = EKT (\k -> m (\a -> case f a of EKT n -> n k))
 
 -- TODO: is there any way to define catchEitherKT so it only requires Applicative m?
 instance (Monad m, Monoid e) => Alternative (EitherKT e m) where
     empty = mzero
     (<|>) = mplus
-#endif
-
-instance Monad (EitherKT e m) where
-    return a    = EKT (\k -> k a)
-    EKT m >>= f = EKT (\k -> m (\a -> case f a of EKT n -> n k))
 
 instance (Monad m, Monoid e) => MonadPlus (EitherKT e m) where
     mzero       = throwEitherKT mempty

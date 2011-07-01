@@ -1,26 +1,42 @@
-=== Haskell unification package AUTHORS/THANKS file ===
+=== Haskell unification-fd package AUTHORS/THANKS file ===
 
-The unification package was written by wren ng thornton and is
+The unification-fd package was written by wren ng thornton and is
 released under the terms in the LICENSE file.
 
 
-=== Related Work and Prior Art ===
+=== Thanks ===
 
-I first started implementing unification algorithms for the Dyna2
-project where I worked with Nathaniel W. Filardo and Jason Eisner
-(though this code is only loosely based on that work). The two-level
-types approach was adapted from Tim Sheard[1]; the idea of functional
-pointers were independently discovered by Dijkstra et al.[2] after
-their apperance in Dyna2; Edward Kmett pointed out the weighted
-extension to path compression (popular in the union--find literature);
-and the functor coproduct code is adapted from Wouter Swierstra[3].
+Christopher Anand --- for partially funding this work at McMaster
+    University during the summer of 2011.
+
+Nathaniel W. Filardo --- for helping to figure out the intricacies
+    of unification in Dyna2 (though this code is at best loosely
+    based on that work).
+
+Edward Kmett --- for pointing out the weighted extension to path
+    compression (popular in the union--find literature).
+
+
+=== Related Work ===
+
+The two-level types approach was adapted from Tim Sheard[1]. The
+initial (simple yet naive) implementation of unification was based
+on Sheard's presentation of Cardelli's[2] algorithm in Modula-2.
+Efficient backtracking search via the logict library is described
+by Kiselyov et al.[3] The idea of functional pointers were independently
+discovered by Dijkstra et al.[4] after their apperance in Dyna2.
+
 
 [1] Tim Sheard (2001) /Generic Unification via Two-Level Types and/
         /Parameterized Modules/, Functional Pearl, ICFP.
 
-[2] Atze Dijkstra, Arie Middelkoop, S. Doaitse Swierstra (2008)
+[2] Luca Cardelli (1987) /Basic polymorphic typechecking/. Science
+        of Computer Programming, 8(2):147--172.
+
+[3] Oleg Kiselyov, Chung-chieh Shan, Daniel P. Friedman, and Amr
+        Sabry (2005) /Backtracking, Interleaving, and Terminating/
+        /Monad Transformers/, ICFP.
+
+[4] Atze Dijkstra, Arie Middelkoop, S. Doaitse Swierstra (2008)
         /Efficient Functional Unification and Substitution/, Technical
         Report UU-CS-2008-027, Utrecht University.
-
-[3] Wouter Swierstra (2008) /Data types a la carte/, Functional
-        Pearl. JFP 18: 423--436.

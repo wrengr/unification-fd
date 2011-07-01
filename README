@@ -47,11 +47,10 @@ are:
     CPP                    -- Control.Monad.EitherK: but not necessary.
     RankNTypes             -- Control.Monad.BacktrackST requires a rank-3 type.
     Rank2Types
-    TypeOperators          -- Data.Functor.Coproduct: will probably be removed.
     MultiParamTypeClasses
     FunctionalDependencies -- Alas, necessary for type inference
     FlexibleContexts
     FlexibleInstances
-    UndecidableInstances
+    UndecidableInstances   -- Needed for, e.g., two-level types' Show instances
 
 ----------------------------------------------------------- fin.

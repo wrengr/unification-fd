@@ -93,8 +93,16 @@ freeze (MutTerm t) = Fix <$> mapM freeze t
 -- TODO: provide zipper context so better error messages can be generated.
 data UnificationFailure v t
     = OccursIn (v (MutTerm v t)) (MutTerm v t)
+        -- ^ A cyclic term was encountered. These are not generally
+        -- accepted in either logic programming or type checking.
     | NonUnifiable (MutTerm v t) (MutTerm v t)
+        -- ^ The top-most level of the terms are not unifiable. In
+        -- logic programming, this should just be treated as failure
+        -- in the search; in type checking, you may want the terms
+        -- for giving error messages.
     | UnknownError String
+        -- ^ Required for the @Error@ instance, which in turn is
+        -- required to appease @ErrorT@ in the MTL.
 
 -- Can't derive this... because it's an UndecidableInstance?
 instance (Show (MutTerm v t), Show (v (MutTerm v t))) =>
@@ -420,6 +428,7 @@ unify2 tl0 tr0 = do
             Just pairs -> mapM_ (uncurry unify2) pairs
 
 
+-- | Run a state action and undo the state changes at the end.
 localState :: (MonadState s m) => m a -> m a
 localState m = do
     s <- get
@@ -429,7 +438,7 @@ localState m = do
 {-# INLINE localState #-}
 
 
--- TODO: Verify this is still correct
+-- TODO: Verify this is still correct. Already fixed one bug.
 -- | Extend 'unify2' by using visited-sets instead of the occurs-check.
 unify3
     ::  ( Unifiable t
@@ -456,7 +465,6 @@ unify3 =
             Nothing -> modify' $ IM.insert (getVarID v) t
     {-# INLINE seenAs #-}
     
-    -- :: StateT VisitedSet (ErrorT UnificationFailure m) ()
     go tl0 tr0 = do
         tl1 <- lift . lift $ semiprune tl0
         tr1 <- lift . lift $ semiprune tr0
@@ -495,8 +503,11 @@ unify3 =
                 Just pairs -> mapM_ (uncurry go) pairs
 
 
--- TODO: keep in sync with unify3
+-- TODO: keep in sync with unify3 as we verify correctness.
 -- | A variant of 'unify3' which uses aggressive observable sharing.
+-- After unifying two terms, the result of this function should be
+-- used instead of either of the arguments (in order to maximize
+-- the benefit from observable sharing).
 unify4
     ::  ( Unifiable t
         , BindingWriter v (MutTerm v t) m

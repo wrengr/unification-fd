@@ -42,6 +42,7 @@ Library
     Exposed-Modules: Data.Functor.Fixedpoint
                    , Control.Monad.State.UnificationExtras
                    , Control.Monad.BacktrackST
+                   , Control.Monad.MaybeK
                    , Control.Monad.EitherK
                    , Control.Unification.Classes
                    , Control.Unification.STVar
