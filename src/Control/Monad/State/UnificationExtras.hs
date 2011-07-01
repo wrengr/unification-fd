@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.06.28
+--                                                  ~ 2011.06.30
 -- |
 -- Module      :  Control.Monad.State.UnificationExtras
 -- Copyright   :  Copyright (c) 2008--2011 wren ng thornton
@@ -21,6 +21,7 @@ module Control.Monad.State.UnificationExtras
       liftReader
     , liftReaderT
     , modify'
+    , localState
     ) where
 
 import Control.Monad            (liftM)
@@ -48,6 +49,16 @@ modify' f = do
     s <- get
     put $! f s
 {-# INLINE modify' #-}
+
+
+-- | Run a state action and undo the state changes at the end.
+localState :: (MonadState s m) => m a -> m a
+localState m = do
+    s <- get
+    x <- m
+    put s
+    return x
+{-# INLINE localState #-}
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

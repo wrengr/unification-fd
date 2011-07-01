@@ -2,8 +2,6 @@
 {-# LANGUAGE Rank2Types
            , MultiParamTypeClasses
            , FunctionalDependencies
-           , FlexibleInstances
-           , FlexibleContexts
            #-}
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
@@ -16,9 +14,10 @@
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
--- Portability :  semi-portable (Rank2Types, MPTCs, fundeps,...)
+-- Portability :  semi-portable (Rank2Types, MPTCs, fundeps)
 --
--- This module defines ...
+-- This module defines the classes used by unification and related
+-- functions.
 ----------------------------------------------------------------
 module Control.Unification.Classes
     (
