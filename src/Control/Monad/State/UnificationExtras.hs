@@ -2,16 +2,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.06.30
+--                                                  ~ 2011.07.05
 -- |
 -- Module      :  Control.Monad.State.UnificationExtras
 -- Copyright   :  Copyright (c) 2008--2011 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
--- Stability   :  unstable
+-- Stability   :  perpetually unstable
 -- Portability :  semi-portable (MPTCs)
 --
 -- This module defines some extra functions for "Control.Monad.State.Lazy".
+-- This package really isn't the proper place for these, but we
+-- need them to be somewhere.
 --
 -- TODO: patch transformers\/mtl-2 with these functions.
 ----------------------------------------------------------------

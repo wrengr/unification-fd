@@ -2,5 +2,6 @@
     - Removed heterogeneous unification, and rewrote practically everything.
     - Added semipruning instead of full pruning.
     - Added visited-sets instead of occurs-checks.
+    - Added weightedness to path compression (a la union--find)
 0.3.6 (2011-06-18):
     - Forked from the Dyna2 project.

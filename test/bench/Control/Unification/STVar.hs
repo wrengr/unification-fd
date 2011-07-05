@@ -40,19 +40,15 @@ import Control.Unification.Classes
 -- | A mutable unification variable implemented by an 'STRef'. In
 -- addition to the @STRef@ itself, we also track an orderable ID
 -- in order to use visited sets instead of occurance checks.
-data STVar s t a =
-    STVar
-        {-# UNPACK #-} !Int
-        {-# UNPACK #-} !(STRef s (Rank (STVar s t) t))
+data STVar s a = STVar {-# UNPACK #-} !Int {-# UNPACK #-} !(STRef s (Maybe a))
 -- BUG: can we actually unpack STRef?
--- BUG: we need a phantom @a@ to get the kinds to work out now...
 
 
-instance Show (STVar s t a) where
+instance Show (STVar s a) where
     show (STVar i _) = "STVar " ++ show i
 
 
-instance Variable (STVar s t) where
+instance Variable (STVar s) where
     eqVar (STVar i _) (STVar j _) = i == j
     
     getVarID  (STVar i _) = i
@@ -97,10 +93,11 @@ instance Monad (STBinding s) where
 
 ----------------------------------------------------------------
 
-_newSTVar
-    :: String
-    -> Maybe (MutTerm (STVar s t) t)
-    -> STBinding s (STVar s t (MutTerm (STVar s t) t))
+instance BindingReader (STVar s) t (STBinding s) where
+    lookupVar (STVar _ r) = STB . lift $ readSTRef r
+
+
+_newSTVar :: String -> Maybe a -> STBinding s (STVar s a)
 _newSTVar fun mb = STB $ do
     nr <- ask
     n  <- lift $ readSTRef nr
@@ -108,26 +105,24 @@ _newSTVar fun mb = STB $ do
         then fail $ fun ++ ": no more variables!"
         else lift $ do
             writeSTRef nr $! n+1
-            STVar n <$> newSTRef (Rank 0 mb)
+            STVar n <$> newSTRef mb
 
 
-instance (Unifiable t) => BindingMonad (STVar s t) t (STBinding s) where
-    lookupRankVar (STVar _ r) = STB . lift $ readSTRef r
-    
+instance BindingGenerator (STVar s) t (STBinding s) where
     freeVar  = _newSTVar "freeVar" Nothing
     newVar t = _newSTVar "newVar" (Just t)
+
+
+_writeSTVar :: STVar s a -> Maybe a -> STBinding s ()
+_writeSTVar (STVar _ r) = STB . lift . writeSTRef r
+
+
+instance BindingWriter (STVar s) t (STBinding s) where
+    bindVar    v t = lookupVar v <* bindVar_   v t
+    unbindVar  v   = lookupVar v <* unbindVar_ v
     
-    bindVar (STVar _ r) t = STB . lift $ do
-        Rank n _ <- readSTRef r
-        writeSTRef r (Rank n (Just t))
-    
-    incrementRank (STVar _ r) = STB . lift $ do
-        Rank n mb <- readSTRef r
-        writeSTRef r $! Rank (n+1) mb
-    
-    incrementBindVar (STVar _ r) t = STB . lift $ do
-        Rank n _ <- readSTRef r
-        writeSTRef r $! Rank (n+1) (Just t)
+    bindVar_   v t = _writeSTVar v (Just t)
+    unbindVar_ v   = _writeSTVar v Nothing
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

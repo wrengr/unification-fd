@@ -1,0 +1,502 @@
+% ***N.B. this uses PSTricks and so you need to use latex not pdflatex***
+\documentclass[pdf,fyma2]{prosper} % Slide show (with "fyma2" style)
+% The local fyma2 corrects some (new) alignment errors with the
+% left side of the background gradation, the top and bottom lines,
+% and the slide titles.
+%
+% Apparently prosper went obsolete when I wasn't looking. Powerdot
+% looks like the non-obsolete successor to ha-prosper which is an
+% (also obsolete) successor to prosper. Powerdot has a version of
+% fyma, but it has the same alignment problem...
+%
+% fymafaintblue {0.88 0.95 1.00}
+% fymalightblue {0.43 0.61 0.84} The bullets and lines
+% fymablue      {0.24 0.45 0.70} The \ColorFoot (only marginally darker)
+% fymadarkblue  {0.14 0.34 0.55} The regular text
+% fymaroyalblue {0.06 0.25 0.41} The title text
+\newgray{gris1}{.30}           % This was gris3 in rico/ricoDeux
+\newgray{gris2}{.85}
+\newrgbcolor{ocean}{0.00392156863 0.6 0.592156863}        % 0x01,99,97
+\newrgbcolor{wine}{0.321568627 0.00392156863 0.333333333} % 0x52,01,55
+% TODO: how to use \expandafter in order to redefine \emph?
+\newcommand{\unhilight}[1]{{\color{gris2}#1}}
+\newcommand{\hilighten}[1]{{\color{fymablue}#1}}
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+%\hypersetup{pdfpagemode=FullScreen} % make AcrobatReader auto full-screen
+
+\title{A Traditional Introduction to Unification}
+%\subtitle{}
+\date{7 July 2011}
+\author{wren ng thornton}
+\email{wrnthorn@indiana.edu}
+\institution{%
+    Cognitive Science \& Computational Linguistics\\
+    Indiana University Bloomington}
+% N.B. entitlement.sty breaks prosper somehow...
+\slideCaption{wren ng thornton \quad A Traditional Introduction to Unification}
+
+
+% BUGFIX: this line fixes the erroneous "Error: Math version `bold'
+% is not defined." error caused by packaging problems
+\DeclareMathVersion{bold}
+% BUG: \llparenthesis\rrparenthesis has no displaystyle
+\usepackage{stmaryrd}
+
+\usepackage{amsmath,amssymb,latexsym}% defines \text{} in math mode
+% BUG: this makes the math much prettier, but it also adds serifs to other things
+\usepackage{mathptmx} % mathtimes
+
+\usepackage{pstricks,pst-node}
+
+\usepackage{listings}
+\lstloadlanguages{Haskell,Prolog}
+
+\newcommand{\opr}[1]{\ensuremath{\operatorname{#1}}}
+\newcommand{\var}[1]{\ensuremath{\text{\textrm{\textit{#1}}}}}
+\newcommand{\cat}[1]{\ensuremath{\mathbf{#1}}}
+
+\newcommand{\NAT}{\ensuremath{\mathbb{N}}}
+\newcommand{\WHOLE}{\ensuremath{\mathbb{N}_{{>}0}}}
+\newcommand{\SYM}[1][]{\ensuremath{\var{Sym}_{#1}}}
+\newcommand{\ARITY}[1][]{\ensuremath{\var{Arity}_{#1}}}
+\newcommand{\TERMS}[2][]{\ensuremath{\mathbb{T}_{#2}^{#1}}}
+\newcommand{\FREEVARS}{\ensuremath{\var{FV}}}
+\newcommand{\UNIFIERS}{\ensuremath{\mathcal{U}\!}}
+
+\newcommand{\unify}{\ensuremath{\doteq}}
+\newcommand{\isom}{\ensuremath{\cong}}
+\newcommand{\notisom}{\ensuremath{\!\not{\!\!\isom\,}\,}}
+\newcommand{\subsume}{\ensuremath{\lessdot}}
+\newcommand{\subsumeq}{\ensuremath{\,\,\underline{\!\subsume\!}\,\,}}
+\newcommand{\notsubsume}{\ensuremath{\!\not\!\!\subsume\,}}
+
+% N.B., \it and \bf use serif fonts; whereas \textit, \textbf use sans-serif
+\renewcommand{\emph}[1]{\hilighten{\textbf{#1}}}
+\newcommand{\defn}[1]{\textbf{#1}}
+
+\makeatletter
+\newcommand{\thm}[1][]{%
+    \def\thm@tmp{#1}%
+    \textbf{Theorem\ifx\thm@tmp\@empty\relax\else\ (\thm@tmp)\fi:}\ }
+\makeatother
+
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\begin{document}
+
+\maketitle
+
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\begin{slide}{Outline of the talk}
+	\begin{itemize}
+	\item Why ``traditional''?
+	\item Preliminary Definitions
+	    \begin{itemize}
+    	\item \hilighten{Ranked alphabets, Variables}
+    	\item \hilighten{Herbrand universes, Terms}
+    	\item \hilighten{Bindings, Substitutions}
+    	\item \hilighten{Sorts}
+    	\end{itemize}
+	\item Unification
+	    \begin{itemize}
+    	\item \hilighten{Subsumption}
+    	\item \hilighten{Unifiers, CMU Sets, MGUs}
+    	\item \hilighten{Some theorems}
+    	\end{itemize}
+	\item Uses of Unification
+	    \begin{itemize}
+    	\item \hilighten{Case analysis}
+    	\item \hilighten{Logic programming}
+    	\item \hilighten{Type checking, inference}
+    	\item \hilighten{Unification-based parsing}
+    	\end{itemize}
+	\end{itemize}
+\end{slide}
+
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\begin{slide}{Why ``traditional''?}
+	\vspace{1em}
+	\begin{itemize}
+	\item Well, why \emph{not} traditional?
+        \begin{itemize}
+	    \item The preliminary definitions are overly complicated (and overly specific) due to a set-theoretic heritage
+        \end{itemize}
+	\vspace{1em}
+	\item They can be generalized and clarified by a categorical treatment
+        \begin{itemize}
+        \item E.g., Goguen (1989)
+        \item But I don't think I've taught you enough category theory for that to be worth pursuing here
+        \end{itemize}
+	\vspace{1em}
+    \item The set-theoretic terminology is worth being familiar with
+        \begin{itemize}
+        \item It's still in wide use
+        \item It's essential for understanding any of the ``old'' papers
+            \begin{itemize}
+            \item i.e., late-1980s through mid-1990s
+            \item let alone papers which actually are old (e.g.\ 1960s)
+            \end{itemize}
+        \end{itemize}
+	\end{itemize}
+\end{slide}
+
+
+\begin{slide}{Ranked Alphabets \& Variables}
+	\vspace{1em}
+	\begin{itemize}
+	\item Let \NAT\ denote the set $\{0,1,2,\ldots\}$ of natural numbers
+	    \begin{itemize}
+	    \item Let \WHOLE\ denote the set $\{1,2,\ldots\}$ of whole numbers
+	    \end{itemize}
+	\vspace{1em}
+	\item A (singly) \defn{ranked alphabet} $\mathcal{F}$ is a finite set of abstract elements equipped with two projection functions
+	    \begin{itemize}
+	    \item $\SYM[\mathcal{F}]$ taking $\mathcal{F}$ to function symbols called \defn{constructors}$\null^\dagger$
+	        \begin{itemize}
+	        \item surjective, by definition
+	        \item injective for the singly-ranked case
+	        \end{itemize}
+	    \item $\ARITY[\mathcal{F}] : \mathcal{F} \to \NAT$
+	    \end{itemize}
+    \item Let $\mathcal{F}_p$ denote the subset $\{ f : \mathcal{F} \mid \ARITY(f) = p \}$
+    \item The subset $\mathcal{F}_0$ are called \defn{constants}
+	\vspace{1.5em}
+	\item Let $\mathcal{X}$ be an RA containing only constants, called \defn{variables}
+        \begin{itemize}
+        \item Without loss of generality, we assume $\mathcal{X}$ and $\mathcal{F}_0$ are disjoint
+        \end{itemize}
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Herbrand universes \& Terms}
+	\vspace{1em}
+	\begin{itemize}
+    \item A \defn{Herbrand universe} $\TERMS{A}$ is a set of \defn{terms} over an RA $A$
+    \item Namely, the smallest set such that
+\[
+\begin{array}{rl}
+ & (\forall f\in A_0.~
+	~\SYM(f) \in \TERMS{A}) \\
+\land & (\forall p \in \WHOLE.~
+	\forall f\in A_p.~
+		\forall t_1,\ldots,t_p \in \TERMS{A}.~
+			~\SYM(f)(t_1,\ldots,t_p) \in \TERMS{A}) \\
+\end{array}
+\]
+    \item Let $\FREEVARS : \TERMS{\mathcal{F}\uplus\mathcal{X}} \to 2^{\mathcal{X}}$ map terms to a set of \defn{free variables}
+    	\begin{itemize}
+    	\item $\forall t \in \TERMS{\mathcal{F}\uplus\mathcal{X}}.~~ t \in \TERMS{\mathcal{F}\uplus\FREEVARS(t)}$
+    	\end{itemize}
+    \item A term $t \in \TERMS{\mathcal{F}\uplus\mathcal{X}}$ is called \defn{ground} or \defn{closed} iff $\FREEVARS(t) = \emptyset$
+    \item A term is called \defn{linear} if each free variable occurs at most once
+	\vspace{1em}
+    \item Since $\mathcal{X}$ is defined essentially by its cardinality
+        \begin{itemize}
+        \item Without loss of generality, we will consider $\TERMS{\mathcal{F}\uplus\mathcal{X}}$ an $\alpha$-equivelence class over all $\TERMS{\mathcal{F}\uplus\mathcal{X'}} \opr{~s.t.~} \lvert\mathcal{X'}\rvert = \lvert\mathcal{X}\rvert$
+        \end{itemize}
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Here be Dragons}
+	\begin{itemize}
+    \item A \defn{binding} is a mapping from variables to terms
+        \begin{itemize}
+        \item Issue: ``unbound'' variables?
+        \item Issue: idempotence?
+        \item Let us call it a total function $s : \mathcal{X'} \to \TERMS{\mathcal{F}\uplus\mathcal{X''}}$ where $\mathcal{X'}\cap\mathcal{X''}=\emptyset$ and $\mathcal{X''} = \bigcup_{x\in \mathcal{X'}} \FREEVARS(s(x))$
+        \end{itemize}
+    \item A \defn{substitution} $\sigma_s : \TERMS{\mathcal{F}\uplus\mathcal{X}} \to \TERMS{\mathcal{F}\uplus\mathcal{X}}$ expresses the recursive application of bindings $s : \mathcal{X'} \to \TERMS{\mathcal{F}\uplus(\mathcal{X}\setminus\mathcal{X'})}$
+        \begin{itemize}
+        \item $\sigma_s = {\llparenthesis s + \opr{id}_{\mathcal{X}\setminus\mathcal{X'}} + \opr{id}_\mathcal{F} \rrparenthesis}_{\mathcal{F}\uplus\mathcal{X}}$
+        \item Substitutions are idempotent, by definition
+        \item We don't care about the details of bindings, so long as substitutions are correct
+        \end{itemize}
+    \item Substitutions form a category
+        \begin{itemize}
+        \item Objects are term universes
+        \item There are identity substitutions: $\sigma_\emptyset = \opr{id}_{\TERMS{\mathcal{F}\uplus\mathcal{X}}}$
+        \item Substitutions can be composed: $(\sigma \circ \theta) t = \sigma (\theta t)$
+        \end{itemize}
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Sorts}
+	\begin{itemize}
+    \item So far we've been talking about ``untyped'' terms
+    \item A \defn{many-sorted ranked alphabet} is an RA with an additional projection function $\Sigma_\mathcal{F} : \mathcal{F} \to \Sigma$ where
+    	\begin{itemize}
+        \item $\Sigma$ is some non-empty set of \defn{sorts}
+        \item $\Sigma$ is equipped with $(\prec)$: subsort relation, a partial ordering
+        \item $\Sigma$ is equipped with $(\curlywedge)$: infimum sort relation
+        \item $\Sigma_\mathcal{F}^0(f)$ returns the codomain sort for $f$
+        \item $\forall i : 0 < i \leq \ARITY(f).~ \Sigma_\mathcal{F}^i(f)$ returns the $i$th domain sort for $f$
+        \end{itemize}
+    \item \defn{Well-sorted terms} ($\Sigma$-terms) can be defined in the obvious way
+    	\begin{itemize}
+        \item When $\Sigma$ is the singleton set (as in single-sorted RAs),
+            \\ $\Sigma$-terms are the $\Sigma_\mathcal{F}$-word algebra on $\mathcal{X}$
+            \\ (aka the free monad generated by $\mathcal{F}$)
+        \item When $\Sigma$ is ordered by equality,
+            \\ $\Sigma$-terms are the free $\Sigma_\mathcal{F}$-algebra generated by $\mathcal{X}$
+        \end{itemize}
+	\end{itemize}
+\end{slide}
+
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\begin{slide}{Outline of the talk}
+	\begin{itemize}
+	\item \unhilight{Why ``traditional''?}
+	\item \unhilight{Preliminary Definitions}
+	    \begin{itemize}
+    	\item \unhilight{Ranked alphabets, Variables}
+    	\item \unhilight{Herbrand universes, Terms}
+    	\item \unhilight{Bindings, Substitutions}
+    	\item \unhilight{Sorts}
+    	\end{itemize}
+	\item Unification
+	    \begin{itemize}
+    	\item Subsumption
+    	\item Unifiers, CMU Sets, MGUs
+    	\item Some theorems
+    	\end{itemize}
+	\item \unhilight{Uses of Unification}
+	    \begin{itemize}
+    	\item \unhilight{Case analysis}
+    	\item \unhilight{Logic programming}
+    	\item \unhilight{Type checking, inference}
+    	\item \unhilight{Unification-based parsing}
+    	\end{itemize}
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Subsumption}
+	\begin{itemize}
+	\item Let $(\isom)$ denote an equivalence relation on terms
+    	\begin{itemize}
+    	\item For now, equality is sufficient
+    	\end{itemize}
+	\item For terms $s,t$ if there exists a substitution $\sigma \opr{~s.t.~} \sigma s \isom t$
+    	\begin{itemize}
+	    \item We say that $s$ \defn{generalizes} or \defn{subsumes} $t$
+	    \item Dually, we say that $t$ \defn{refines} or \defn{specializes} $s$
+	    \item We denote the existence of $\sigma$ by saying $s \subsumeq t$
+    	\item If the substitution is non-empty, then we say $s \subsume t$
+    	\end{itemize}
+    \item Subsumption can be lifted to substitutions too
+    	\begin{itemize}
+    	\item We say $\sigma \subsumeq \theta$ iff $\exists \rho.~ \rho\circ\sigma \isom \theta$
+    	\item We say $\sigma \subsume \theta$ iff $\sigma \subsumeq \theta \land \sigma \notisom \theta$
+    	\end{itemize}
+    \item For a set $S$ of substitutions, $\sigma\in S$ is called a \defn{least substitution} iff $\forall \theta\in S.~ \sigma \subsumeq \theta$
+    	\begin{itemize}
+    	\item N.B., this means $\sigma\in S \opr{~s.t.~} \forall \theta\in S.~ \exists \rho.~~ \rho\circ\sigma \isom \theta$
+            \begin{itemize}
+            \item i.e., $\rho$ need not be in $S$
+            \item and $\rho$ can be different for each $\theta$
+            \end{itemize}
+    	\end{itemize}
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Unification}
+	\vspace{1em}
+	\begin{itemize}
+	\item \defn{Unification} is an associative commutative operation on terms
+        \begin{itemize}
+        \item Equivalent to consider it an operation on (finite) sets of terms
+        \end{itemize}
+    \item A \defn{unifier} of a set $D$ of terms is a substitution
+        \\ $\sigma \opr{~s.t.~} \forall d,d'\in D.~ \sigma d \isom \sigma d'$
+    \item Let $\UNIFIERS(D)$ denote the set of all unifiers of $D$
+    \item $D$ is called \defn{unifiable} if $\UNIFIERS(D) \neq \emptyset$
+        \begin{itemize}
+        \item We say $s \doteq t$ is true when $\{s,t\}$ is unifiable
+        \end{itemize}
+    \item A subset $U \subset \UNIFIERS(D)$ is \defn{complete} iff $\forall \sigma \in \UNIFIERS(D).~ \exists \theta \in U.~ \theta \subsumeq \sigma$
+    \item A subset $U \subset \UNIFIERS(D)$ is \defn{minimal} iff $\forall \sigma,\theta \in U.~ \sigma \notsubsume \theta$
+    \item A \defn{cmu set} is a complete and minimal set of unifiers
+    \item If a cmu set is singleton, we call its element a \defn{most general unifier} (mgu)
+        \begin{itemize}
+        \item When there is only one cmu set, so we call it \emph{the} mgu
+        \end{itemize}
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Unification}
+	\vspace{1em}
+	\begin{itemize}
+	\item \thm[Robinson, 1965] for the single-sorted case, if $D$ is unifiable then there is a unique least substitution in $\UNIFIERS(D)$
+	\vspace{1em}
+	\item \thm[Walther, 1988] for the many-sorted case, each $\Sigma$-unifiable set of terms has a well-sorted mgu \emph{which does not introduce new variables} iff the subsort hierarchy has a forest structure
+        \begin{itemize}
+        \item i.e., $\forall s, s_1, s_2 \in \Sigma.~ (s \prec s_1 \land s\prec s_2) \Rightarrow (s_1\prec s_2 \lor s_2\prec s_1)$
+        \end{itemize}
+	\vspace{1em}
+	\item \thm[Walther, 1988] if the subsort hierarchy is a meet-semilattice, then every $\Sigma$-unifiable set of terms has a singleton cmu set (though it may introduce auxilliary variables)
+    \end{itemize}
+\end{slide}
+
+\begin{slide}{Higher-Order Unification}
+	\begin{itemize}
+	\item So far we've been discussing first-order unification
+	\item \defn{Higher-order unification} adds lambdas to the term language
+    	\begin{itemize}
+    	\item The possibilities for what this could mean are enormous
+    	\item Often people mean Church's simply-typed $\lambda$-calculus modulo $\beta\eta$-equivalence ($\lambda_{\rightarrow}/\beta\eta$)
+    	\end{itemize}
+	\vspace{1em}
+	\item \thm Higher-order unification is undecidable in general
+	% ; though it is semi-decidable for decidable $\lambda$-calculi
+    	\begin{itemize}
+    	\item \textbf{Huet, 1973:} Third-order unification in $\lambda_{\rightarrow}/\beta\eta$ can be reduced to the Post correspondence problem
+    	%\item \textbf{Goldfarb, 1981:} Second-order (details?) also undecidable, by reduction to Hilbert's tenth problem
+    	%\item \textbf{Schubert, 1998:} Second-order undecidable by reduction to halting problem of a two-counter automaton
+    	%\item \textbf{Farmer, 1991a; Levy \& Veanes, 1998:} sharpen this further based on the number of variables needed to get undecidability
+    	\item \textbf{Loader, 2002:} Second-order $\lambda_{\rightarrow}/\beta$ also undecidable
+    	\end{itemize}
+    \item But, many interesting subsets are still decidable
+    	\begin{itemize}
+    	\item \textbf{Miller, 1991:} Higher-order `pattern' unification
+    	\item \textbf{Schmidt-Schau\ss, 1999:} `Bounded' 2nd-order unification
+    	\item \textbf{Farmer, 1988:} Unary (or `monadic') 2nd-order unification
+    	\end{itemize}
+    \item Many more results on both sides
+    \end{itemize}
+\end{slide}
+
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\begin{slide}{Outline of the talk}
+	\begin{itemize}
+	\item \unhilight{Why ``traditional''?}
+	\item \unhilight{Preliminary Definitions}
+	    \begin{itemize}
+    	\item \unhilight{Ranked alphabets, Variables}
+    	\item \unhilight{Herbrand universes, Terms}
+    	\item \unhilight{Bindings, Substitutions}
+    	\item \unhilight{Sorts}
+    	\end{itemize}
+	\item \unhilight{Unification}
+	    \begin{itemize}
+    	\item \unhilight{Subsumption}
+    	\item \unhilight{Unifiers, CMU Sets, MGUs}
+    	\item \unhilight{Some theorems}
+    	\end{itemize}
+	\item Uses of Unification
+	    \begin{itemize}
+    	\item Case analysis
+    	\item Logic programming
+    	\item Type checking, inference
+    	\item Unification-based parsing
+    	\end{itemize}
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Case Analysis}
+	\begin{itemize}
+	\item Case analysis in functional languages is a simplified version of unification
+        \begin{itemize}
+        \item The scrutinee is a ground term
+        \item Each pattern is a linear term
+        \end{itemize}
+    \item Also has higher-order versions
+        \begin{itemize}
+        \item 2nd-, 3rd-, and 4th-order are decidable
+            \begin{itemize}
+            \item 2nd- and 3rd-order are NP-complete
+            \end{itemize}
+        \item General case has remained an open problem for >20~years
+        \end{itemize}
+	\vspace{1em}
+    \item Cf., clause resolution in logic programming
+        \begin{itemize}
+        \item \thm[Dawson et al., 1995, 1996] Determining the optimal clause resolution automata for an ordered set of clauses can be done in polynomial time; for an unordered set, it is NP-complete.
+        \item $O(n^2*m*(n+m))$ for $n$ clauses with at most $m$ symbols each
+        \end{itemize}
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Logic Programming}
+	\vspace{1em}
+	\begin{itemize}
+	\item You can use unification to ``run functions backwards''
+\lstset{
+    language=Prolog,
+    basicstyle=\small\ttfamily,
+    flexiblecolumns=false,
+	tabsize=4,
+	frameround=fttt,
+    basewidth={0.5em,0.45em},
+    otherkeywords={(,),\,,.,:-}, keywordstyle={\color{fymaroyalblue}},
+    sensitive=true,
+    keywords={[2]X,Y,Z}, keywordstyle={[2]\color{fymablue}}}
+\begin{lstlisting}
+z.
+s(X).
+
+plus(z, Y, Y). /* Note the non-linear pattern */
+plus(s(X), Y, s(Z)) :- plus(X, Y, Z).
+
+/* Of course we don't really need to define this */
+minus(Z, X, Y) :- plus(X, Y, Z).
+\end{lstlisting}
+% TODO: a better example?
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Exploiting Continuity}
+	\vspace{1em}
+	\begin{itemize}
+	\item In Haskell, we can think of $\bot$ like a variable (!!)
+	\vspace{1em}
+	\item This lets us define an unambiguous choice operator
+    	\begin{itemize}
+    	\item $\var{unamb} :: \forall\alpha.~ \alpha \to \alpha \to \alpha$
+    	\item Run both arguments in parallel, return the defined one
+        \item \url{http://hackage.haskell.org/package/unamb}
+    	\end{itemize}
+    \item Which can be generalized
+    	\begin{itemize}
+    	\item $\opr{class}~ \var{HasLub}~\alpha ~\opr{where}~ \var{lub} :: \alpha \to \alpha \to \alpha$
+    	\item Run both arguments in parallel, unify the results
+        \item \url{http://hackage.haskell.org/package/lub}
+    	\end{itemize}
+	\vspace{1em}
+	\item The same trick is exploited by lazy SmallCheck
+    	\begin{itemize}
+    	\item Automatic exhaustive checking for small values
+    	\item \url{http://www.cs.york.ac.uk/fp/smallcheck/}
+    	\end{itemize}
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Type Checking \& Inference}
+	\vspace{1em}
+	\begin{itemize}
+	\item .
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Unification-based Parsing}
+	\vspace{1em}
+	\begin{itemize}
+	\item .
+	\end{itemize}
+\end{slide}
+
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\begin{slide}{References}
+	\vspace{1em}
+	\begin{itemize}
+	\item .
+	\end{itemize}
+\end{slide}
+
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fin.
+% BUG: how can we use \pdfstringdef or \texorpdfstring to fix the PDF bookmark?
+\part{%
+\usefont{OT1}{ptm}{m}{it}\fontsize{14.4pt}{12pt}\selectfont
+$\sim$fin.%
+}
+\end{document}

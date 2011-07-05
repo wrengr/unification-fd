@@ -1,5 +1,5 @@
 
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
 --                                                  ~ 2011.07.05
@@ -9,7 +9,7 @@
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
--- Portability :  semi-portable (MPTCs, Undecidable-, FlexibleInstances)
+-- Portability :  semi-portable (MPTCs, FlexibleInstances)
 --
 -- This module defines a state monad for functional pointers
 -- represented by integers as keys into an @IntMap@. This technique
@@ -79,16 +79,10 @@ instance Variable IntVar where
 -- | Binding state for 'IntVar'.
 data IntBindingState t = IntBindingState
     { nextFreeVar :: {-# UNPACK #-} !Int
-    , varBindings :: IM.IntMap (Rank IntVar t)
+    , varBindings :: IM.IntMap t
     }
+    deriving (Show)
 
--- Can't derive this because it's an UndecidableInstance
-instance (Show (t (MutTerm IntVar t))) =>
-    Show (IntBindingState t)
-    where
-    show (IntBindingState nr bs) =
-        "IntBindingState { nextFreeVar = "++show nr++
-        ", varBindings = "++show bs++"}"
 
 -- | The initial @IntBindingState@.
 emptyIntBindingState :: IntBindingState t
@@ -169,21 +163,15 @@ execIntBindingT (IBT m) = execStateT m emptyIntBindingState
 
 ----------------------------------------------------------------
 
-instance (Unifiable t, Applicative m, Monad m) =>
-    BindingMonad IntVar t (IntBindingT t m)
+instance (Applicative m, Monad m) =>
+    BindingReader IntVar t (IntBindingT t m)
     where
-    lookupRankVar (IntVar v) = IBT $ do
-        mb <- gets (IM.lookup v . varBindings)
-        case mb of
-            Nothing -> return (Rank 0 Nothing)
-            Just rk -> return rk
-    
-    lookupVar (IntVar v) = IBT $ do
-        mb <- gets (IM.lookup v . varBindings)
-        case mb of
-            Nothing           -> return Nothing
-            Just (Rank _ mb') -> return mb'
-    
+    lookupVar (IntVar v) = IBT $ gets (IM.lookup v . varBindings)
+
+
+instance (Applicative m, Monad m) =>
+    BindingGenerator IntVar t (IntBindingT t m)
+    where
     freeVar = IBT $ do
         ibs <- get
         let v = nextFreeVar ibs
@@ -199,27 +187,35 @@ instance (Unifiable t, Applicative m, Monad m) =>
         if v == maxBound
             then fail "newVar: no more variables!"
             else do
-                let bs' = IM.insert v (Rank 0 (Just t)) (varBindings ibs)
+                let bs' = IM.insert v t (varBindings ibs)
                 put $ ibs { nextFreeVar = v+1, varBindings = bs' }
                 return $ IntVar v
-    
+
+
+instance (Applicative m, Monad m) =>
+    BindingWriter IntVar t (IntBindingT t m)
+    where
     bindVar (IntVar v) t = IBT $ do
         ibs <- get
-        let bs' = IM.insertWith f v (Rank 0 (Just t)) (varBindings ibs)
-            f (Rank _0 jt) (Rank r _) = Rank r jt
+        let bs = varBindings ibs
+        let (mt, bs') = IM.insertLookupWithKey (\_ _ -> id) v t bs
         put $ ibs { varBindings = bs' }
+        return mt
     
-    incrementRank (IntVar v) = IBT $ do
+    bindVar_ (IntVar v) t = IBT $ do
         ibs <- get
-        let bs' = IM.insertWith f v (Rank 1 Nothing) (varBindings ibs)
-            f (Rank _1 _n) (Rank r mb) = Rank (r+1) mb
-        put $ ibs { varBindings = bs' }
+        put $ ibs { varBindings = IM.insert v t (varBindings ibs) }
     
-    incrementBindVar (IntVar v) t = IBT $ do
+    unbindVar (IntVar v) = IBT $ do
         ibs <- get
-        let bs' = IM.insertWith f v (Rank 1 (Just t)) (varBindings ibs)
-            f (Rank _1 jt) (Rank r _) = Rank (r+1) jt
+        let bs = varBindings ibs
+        let (mt,bs') = IM.updateLookupWithKey (\_ _ -> Nothing) v bs
         put $ ibs { varBindings = bs' }
+        return mt
+    
+    unbindVar_ (IntVar v) = IBT $ do
+        ibs <- get
+        put $ ibs { varBindings = IM.delete v (varBindings ibs) }
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

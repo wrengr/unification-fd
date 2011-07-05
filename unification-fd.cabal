@@ -21,7 +21,7 @@ Description:    Simple generic unification algorithms.
 
 Source-Repository head
     Type:     darcs
-    Location: http://community.haskell.org/~wren/unification
+    Location: http://community.haskell.org/~wren/unification-fd
 
 ----------------------------------------------------------------
 Flag base4
@@ -41,7 +41,6 @@ Library
     Hs-Source-Dirs:  src
     Exposed-Modules: Data.Functor.Fixedpoint
                    , Control.Monad.State.UnificationExtras
-                   , Control.Monad.BacktrackST
                    , Control.Monad.MaybeK
                    , Control.Monad.EitherK
                    , Control.Unification.Classes
@@ -59,9 +58,6 @@ Library
                    -- StateT. And we want stuff from monads-fd, so
                    -- we can't just fail over to the older mtl.
                    , mtl          >= 2.0
-    
-    -- This is for the stray CPS in Control.Monad.EitherK
-    Cpp-Options: -D__APPLICATIVE_IN_BASE__
     
     if flag(base4)
         Build-Depends: base >= 4 && < 5

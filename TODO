@@ -6,10 +6,8 @@ Debugging:
       Setup.hs test` call the test suite.
 
 Enhancements:
-    * Finish implementing aggressive observable sharing
-    * Implement weighted-union ala union--find
 
 Sooner than later:
+    * Proper benchmarking. Especially for the union--find enhancement
 
 Eventually:
-    * Move old code to ./test/ or ./experiments/ or something

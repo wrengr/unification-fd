@@ -44,13 +44,11 @@ implemented by Hugs as well as GHC) as well as a couple which are
 only known to be supported by GHC. All required language extensions
 are:
 
-    CPP                    -- Control.Monad.EitherK: but not necessary.
-    RankNTypes             -- Control.Monad.BacktrackST requires a rank-3 type.
     Rank2Types
     MultiParamTypeClasses
     FunctionalDependencies -- Alas, necessary for type inference
     FlexibleContexts
     FlexibleInstances
-    UndecidableInstances   -- Needed for, e.g., two-level types' Show instances
+    UndecidableInstances   -- Needed for Show instances due to two-level types
 
 ----------------------------------------------------------- fin.
