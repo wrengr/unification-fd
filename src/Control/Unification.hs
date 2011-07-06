@@ -6,7 +6,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.05
+--                                                  ~ 2011.07.06
 -- |
 -- Module      :  Control.Unification
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
@@ -20,7 +20,7 @@
 module Control.Unification
     (
     -- * Terms, and other ...
-      module Control.Unification.Classes
+      module Control.Unification.Types
     , UnificationFailure(..)
     
     -- * Operations on one term
@@ -51,7 +51,7 @@ import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Error (MonadError(..), Error(..))
 import Control.Monad.State (MonadState(..), evalStateT)
 import Control.Monad.State.UnificationExtras
-import Control.Unification.Classes
+import Control.Unification.Types
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
@@ -250,7 +250,7 @@ freshen =
 --
 -- | ...
 unify
-    ::  ( BindingMonad v t m
+    ::  ( RankedBindingMonad v t m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure v t) (e m)

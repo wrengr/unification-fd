@@ -43,9 +43,9 @@ Library
                    , Control.Monad.State.UnificationExtras
                    , Control.Monad.MaybeK
                    , Control.Monad.EitherK
-                   , Control.Unification.Classes
-                   , Control.Unification.STVar
-                   , Control.Unification.IntVar
+                   , Control.Unification.Types
+                   , Control.Unification.STRVar
+                   , Control.Unification.IntRVar
                    , Control.Unification
     
     Build-Depends:   transformers >= 0.2.0
