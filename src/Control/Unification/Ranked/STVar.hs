@@ -9,17 +9,16 @@
 ----------------------------------------------------------------
 --                                                  ~ 2011.07.06
 -- |
--- Module      :  Control.Unification.STRVar
+-- Module      :  Control.Unification.Ranked.STVar
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
 -- Portability :  semi-portable (Rank2Types, MPTCs,...)
 --
--- This module defines an implementation of ranked unification
--- variables using the 'ST' monad.
+-- A ranked variant of "Control.Unification.STVar".
 ----------------------------------------------------------------
-module Control.Unification.STRVar
+module Control.Unification.Ranked.STVar
     ( STRVar()
     , STRBinding()
     , runSTRBinding
@@ -106,14 +105,16 @@ _newSTRVar
     -> STRBinding s (STRVar s t (MutTerm (STRVar s t) t))
 _newSTRVar fun mb = STRB $ do
     nr <- ask
-    n  <- lift $ readSTRef nr
-    if n == maxBound
-        then fail $ fun ++ ": no more variables!"
-        else lift $ do
-            writeSTRef nr $! n+1
-            rk  <- newSTRef 0
-            ptr <- newSTRef mb
-            return (STRVar n rk ptr)
+    lift $ do
+        n <- readSTRef nr
+        if n == maxBound
+            then error $ fun ++ ": no more variables!"
+            else do
+                writeSTRef nr $! n+1
+                -- BUG: no applicative ST
+                rk  <- newSTRef 0
+                ptr <- newSTRef mb
+                return (STRVar n rk ptr)
 
 
 instance (Unifiable t) => BindingMonad (STRVar s t) t (STRBinding s) where

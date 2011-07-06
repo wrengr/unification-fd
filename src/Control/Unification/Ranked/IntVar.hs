@@ -4,31 +4,17 @@
 ----------------------------------------------------------------
 --                                                  ~ 2011.07.06
 -- |
--- Module      :  Control.Unification.IntRVar
+-- Module      :  Control.Unification.Ranked.IntVar
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
--- Portability :  semi-portable (MPTCs, Undecidable-, FlexibleInstances)
+-- Portability :  semi-portable (MPTCs,...)
 --
--- This module defines a state monad for functional pointers
--- represented by integers as keys into an @IntMap@. This technique
--- was independently discovered by Dijkstra et al. This module
--- extends the approach by using a state monad transformer, which
--- can be made into a backtracking state monad by setting the
--- underlying monad to some 'MonadLogic' (part of the @logict@
--- library, described by Kiselyov et al.).
---
---     * Atze Dijkstra, Arie Middelkoop, S. Doaitse Swierstra (2008)
---         /Efficient Functional Unification and Substitution/,
---         Technical Report UU-CS-2008-027, Utrecht University.
---
---     * Oleg Kiselyov, Chung-chieh Shan, Daniel P. Friedman, and
---         Amr Sabry (2005) /Backtracking, Interleaving, and/
---         /Terminating Monad Transformers/, ICFP.
+-- A ranked variant of "Control.Unification.IntVar".
 ----------------------------------------------------------------
-module Control.Unification.IntRVar
-    ( IntVar()
+module Control.Unification.Ranked.IntVar
+    ( IntVar(..)
     , IntRBindingState()
     , IntRBindingT()
     , runIntRBindingT
@@ -45,40 +31,11 @@ import Control.Monad.Trans   (MonadTrans(..))
 import Control.Monad.State   (MonadState(..), StateT, runStateT, evalStateT, execStateT, gets)
 import Control.Monad.Logic   (MonadLogic(..))
 import Control.Unification.Types
+import Control.Unification.IntVar (IntVar(..))
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
--- | A ``mutable'' unification variable implemented by an integer.
--- This provides an entirely pure alternative to truly mutable
--- alternatives (like @STVar@), which can make backtracking easier.
---
--- N.B., because this implementation is pure, we can use it for
--- both ranked and unranked monads.
-newtype IntVar t = IntVar Int
-    deriving (Show)
-
-{-
--- BUG: This part works, but we'd want to change Show IntRBindingState too.
-
-instance Show (IntVar t) where
-    show (IntVar i) = "IntVar " ++ show (boundedInt2Word i)
-
--- | Convert an integer to a word, via the continuous mapping that
--- preserves @minBound@ and @maxBound@.
-boundedInt2Word :: Int -> Word
-boundedInt2Word i
-    | i < 0     = fromIntegral (i + maxBound + 1)
-    | otherwise = fromIntegral i + fromIntegral (maxBound :: Int) + 1
--}
-
-instance Variable IntVar where
-    eqVar (IntVar i) (IntVar j) = i == j
-    
-    getVarID (IntVar v) = v
-
-
-----------------------------------------------------------------
--- | Binding state for 'IntVar'.
+-- | Ranked binding state for 'IntVar'.
 data IntRBindingState t = IntRBindingState
     { nextFreeVar :: {-# UNPACK #-} !Int
     , varBindings :: IM.IntMap (Rank IntVar t)
@@ -184,8 +141,8 @@ instance (Unifiable t, Applicative m, Monad m) =>
     freeVar = IRBT $ do
         ibs <- get
         let v = nextFreeVar ibs
-        if v == maxBound
-            then fail "freeVar: no more variables!"
+        if  v == maxBound
+            then error "freeVar: no more variables!"
             else do
                 put $ ibs { nextFreeVar = v+1 }
                 return $ IntVar v
@@ -193,8 +150,8 @@ instance (Unifiable t, Applicative m, Monad m) =>
     newVar t = IRBT $ do
         ibs <- get
         let v = nextFreeVar ibs
-        if v == maxBound
-            then fail "newVar: no more variables!"
+        if  v == maxBound
+            then error "newVar: no more variables!"
             else do
                 let bs' = IM.insert v (Rank 0 (Just t)) (varBindings ibs)
                 put $ ibs { nextFreeVar = v+1, varBindings = bs' }

@@ -20,7 +20,7 @@ import Control.Applicative
 import Control.Monad.Identity
 import Control.Monad.Error
 import Control.Unification
-import Control.Unification.Classes
+import Control.Unification.Types
 import Control.Unification.IntVar
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -29,13 +29,6 @@ data S a = S String [a]
     deriving (Read, Show, Eq, Ord, Functor, Foldable, Traversable)
 
 instance Unifiable S where
-    match (S a xs) (S b ys)
-        | a == b    =
-            case pair xs ys of
-            Nothing    -> failure
-            Just pairs -> more pairs
-        | otherwise = failure
-        
     zipMatch (S a xs) (S b ys)
         | a == b    = fmap (S a) (pair xs ys)
         | otherwise = Nothing
@@ -54,10 +47,10 @@ test1 = print . runIdentity . runIntBindingT $ eg1
         let t2xy = MutTerm$S "2" [MutVar x, MutVar y]
         let t200 = MutTerm$S "2" [t0,t0]
         runErrorT $ do
-            _ <- unify4 t10 t1x
-            _ <- unify4 (MutVar x) (MutVar y)
+            _ <- unify t10 t1x
+            _ <- unify (MutVar x) (MutVar y)
             -- This should succeed, but will fail if the visited-set doesn't backtrack properly when comming up from recursion
-            unify4 t200 t2xy
+            unify t200 t2xy
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

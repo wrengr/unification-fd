@@ -72,7 +72,8 @@ freeze (MutTerm t) = Fix <$> mapM freeze t
 
 
 ----------------------------------------------------------------
--- | An implementation of unifiable structure.
+
+-- | An implementation of syntactically unifiable structure.
 class (Traversable t) => Unifiable t where
     -- | Perform one level of equality testing for terms. If the
     -- term constructors are unequal then return @Nothing@; if they
@@ -86,6 +87,7 @@ class Variable v where
     -- | Determine whether two variables are equal /as variables/,
     -- without considering what they are bound to.
     eqVar :: v a -> v b -> Bool
+    eqVar x y = getVarID x == getVarID y
     
     -- | Return a unique identifier for this variable, in order to
     -- support the use of visited-sets instead of occurs-checks.
