@@ -7,7 +7,7 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.05
+--                                                  ~ 2011.07.06
 -- |
 -- Module      :  Control.Unification.STVar
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
@@ -28,7 +28,8 @@ module Control.Unification.STVar
 import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 
 import Data.STRef
-import Control.Applicative  (Applicative(..), (<$>))
+import Data.Int             (Int8)
+import Control.Applicative  (Applicative(..))
 import Control.Monad        (ap)
 import Control.Monad.Trans  (lift)
 import Control.Monad.ST
@@ -43,19 +44,20 @@ import Control.Unification.Classes
 data STVar s t a =
     STVar
         {-# UNPACK #-} !Int
-        {-# UNPACK #-} !(STRef s (Rank (STVar s t) t))
+        {-# UNPACK #-} !(STRef s Int8)
+        {-# UNPACK #-} !(STRef s (Maybe (MutTerm (STVar s t) t)))
 -- BUG: can we actually unpack STRef?
 -- BUG: we need a phantom @a@ to get the kinds to work out now...
 
 
 instance Show (STVar s t a) where
-    show (STVar i _) = "STVar " ++ show i
+    show (STVar i _ _) = "STVar " ++ show i
 
 
 instance Variable (STVar s t) where
-    eqVar (STVar i _) (STVar j _) = i == j
+    eqVar (STVar i _ _) (STVar j _ _) = i == j
     
-    getVarID  (STVar i _) = i
+    getVarID  (STVar i _ _) = i
 
 
 ----------------------------------------------------------------
@@ -108,26 +110,29 @@ _newSTVar fun mb = STB $ do
         then fail $ fun ++ ": no more variables!"
         else lift $ do
             writeSTRef nr $! n+1
-            STVar n <$> newSTRef (Rank 0 mb)
+            rk  <- newSTRef 0
+            ptr <- newSTRef mb
+            return (STVar n rk ptr)
 
 
 instance (Unifiable t) => BindingMonad (STVar s t) t (STBinding s) where
-    lookupRankVar (STVar _ r) = STB . lift $ readSTRef r
+    lookupRankVar (STVar _ r p) = STB . lift $ do
+        n  <- readSTRef r
+        mb <- readSTRef p
+        return (Rank n mb)
+    
+    lookupVar (STVar _ _ p) = STB . lift $ readSTRef p
     
     freeVar  = _newSTVar "freeVar" Nothing
     newVar t = _newSTVar "newVar" (Just t)
     
-    bindVar (STVar _ r) t = STB . lift $ do
-        Rank n _ <- readSTRef r
-        writeSTRef r (Rank n (Just t))
+    bindVar (STVar _ _ p) t = STB . lift $ writeSTRef p (Just t)
     
-    incrementRank (STVar _ r) = STB . lift $ do
-        Rank n mb <- readSTRef r
-        writeSTRef r $! Rank (n+1) mb
+    incrementRank (STVar _ r _) = STB . lift $ do
+        n <- readSTRef r
+        writeSTRef r $! n+1
     
-    incrementBindVar (STVar _ r) t = STB . lift $ do
-        Rank n _ <- readSTRef r
-        writeSTRef r $! Rank (n+1) (Just t)
+    -- incrementBindVar = default
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.
