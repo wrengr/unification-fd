@@ -8,7 +8,7 @@
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
--- Stability   :  experimental
+-- Stability   :  highly experimental
 -- Portability :  semi-portable (MPTCs,...)
 --
 -- A ranked variant of "Control.Unification.IntVar".

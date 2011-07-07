@@ -98,10 +98,7 @@ instance Error (UnificationFailure v t) where
 -- if the chain is unbound), and return that end.
 --
 -- N.B., this is almost never the function you want. Cf., 'semiprune'.
-fullprune
-    :: (BindingMonad v t m)
-    => MutTerm v t     -- ^
-    -> m (MutTerm v t) -- ^
+fullprune :: (BindingMonad v t m) => MutTerm v t -> m (MutTerm v t)
 fullprune t0 =
     case t0 of
     MutTerm _ -> return t0
@@ -122,9 +119,7 @@ fullprune t0 =
 -- it is bound or not. This allows detecting many cases where
 -- multiple variables point to the same term, thereby allowing us
 -- to avoid re-unifying the term they point to.
-semiprune
-    :: (BindingMonad v t m)
-    => MutTerm v t -> m (MutTerm v t)
+semiprune :: (BindingMonad v t m) => MutTerm v t -> m (MutTerm v t)
 semiprune =
     \t0 ->
         case t0 of
@@ -158,9 +153,7 @@ semiprune =
 -- | Walk a term and determine what variables are still free. N.B.,
 -- this function does not detect cyclic terms, but it will return
 -- the correct answer for them in finite time.
-getFreeVars
-    :: (BindingMonad v t m)
-    => MutTerm v t -> m [v (MutTerm v t)]
+getFreeVars :: (BindingMonad v t m) => MutTerm v t -> m [v (MutTerm v t)]
 getFreeVars =
     \t -> IM.elems <$> evalStateT (loop t) IS.empty
     where
@@ -192,7 +185,7 @@ getFreeVars =
 applyBindings
     ::  ( BindingMonad v t m
         , MonadTrans e
-        , Functor (e m) -- Monad (e m) should imply Functor damnit!
+        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure v t) (e m)
         )
     => MutTerm v t       -- ^
@@ -231,7 +224,7 @@ applyBindings =
 freshen
     ::  ( BindingMonad v t m
         , MonadTrans e
-        , Functor (e m) -- Monad (e m) should imply Functor damnit!
+        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure v t) (e m)
         )
     => MutTerm v t       -- ^
@@ -269,7 +262,9 @@ freshen =
 -- TODO: redo this with some codensity. (MaybeK ())?
 -- TODO: sharing? reason for failure?
 --
--- | Determine if two terms are structurally equal. N.B., this function does not consider alpha-variance, and thus variables with different names are considered unequal. Cf., 'equiv'.
+-- | Determine if two terms are structurally equal. N.B., this
+-- function does not consider alpha-variance, and thus variables
+-- with different names are considered unequal. Cf., 'equiv'.
 equals
     :: (BindingMonad v t m)
     => MutTerm v t  -- ^
@@ -299,7 +294,10 @@ equals tl0 tr0 = do
 
 -- TODO: is that the most helpful return type?
 --
--- | Determine if two terms are structurally equivalent; that is, structurally equal modulo renaming of free variables. Returns a mapping from variable IDs of the left term to variable IDs of the right term, indicating the renaming used.
+-- | Determine if two terms are structurally equivalent; that is,
+-- structurally equal modulo renaming of free variables. Returns a
+-- mapping from variable IDs of the left term to variable IDs of
+-- the right term, indicating the renaming used.
 equiv
     :: (BindingMonad v t m)
     => MutTerm v t               -- ^
@@ -351,16 +349,16 @@ unify
 unify =
     \tl tr -> evalStateT (loop tl tr) IM.empty
     where
-    
-    v =: t = lift . lift $ v `bindVar` t
     {-# INLINE (=:) #-}
+    v =: t = lift . lift $ v `bindVar` t
     
+    -- TODO: use IM.insertWith or the like to do this in one pass
+    {-# INLINE seenAs #-}
     v `seenAs` t = do
         seenVars <- get
         case IM.lookup (getVarID v) seenVars of
             Just t' -> lift . throwError $ OccursIn v t'
             Nothing -> put $! IM.insert (getVarID v) t seenVars
-    {-# INLINE seenAs #-}
     
     loop tl0 tr0 = do
         tl <- lift . lift $ semiprune tl0
@@ -379,7 +377,7 @@ unify =
                             t <- localState $ do
                                 vl' `seenAs` tl'
                                 vr' `seenAs` tr'
-                                loop tl' tr' -- BUG: should just jump to match
+                                loop tl' tr' -- TODO: should just jump to match
                             vr' =: t
                             vl' =: tr
                             return tr
@@ -391,7 +389,7 @@ unify =
                         Nothing  -> return tr
                         Just tl' -> localState $ do
                             vl' `seenAs` tl'
-                            loop tl' tr -- BUG: should just jump to match
+                            loop tl' tr -- TODO: should just jump to match
                 vl' =: t
                 return tl
             
@@ -402,7 +400,7 @@ unify =
                         Nothing  -> return tl
                         Just tr' -> localState $ do
                             vr' `seenAs` tr'
-                            loop tl tr' -- BUG: should just jump to match
+                            loop tl tr' -- TODO: should just jump to match
                 vr' =: t
                 return tr
             

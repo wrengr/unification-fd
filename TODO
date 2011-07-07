@@ -6,6 +6,7 @@ Debugging:
       Setup.hs test` call the test suite.
 
 Enhancements:
+    * Add a fast occurs check for looking at the whole binding state (outside of unifications)
 
 Sooner than later:
     * Proper benchmarking. Especially for the union--find enhancement

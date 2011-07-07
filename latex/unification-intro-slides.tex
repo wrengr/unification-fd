@@ -188,7 +188,7 @@
     	\begin{itemize}
     	\item $\forall t \in \TERMS{\mathcal{F}\uplus\mathcal{X}}.~~ t \in \TERMS{\mathcal{F}\uplus\FREEVARS(t)}$
     	\end{itemize}
-    \item A term $t \in \TERMS{\mathcal{F}\uplus\mathcal{X}}$ is called \defn{ground} or \defn{closed} iff $\FREEVARS(t) = \emptyset$
+    \item A term $t \in \TERMS{\mathcal{F}\uplus\mathcal{X}}$ is called \defn{ground} or \defn{closed}$\null^\dagger$ iff $\FREEVARS(t) = \emptyset$
     \item A term is called \defn{linear} if each free variable occurs at most once
 	\vspace{1em}
     \item Since $\mathcal{X}$ is defined essentially by its cardinality
@@ -473,22 +473,63 @@ minus(Z, X, Y) :- plus(X, Y, Z).
 \begin{slide}{Type Checking \& Inference}
 	\vspace{1em}
 	\begin{itemize}
-	\item .
+	\item Type checking/inference is (sometimes) surprisingly easy
+	\item Walk over a term, generating a system of equations
+        \begin{itemize}
+        \item Give every subterm a unification variable for its type
+        \item If $((f :: A) (e :: B)) :: C$ then unify $A \doteq (B \to C)$
+        \item If $(\lambda x.~ e :: A) :: B$ then unify $B \doteq (B' \to A)$ for a fresh variable $B'$
+            \begin{itemize}
+            \item and add the local constraint $x :: B'$\ldots
+            \end{itemize}
+        \item etc
+        \end{itemize}
+    \item Solve the unification problem
+    \item Generalize any remaining free unification variables
+        \\ (i.e., make them rank-1 universally quantified type variables)
+	\end{itemize}
+\end{slide}
+
+\begin{slide}{Type Checking \& Inference}
+	\vspace{1em}
+	\begin{itemize}
+	\item Type theories stronger than Hindley--Milner--Damas are harder
+	\vspace{1em}
+        \begin{itemize}
+        \item \emph{Inferring} higher-rank polymorphism isn't sound
+            \begin{itemize}
+            \item with enough polymorphism everything type checks
+            \item though \emph{checking} higher-rank types is soluble
+            \end{itemize}
+	\vspace{1em}
+        \item If you have type-level $\lambda$-expressions
+            \begin{itemize}
+            \item e.g., because of dependent types or type operators
+            \item then you need higher-order unification
+            \end{itemize}
+        \end{itemize}
 	\end{itemize}
 \end{slide}
 
 \begin{slide}{Unification-based Parsing}
 	\vspace{1em}
 	\begin{itemize}
-	\item .
-	\end{itemize}
-\end{slide}
-
-%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\begin{slide}{References}
-	\vspace{1em}
-	\begin{itemize}
-	\item .
+	\item Some grammar formalisms for natural language parsing use unification
+        \begin{itemize}
+        \item HPSG, GPSG, LFG
+        \end{itemize}
+    \item But their unification is more complex than the single-sorted first-order unification discussed here
+	\vspace{2em}
+    \item Some grammar formalisms use constraint-based solvers
+        \begin{itemize}
+        \item XDG: Extensible Dependency Grammar
+            \\ \url{http://www.ps.uni-saarland.de/~rade/xdg.html}
+        \end{itemize}
+    \item Constraint-based programming is subtly different from but easily allied with logic programming.
+        \begin{itemize}
+        \item ECLiPSe constraint-logic programming
+            \\ \url{http://eclipseclp.org/}
+        \end{itemize}
 	\end{itemize}
 \end{slide}
 

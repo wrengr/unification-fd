@@ -43,12 +43,13 @@ Library
                    , Control.Monad.State.UnificationExtras
                    , Control.Monad.MaybeK
                    , Control.Monad.EitherK
+                   , Control.Unification
                    , Control.Unification.Types
                    , Control.Unification.STVar
                    , Control.Unification.IntVar
+                   , Control.Unification.Ranked
                    , Control.Unification.Ranked.STVar
                    , Control.Unification.Ranked.IntVar
-                   , Control.Unification
     
     Build-Depends:   transformers >= 0.2.0
                    , logict       >= 0.4

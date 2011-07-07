@@ -405,8 +405,8 @@ unify2 tl0 tr0 = do
                 mtr <- lift $ lookupVar vr'
                 case (mtl, mtr) of
                     (Nothing,  Nothing ) -> lift $ vl' `bindVar_` tr
-                    (Nothing,  Just tr') -> lift $ vl' `bindVar_` tr'
-                    (Just tl', Nothing ) -> lift $ vr' `bindVar_` tl'
+                    (Nothing,  Just tr') -> vl' `acyclicBindVar_` tr'
+                    (Just tl', Nothing ) -> vr' `acyclicBindVar_` tl'
                     (Just tl', Just tr') -> do
                         unify2 tl' tr' -- BUG: should just jump to match
                         lift $ vl' `bindVar_` tr

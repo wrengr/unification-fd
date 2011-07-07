@@ -70,6 +70,7 @@
 %format vv       = "\ensuremath{\mathcal{X}}"
 %format tm       = "\ensuremath{\mathcal{F}}"
 %format `eqVar`  = "\ensuremath{\equiv_{\null_V}}"
+%format `acyclicBindVar` = "\ensuremath{:=_\Varid{acyc}}"
 
 %format v0
 %format v'
@@ -90,6 +91,12 @@
 %format forall   = "\ensuremath{\forall}"
 %format alpha    = "\ensuremath{\alpha}"
 %format beta     = "\ensuremath{\beta}"
+
+%format <$> = "\ensuremath{\odot}"
+%format <*> = "\ensuremath{\circledast}"
+%format <*  = "\ensuremath{\olessthan}"
+%format  *> = "\ensuremath{\ogreaterthan}"
+%format <|> = "\ensuremath{\obar}"
 
 %format Int      = "\INT"
 %format Integer  = "\INT"
@@ -132,9 +139,8 @@
         \item Enables future optimizations
         \end{itemize}
     \item Removing the occurs-check
-    \item Aggressive observable sharing
+    \item Aggressive opportunistic observable sharing
     \item Union--Find: aka weighted path compression
-    \item Complexity
     \end{itemize}
 \end{slide}
 
@@ -196,7 +202,7 @@ class Variable vv where
     eqVar     :: vv alpha -> vv alpha -> Bool
     getVarID  :: vv alpha -> Int
 \end{code}
-    \item We will write |eqVar| infix as |(`eqVar`)|%''% Fix syntax hilighting
+    \item We will write |eqVar| infix as |(`eqVar`)|%'% Fix syntax hilighting
     \end{itemize}
 \end{slide}
 
@@ -244,13 +250,13 @@ occursIn v0 t0 =
     MutTerm  t  -> or <$> mapM (v0 `occursIn`) t
     MutVar   v  -> return (v0 `eqVar` v)
 
+
 acyclicBindVar v0 t0 =
     if<- lift (v0 `occursIn` t0)
     then  throwError (OccursIn v0 t0)
     else  v0 := t0
 \end{code}
-% BUG: need a special symbol for <$>
-% BUG: the backticks are uu~gly
+    \item We abbreviate |acyclicBindVar| infix as |`acyclicBindVar`|%'% Fix syntax hilighting
     \end{itemize}
 \end{slide}
 
@@ -262,9 +268,9 @@ unify1 tl0 tr0 = do
     case (tl, tr) of
     (MutVar  vl',    MutVar   vr'  )
         | vl' `eqVar` vr'             -> return ()
-        | otherwise                   -> vl' := tr -- or, |vr' := tl|
-    (MutVar   vl',   MutTerm  _    )  -> vl' `acyclicBindVar` tr
-    (MutTerm  _,     MutVar   vr'  )  -> vr' `acyclicBindVar` tl
+        | otherwise                   -> vl'  := tr
+    (MutVar   vl',   MutTerm  _    )  -> vl'  `acyclicBindVar` tr
+    (MutTerm  _,     MutVar   vr'  )  -> vr'  `acyclicBindVar` tl
     (MutTerm  tl',   MutTerm  tr'  )  -> 
         case match tl' tr' of
         Nothing     -> throwError (NonUnifiable tl tr)
@@ -297,14 +303,14 @@ unify1 tl0 tr0 = do
 \begin{slide}{Optimization 1: Semipruning}
 \begin{code}
 semiprune (MutTerm  t0) = return (MutTerm t0)
-semiprune (MutVar   v0) = go v0
+semiprune (MutVar   v0) = loop v0
     where
-    go v =
+    loop v =
         case<- lookupVar v of
         Nothing               -> return (MutVar v)
         Just (MutTerm  _   )  -> return (MutVar v)
         Just (MutVar   v'  )  -> do
-            vInf  <- go v'
+            vInf  <- loop v'
             v     := MutVar vInf
             return (MutVar vInf)
 \end{code}
@@ -322,8 +328,8 @@ unify2 tl0 tr0 = do
         | otherwise                   ->
             case<- lift ((,) <$> lookupVar vl' <*> lookupVar vr') of
             (Nothing,   Nothing    )  -> vl'  := tr
-            (Nothing,   Just tr'   )  -> vl'  := tr'
-            (Just tl',  Nothing    )  -> vr'  := tl'
+            (Nothing,   Just tr'   )  -> vl'  `acyclicBindVar` tr'
+            (Just tl',  Nothing    )  -> vr'  `acyclicBindVar` tl'
             (Just tl',  Just tr'   )  -> do { unify2 tl' tr'; vl' := tr }
     (MutVar   vl',  MutTerm  _    )   -> ...
     (MutTerm  _,    MutVar   vr'  )   -> ...
@@ -354,34 +360,175 @@ unify2 tl0 tr0 = do
 \begin{slide}{Optimization 2: Removing the occurs-check}
     \vspace{1em}
     \begin{itemize}
-    \item .
+    \item As we saw earlier, the occurs-check is expensive
+    \item In fact, it's asymptotically bad
+    \item Many versions of Prolog just remove it and allow cyclic terms to cause non-termination
+    \item But there's a better way
+        \begin{itemize}
+        \item Keep track of the variables you've dereferenced
+        \item Only complain when you try dereferencing it a second time
+        \item Performance is approx $O(d*\log v)$ where $d$ is the depth of the term and $v$ is the number of variables seen ($v \leq d$)
+        \end{itemize}
+    \item Fails slow, but runs fast and avoids non-termination
+        \begin{itemize}
+        \item And we can cache the state of the first dereference for fails-fast quality error messages
+        \end{itemize}
+    \item But may fail too slow for some uses
+        \begin{itemize}
+        \item |unify x (f x)|
+        \end{itemize}
     \end{itemize}
 \end{slide}
 
+% TODO: Figre out a |modify . insertWith| kind of thing
+\begin{slide}{Optimization 2: Removing the occurs-check}
+\begin{code}
+v `seenAs` t = do
+    seenVars <- get
+    case IM.lookup (getVarID v) seenVars of
+    Just t'  -> throwError (OccursIn v t')
+    Nothing  -> put (IM.insert (getVarID v) t seenVars)
+\end{code}
+\end{slide}
+
+\begin{slide}{Optimization 2: Removing the occurs-check}
+\begin{code}
+unify3 = \tl tr -> evalStateT (loop tl tr) IM.empty
+    where
+    loop tl0 tr0 = do
+        tl   <- (lift . lift) (semiprune tl0)
+        tr   <- (lift . lift) (semiprune tr0)
+        case (tl, tr) of
+        (MutVar  vl',   MutVar   vr'  ) -> ...
+        (MutVar  vl',   MutTerm  _    ) ->
+            case<- (lift . lift) (lookupVar vl') of
+            Nothing   -> vl' := tr
+            Just tl'  -> localState $ do { vl' `seenAs` tl'; loop tl' tr }
+        (MutTerm  _,    MutVar   vr'  ) -> ... -- same as above
+        (MutTerm  tl',  MutTerm  tr'  ) -> ... -- same as before
+\end{code}
+\end{slide}
+
+\begin{slide}{Optimization 2: Removing the occurs-check}
+\begin{code}
+        ...
+        (MutVar vl', MutVar vr')
+            | vl' `eqVar` vr' -> return ()
+            | otherwise       -> do
+                case<- (lift . lift) ((,) <$> lookupVar vl' <*> lookupVar vr') of
+                (Nothing,   Nothing   ) -> vl'  := tr
+                (Nothing,   Just _    ) -> vl'  := tr
+                (Just _,    Nothing   ) -> vr'  := tl
+                (Just tl',  Just tr'  ) -> do
+                    localState $ do
+                        vl'  `seenAs` tl'
+                        vr'  `seenAs` tr'
+                        loop tl' tr'
+                    vl' := tr
+\end{code}
+\end{slide}
+
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\begin{slide}{Optimization 3: Aggressive observable sharing}
+\begin{slide}{Optimization 3: AOOS}
     \vspace{1em}
     \begin{itemize}
-    \item .
+    \item Semipruning gave us some opportunistic observable sharing
+    \item What if we try to make aggressive use of it?
+        \begin{itemize}
+        \item Whenever unifying a variable, return that variable
+        \item When returning from traversing a bound variable, rebind the variable to its new smaller term
+        \end{itemize}
+    \item To do this, we need to be able to traverse terms to rebuild them, not just fold over them.
+        \begin{itemize}
+        \item Replace |match :: tm alpha -> tm beta -> Maybe [(alpha,beta)]|
+            \\ with |zipMatch :: tm alpha -> tm beta -> Maybe (tm (alpha,beta))|
+        \end{itemize}
     \end{itemize}
+\end{slide}
+
+\begin{slide}{Optimization 3: AOOS}
+    \vspace{1em}
+    \begin{itemize}
+    \item The beginning is the same as last time
+    \end{itemize}
+\begin{code}
+unify4 = \tl tr -> evalStateT (loop tl tr) IM.empty
+    where
+    loop tl0 tr0 = do
+        tl   <- (lift . lift) (semiprune tl0)
+        tr   <- (lift . lift) (semiprune tr0)
+        case (tl, tr) of
+        ...
+\end{code}
+\end{slide}
+
+\begin{slide}{Optimization 3: AOOS}
+\begin{code}
+        ...
+        (MutVar vl', MutVar vr')
+            | vl' `eqVar` vr'  -> return tr
+            | otherwise        ->
+                case<- (lift . lift) ((,) <$> lookupVar vl' <*> lookupVar vr') of
+                (Nothing,   Nothing   ) -> do { vl'  := tr;  return tr }
+                (Nothing,   Just _    ) -> do { vl'  := tr;  return tr }
+                (Just _,    Nothing   ) -> do { vr'  := tl;  return tl }
+                (Just tl',  Just tr'  ) -> do
+                    t <- localState $ do { vl' `seenAs` tl'; vr' `seenAs` tr'; loop tl' tr' }
+                    vr'  := t
+                    vl'  := tr
+                    return tr
+        ...
+\end{code}
+\end{slide}
+
+\begin{slide}{Optimization 3: AOOS}
+\begin{code}
+        ...
+        (MutVar   vl',  MutTerm  _    ) -> do
+            t <- do
+                case<- (lift . lift) (lookupVar vl') of
+                Nothing   -> return tr
+                Just tl'  -> localState $ do { vl' `seenAs` tl'; loop tl' tr }
+            vl' := t
+            return tl
+            
+        (MutTerm  _,    MutVar   vr'  ) -> ...
+            
+        (MutTerm  tl',  MutTerm  tr'  ) ->
+            case zipMatch tl' tr' of
+            Nothing   -> throwError (NonUnifiable tl' tr')
+            Just tlr  -> MutTerm <$> mapM (uncurry loop) tlr
+\end{code}
 \end{slide}
 
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 \begin{slide}{Optimization 4: Weighted path compression}
     \vspace{1em}
     \begin{itemize}
-    \item .
+    \item In pathological cases, we could still build up long variable chains
+        \begin{itemize}
+        \item Up to $O(V * \log V)$ for a base access time of $O(\log V)$
+        \item We'll only have to traverse it once (thanks to pruning),
+        \item But can we do better?
+        \end{itemize}
+    \item Yes (asymptotically)
+    \item Associate each variable with a mutable depth or `rank'
+        \begin{itemize}
+        \item When unifying variables to variables,
+            \begin{itemize}
+            \item bind the smaller variable to the larger
+            \item if they're equal rank, then increment the target's rank by 1
+            \end{itemize}
+        \item Guarantees depth is bounded by $\log V$
+        \end{itemize}
+    \item Combining ranks+pruning yields $O(\alpha(V))$ amortized lookup time
+        \begin{itemize}
+        \item Times whatever the base access time is; e.g., $O(\log V)$
+        \item This is asymptotically optimal
+        \end{itemize}
+    \item But the code gets a lot uglier--- beware constant factors
     \end{itemize}
 \end{slide}
-
-%% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\begin{slide}{Complexity}
-    \vspace{1em}
-    \begin{itemize}
-    \item .
-    \end{itemize}
-\end{slide}
-
 
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ fin.
