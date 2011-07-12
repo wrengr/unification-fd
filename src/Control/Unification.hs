@@ -502,6 +502,8 @@ unifyOccurs = loop
 
 ----------------------------------------------------------------
 -- TODO: verify correctness, especially for the visited-set stuff.
+-- TODO: return Maybe(MutTerm v t) in the loop so we can avoid updating bindings trivially
+-- TODO: figure out why unifyOccurs is so much faster on pure ground terms!! The only difference there is in lifting over StateT...
 -- 
 -- | Unify two terms, or throw an error with an explanation of why
 -- unification failed. Since bindings are stored in the monad, the
