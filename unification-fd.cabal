@@ -15,7 +15,7 @@ License-File:   LICENSE
 Author:         wren ng thornton
 Maintainer:     wren@community.haskell.org
 Homepage:       http://code.haskell.org/~wren/
-Category:       Algebra, Unification
+Category:       Algebra, Algorithms, Compilers/Interpreters, Language, Logic, Unification
 Synopsis:       Simple generic unification algorithms.
 Description:    Simple generic unification algorithms.
 
