@@ -6,7 +6,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.06
+--                                                  ~ 2011.07.11
 -- |
 -- Module      :  Control.Unification.Ranked
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
@@ -24,7 +24,6 @@ module Control.Unification.Ranked
     (
     -- * Terms, and other ...
       module Control.Unification.Types
-    , UnificationFailure(..)
     
     -- * Operations on one term
     , getFreeVars
@@ -56,28 +55,6 @@ import Control.Unification.Types
 import Control.Unification hiding (unify)
 ----------------------------------------------------------------
 ----------------------------------------------------------------
-
--- BUG: have to copy this since it's not public. Should it be?
-semiprune :: (BindingMonad v t m) => MutTerm v t -> m (MutTerm v t)
-semiprune =
-    \t0 ->
-        case t0 of
-        MutTerm _  -> return t0
-        MutVar  v0 -> loop t0 v0
-    where
-    -- We pass the @t@ for @v@ in order to add just a little more sharing.
-    loop t v = do
-        mb <- lookupVar v
-        case mb of
-            Nothing -> return t
-            Just t' -> 
-                case t' of
-                MutTerm _  -> return t
-                MutVar  v' -> do
-                    finalVar <- loop t' v'
-                    v `bindVar` finalVar
-                    return finalVar
-
 
 -- TODO: keep in sync as we verify correctness.
 --
@@ -176,7 +153,7 @@ unify =
             
             (MutTerm tl, MutTerm tr) ->
                 case zipMatch tl tr of
-                Nothing  -> lift . throwError $ NonUnifiable tl tr
+                Nothing  -> lift . throwError $ TermMismatch tl tr
                 Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
 
 ----------------------------------------------------------------

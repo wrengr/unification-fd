@@ -1,4 +1,4 @@
--- Required for Show (MutTerm v t) instance
+-- Required for Show instances
 {-# LANGUAGE FlexibleContexts, UndecidableInstances #-}
 -- Required more generally
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
@@ -6,7 +6,7 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 
 ----------------------------------------------------------------
---                                                  ~ 2011.07.06
+--                                                  ~ 2011.07.11
 -- |
 -- Module      :  Control.Unification.Types
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
@@ -24,6 +24,8 @@ module Control.Unification.Types
       MutTerm(..)
     , freeze
     , unfreeze
+    -- * Errors
+    , UnificationFailure(..)
     -- * Basic type classes
     , Unifiable(..)
     , Variable(..)
@@ -39,6 +41,7 @@ import Data.Word               (Word8)
 import Data.Functor.Fixedpoint (Fix(..))
 import Data.Traversable        (Traversable(..))
 import Control.Applicative     (Applicative(..), (<$>))
+import Control.Monad.Error     (Error(..))
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
@@ -70,6 +73,61 @@ freeze :: (Traversable t) => MutTerm v t -> Maybe (Fix t)
 freeze (MutVar  _) = Nothing
 freeze (MutTerm t) = Fix <$> mapM freeze t
 
+
+----------------------------------------------------------------
+-- TODO: provide zipper context so better error messages can be generated.
+--
+-- | The possible failure modes that could be encountered in
+-- unification and related functions. While many of the functions
+-- could be given more accurate types if we used ad-hoc combinations
+-- of these constructors (i.e., because they can only throw one of
+-- the errors), the extra complexity is not yet considered worth
+-- it.
+data UnificationFailure v t
+    
+    = OccursIn (v (MutTerm v t)) (MutTerm v t)
+        -- ^ A cyclic term was encountered (i.e., the variable
+        -- occurs free in a term it would have to be bound to in
+        -- order to succeed). Infinite terms like this are not
+        -- generally acceptable, so we do not support them. In logic
+        -- programming this should simply be treated as unification
+        -- failure; in type checking this should result in a \"could
+        -- not construct infinite type @a = Foo a@\" error.
+        --
+        -- Note that since, by default, the library uses visited-sets
+        -- instead of the occurs-check these errors will be thrown
+        -- at the point where the cycle is dereferenced\/unfolded
+        -- (e.g., when applying bindings), instead of at the time
+        -- when the variable is bound to the cycle. However, the
+        -- arguments to this constructor should express the same
+        -- context as if we had performed the occurs-check, in order
+        -- for error messages to be intelligable.
+    
+    | TermMismatch (t (MutTerm v t)) (t (MutTerm v t))
+        -- ^ The top-most level of the terms do not match (according
+        -- to 'zipMatch'). In logic programming this should simply
+        -- be treated as unification failure; in type checking this
+        -- should result in a \"could not match expected type @Foo@
+        -- with inferred type @Bar@\" error.
+    
+    | UnknownError String
+        -- ^ Required for the @Error@ instance, which in turn is
+        -- required to appease @ErrorT@ in the MTL. We do not use
+        -- this anywhere.
+
+
+-- Can't derive this because it's an UndecidableInstance
+instance (Show (t (MutTerm v t)), Show (v (MutTerm v t))) =>
+    Show (UnificationFailure v t)
+    where
+    -- TODO: implement 'showsPrec' instead
+    show (OccursIn     v  t)  = "OccursIn ("++show v++") ("++show t++")"
+    show (TermMismatch tl tr) = "TermMismatch ("++show tl++") ("++show tr++")"
+    show (UnknownError msg)   = "UnknownError: "++msg
+
+instance Error (UnificationFailure v t) where
+    noMsg  = UnknownError ""
+    strMsg = UnknownError
 
 ----------------------------------------------------------------
 

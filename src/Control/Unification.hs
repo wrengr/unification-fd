@@ -1,19 +1,15 @@
 
-{-# LANGUAGE MultiParamTypeClasses
-           , UndecidableInstances
-           , FlexibleInstances
-           , FlexibleContexts
-           #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.06
+--                                                  ~ 2011.07.11
 -- |
 -- Module      :  Control.Unification
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
--- Portability :  semi-portable (MPTCs,...)
+-- Portability :  semi-portable (MPTCs, FlexibleContexts)
 --
 -- This module defines ...
 ----------------------------------------------------------------
@@ -21,7 +17,6 @@ module Control.Unification
     (
     -- * Data types, classes, etc
       module Control.Unification.Types
-    , UnificationFailure(..)
     
     -- * Operations on one term
     , getFreeVars
@@ -35,8 +30,14 @@ module Control.Unification
     -- * Operations on two terms
     , equals
     , equiv
+    -- , unifyOccurs
     , unify
     -- subsumes
+    
+    -- * Helper functions
+    , fullprune
+    , semiprune
+    , occursIn
     ) where
 
 import Prelude
@@ -49,46 +50,12 @@ import Data.Traversable
 import Control.Applicative
 import Control.Monad       (MonadPlus(..))
 import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.Error (MonadError(..), Error(..))
+import Control.Monad.Error (MonadError(..))
 import Control.Monad.State (MonadState(..), evalStateT, execStateT)
 import Control.Monad.MaybeK
 import Control.Monad.State.UnificationExtras
 import Control.Unification.Types
 ----------------------------------------------------------------
-----------------------------------------------------------------
-
--- TODO: provide zipper context so better error messages can be generated.
-data UnificationFailure v t
-    
-    = OccursIn (v (MutTerm v t)) (MutTerm v t)
-        -- ^ A cyclic term was encountered. These are not generally
-        -- accepted in either logic programming or type checking.
-    
-    | NonUnifiable (t (MutTerm v t)) (t (MutTerm v t))
-        -- ^ The top-most level of the terms are not unifiable. In
-        -- logic programming, this should just be treated as failure
-        -- in the search; in type checking, you may want the terms
-        -- for giving error messages.
-    
-    | UnknownError String
-        -- ^ Required for the @Error@ instance, which in turn is
-        -- required to appease @ErrorT@ in the MTL.
-
-
--- Can't derive this because it's an UndecidableInstance
-instance (Show (t (MutTerm v t)), Show (v (MutTerm v t))) =>
-    Show (UnificationFailure v t)
-    where
-    show (OccursIn     v  t)  = "OccursIn ("++show v++") ("++show t++")"
-    show (NonUnifiable tl tr) = "NonUnifiable ("++show tl++") ("++show tr++")"
-    show (UnknownError msg)   = "UnknownError: "++msg
-
--- This instance (and the constructor) is just for supporting MTL's 'ErrorT'.
-instance Error (UnificationFailure v t) where
-    noMsg  = UnknownError ""
-    strMsg = UnknownError
-
-
 ----------------------------------------------------------------
 
 -- BUG: this assumes there are no directly-cyclic chains!
@@ -139,6 +106,19 @@ semiprune =
                     v `bindVar` finalVar
                     return finalVar
 
+
+-- | Determine if a mutable variable appears free somewhere inside
+-- a term. Since occurs checks only make sense when we're about to
+-- bind the variable to the term, we do not bother checking for the
+-- possibility of the variable occuring bound in the term.
+occursIn :: (BindingMonad v t m) => v (MutTerm v t) -> MutTerm v t -> m Bool
+occursIn v t0 = do
+    t <- fullprune t0
+    case t of
+        MutTerm t' -> or <$> mapM (v `occursIn`) t' -- TODO: use foldlM instead
+        MutVar  v' -> return $! v `eqVar` v'
+
+----------------------------------------------------------------
 ----------------------------------------------------------------
 
 -- TODO: these assume pure variables, hence the spine cloning; but
@@ -151,8 +131,8 @@ semiprune =
 
 
 -- | Walk a term and determine what variables are still free. N.B.,
--- this function does not detect cyclic terms, but it will return
--- the correct answer for them in finite time.
+-- this function does not detect cyclic terms (i.e., throw errors),
+-- but it will return the correct answer for them in finite time.
 getFreeVars :: (BindingMonad v t m) => MutTerm v t -> m [v (MutTerm v t)]
 getFreeVars =
     \t -> IM.elems <$> evalStateT (loop t) IS.empty
@@ -165,7 +145,7 @@ getFreeVars =
                 seenVars <- get
                 let i = getVarID v
                 if IS.member i seenVars
-                    then return IM.empty
+                    then return IM.empty -- no (more) free vars down here
                     else do
                         put $! IS.insert i seenVars
                         mb <- lift $ lookupVar v
@@ -177,11 +157,12 @@ getFreeVars =
 -- | Apply the current bindings from the monad so that any remaining
 -- variables in the result must, therefore, be free. N.B., this
 -- expensively clones term structure and should only be performed
--- when a pure term is needed. This function does preserve sharing,
--- however that sharing is no longer observed by @m@.
+-- when a pure term is needed, or when 'OccursIn' exceptions must
+-- be forced. This function /does/ preserve sharing, however that
+-- sharing is no longer observed by the monad.
 --
 -- If any cyclic bindings are detected, then an 'OccursIn' exception
--- may be thrown.
+-- will be thrown.
 applyBindings
     ::  ( BindingMonad v t m
         , MonadTrans e
@@ -220,7 +201,7 @@ applyBindings =
 -- term structure and should only be performed when necessary.
 --
 -- If any cyclic bindings are detected, then an 'OccursIn' exception
--- may be thrown.
+-- will be thrown.
 freshen
     ::  ( BindingMonad v t m
         , MonadTrans e
@@ -406,7 +387,7 @@ unify =
             
             (MutTerm tl', MutTerm tr') ->
                 case zipMatch tl' tr' of
-                Nothing  -> lift . throwError $ NonUnifiable tl' tr'
+                Nothing  -> lift . throwError $ TermMismatch tl' tr'
                 Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
 
 ----------------------------------------------------------------
