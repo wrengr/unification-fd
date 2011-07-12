@@ -1,24 +1,26 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                    2011.06.30
+--                                                    2011.07.11
 -- |
--- Module      :  Test1
+-- Module      :  TestInteractive
 -- Copyright   :  Copyright (c) 2009--2011 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  test
 -- Portability :  non-portable
 --
--- Some basic tests to demonstrate correctness of the unification variants.
+-- An interactive testbed for playing around with things.
 ----------------------------------------------------------------
-module Test1 where
+module TestInteractive where
 import Data.Foldable
 import Data.Traversable
 import Data.List.Extras.Pair
 import Control.Applicative
 import Control.Monad.Identity
 import Control.Monad.Error
+import Control.Monad.MaybeK
+import Control.Monad.EitherK
 import Control.Unification
 import Control.Unification.Types
 import Control.Unification.IntVar
@@ -35,22 +37,37 @@ instance Unifiable S where
 
 type STerm = MutTerm IntVar S 
 
-test1 = print . runIdentity . runIntBindingT $ eg1
+s :: String -> [STerm] -> STerm
+s = (MutTerm .) . S
+
+foo1 :: STerm -> STerm
+foo1 x = s "foo" [x]
+
+foo2 :: STerm -> STerm -> STerm
+foo2 x y = s "foo" [x,y]
+
+bar1 :: STerm -> STerm
+bar1 x = s "bar" [x]
+
+baz0 :: STerm
+baz0 = s "baz" []
+
+withNVars :: (Show a) => Int -> ([STerm] -> IntBindingT S Identity a) -> IO ()
+withNVars = \n io -> print . runIdentity . runIntBindingT $ go [] n io
     where
-    eg1 = do
-        -- Fundeps needed to avoid signatures for all calls to freeVar
-        x <- freeVar
-        y <- freeVar
-        let t0   = MutTerm$S "0" []
-        let t10  = MutTerm$S "1" [MutTerm$S "0" []]
-        let t1x  = MutTerm$S "1" [MutVar x]
-        let t2xy = MutTerm$S "2" [MutVar x, MutVar y]
-        let t200 = MutTerm$S "2" [t0,t0]
-        runErrorT $ do
-            _ <- unify t10 t1x
-            _ <- unify (MutVar x) (MutVar y)
-            -- This should succeed, but will fail if the visited-set doesn't backtrack properly when comming up from recursion
-            unify t200 t2xy
+    go xs 0 io = io (reverse xs)
+    go xs n io = do x <- freeVar ; go (MutVar x : xs) (n-1) io
+
+test1 = withNVars 2 $ \[x,y] -> runErrorT $ do
+    let t10  = bar1 baz0
+        t1x  = bar1 x
+        t2xy = foo2 x y
+        t200 = foo2 baz0 baz0
+    --
+    _ <- unify t10 t1x
+    _ <- unify x y
+    -- This should succeed, but will fail if the visited-set doesn't backtrack properly when coming up from recursion
+    unify t200 t2xy
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

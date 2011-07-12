@@ -80,7 +80,7 @@ import Control.Applicative
 import Control.Monad       (MonadPlus(..))
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Error (MonadError(..))
-import Control.Monad.State (MonadState(..), evalStateT, execStateT)
+import Control.Monad.State (MonadState(..), StateT, evalStateT, execStateT)
 import Control.Monad.MaybeK
 import Control.Monad.State.UnificationExtras
 import Control.Unification.Types
@@ -146,6 +146,26 @@ occursIn v t0 = do
     case t of
         MutTerm t' -> or <$> mapM (v `occursIn`) t' -- TODO: use foldlM instead
         MutVar  v' -> return $! v `eqVar` v'
+
+
+-- TODO: use IM.insertWith or the like to do this in one pass
+-- | Update the visited-set with a seclaration that a variable has
+-- been seen with a given binding, or throw 'OccursIn' if the
+-- variable has already been seen.
+seenAs
+    ::  ( BindingMonad v t m
+        , MonadTrans e
+        , MonadError (UnificationFailure v t) (e m)
+        )
+    => v (MutTerm v t) -- ^
+    -> MutTerm v t     -- ^
+    -> StateT (IM.IntMap (MutTerm v t)) (e m) ()
+seenAs v t = do
+    seenVars <- get
+    case IM.lookup (getVarID v) seenVars of
+        Just t' -> lift . throwError $ OccursIn v t'
+        Nothing -> put $! IM.insert (getVarID v) t seenVars
+{-# INLINE seenAs #-}
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -305,7 +325,15 @@ infix 4 =:=, `unify`
 
 
 -- | 'subsumes'
-(<:=) :: a
+(<:=)
+    ::  ( BindingMonad v t m
+        , MonadTrans e
+        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
+        , MonadError (UnificationFailure v t) (e m)
+        )
+    => MutTerm v t -- ^
+    -> MutTerm v t -- ^
+    -> e m Bool
 (<:=) = subsumes
 infix 4 <:=, `subsumes`
 
@@ -496,14 +524,6 @@ unify =
     {-# INLINE (=:) #-}
     v =: t = lift . lift $ v `bindVar` t
     
-    -- TODO: use IM.insertWith or the like to do this in one pass
-    {-# INLINE seenAs #-}
-    v `seenAs` t = do
-        seenVars <- get
-        case IM.lookup (getVarID v) seenVars of
-            Just t' -> lift . throwError $ OccursIn v t'
-            Nothing -> put $! IM.insert (getVarID v) t seenVars
-    
     -- TODO: would it be beneficial to manually fuse @x <- lift m; y <- lift n@ to @(x,y) <- lift (m;n)@ everywhere we can?
     loop tl0 tr0 = do
         tl <- lift . lift $ semiprune tl0
@@ -555,9 +575,77 @@ unify =
                 Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
 
 ----------------------------------------------------------------
--- | Determine whether the left term subsumes the right term. That is, whereas @(tl =:= tr)@ will compute the most general substitution @s@ such that @(s tl === s tr)@, @(tl <:= tr)@ computes the most general substitution @s@ such that @(s tl === tr)@. This means that @tl@ is less defined than and consistent with @tr@.
-subsumes :: a
-subsumes = undefined
+-- TODO: can we find an efficient way to return the bindings directly instead of altering the monadic bindings? Maybe another StateT IntMap taking getVarID to the variable and its pseudo-bound term?
+--
+-- TODO: verify correctness
+-- TODO: redo with some codensity
+-- TODO: there should be some way to catch OccursIn errors and repair the bindings...
+
+-- | Determine whether the left term subsumes the right term. That
+-- is, whereas @(tl =:= tr)@ will compute the most general substitution
+-- @s@ such that @(s tl === s tr)@, @(tl <:= tr)@ computes the most
+-- general substitution @s@ such that @(s tl === tr)@. This means
+-- that @tl@ is less defined than and consistent with @tr@.
+--
+-- /N.B./, this function updates the monadic bindings just like
+-- 'unify' does. However, while the use cases for unification often
+-- want to keep the bindings around, the use cases for subsumption
+-- usually do not. Thus, you'll probably want to use a binding monad
+-- which supports backtracking in order to undo the changes.
+-- Unfortunately, leaving the monadic bindings unaltered and returning
+-- the necessary substitution directly imposes a performance penalty
+-- or else requires specifying too much about the implementation
+-- of variables.
+subsumes
+    ::  ( BindingMonad v t m
+        , MonadTrans e
+        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
+        , MonadError (UnificationFailure v t) (e m)
+        )
+    => MutTerm v t -- ^
+    -> MutTerm v t -- ^
+    -> e m Bool
+subsumes =
+    \tl tr -> evalStateT (loop tl tr) IM.empty
+    where
+    {-# INLINE (=:) #-}
+    v =: t = lift . lift $ do v `bindVar` t ; return True
+    
+    -- TODO: cf todos in 'unify'
+    loop tl0 tr0 = do
+        tl <- lift . lift $ semiprune tl0
+        tr <- lift . lift $ semiprune tr0
+        case (tl, tr) of
+            (MutVar vl', MutVar vr')
+                | vl' `eqVar` vr' -> return True
+                | otherwise       -> do
+                    mtl <- lift . lift $ lookupVar vl'
+                    mtr <- lift . lift $ lookupVar vr'
+                    case (mtl, mtr) of
+                        (Nothing,  Nothing ) -> vl' =: tr
+                        (Nothing,  Just _  ) -> vl' =: tr
+                        (Just _  , Nothing ) -> return False
+                        (Just tl', Just tr') ->
+                            localState $ do
+                                vl' `seenAs` tl'
+                                vr' `seenAs` tr'
+                                loop tl' tr'
+            
+            (MutVar vl',  MutTerm _  ) -> do
+                mtl <- lift . lift $ lookupVar vl'
+                case mtl of
+                    Nothing  -> vl' =: tr
+                    Just tl' -> localState $ do
+                        vl' `seenAs` tl'
+                        loop tl' tr
+            
+            (MutTerm _,   MutVar  _  ) -> return False
+            
+            (MutTerm tl', MutTerm tr') ->
+                case zipMatch tl' tr' of
+                Nothing  -> return False
+                Just tlr -> and <$> mapM (uncurry loop) tlr
+    
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.
