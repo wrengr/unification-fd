@@ -31,9 +31,16 @@ module Control.Unification.Ranked
     -- getSkolems  -- compute the skolem variables in a term; helpful?
     
     -- * Operations on two terms
-    -- equals      -- (raw) equality under bindings
-    -- equiv       -- alpha equivalence under bindings
+    -- ** Symbolic names
+    , (===)
+    , (=~=)
+    , (=:=)
+    -- (<:=)
+    -- ** Textual names
+    , equals
+    , equiv
     , unify
+    -- unifyOccurs
     -- subsumes
     ) where
 
@@ -48,9 +55,23 @@ import Control.Monad.Error (MonadError(..))
 import Control.Monad.State (MonadState(..), evalStateT)
 import Control.Monad.State.UnificationExtras
 import Control.Unification.Types
-import Control.Unification hiding (unify)
+import Control.Unification hiding (unify, (=:=))
 ----------------------------------------------------------------
 ----------------------------------------------------------------
+
+-- | 'unify'
+(=:=)
+    ::  ( RankedBindingMonad v t m
+        , MonadTrans e
+        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
+        , MonadError (UnificationFailure v t) (e m)
+        )
+    => MutTerm v t       -- ^
+    -> MutTerm v t       -- ^
+    -> e m (MutTerm v t) -- ^
+(=:=) = unify
+infix 4 =:=, `unify`
+
 
 -- TODO: keep in sync as we verify correctness.
 --

@@ -2,7 +2,8 @@
     - Moved UnificationFailure to Control.Unification.Types
     - Renamed NonUnifiable to TermMismatch
     - Control.Unification: exposed fullprune, semiprune, occursIn
-    - Control.Unification: added unifyOccurs
+    - Control.Unification: added unifyOccurs, subsumes
+    - Control.Unification: (re)added symbolic names for binary operators
 0.4.0 (2011-07-07):
     - Removed heterogeneous unification, and rewrote practically everything.
     - Added semipruning instead of full pruning.

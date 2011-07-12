@@ -49,11 +49,17 @@ module Control.Unification
     -- getSkolems  -- compute the skolem variables in a term; helpful?
     
     -- * Operations on two terms
+    -- ** Symbolic names
+    , (===)
+    , (=~=)
+    , (=:=)
+    , (<:=)
+    -- ** Textual names
     , equals
     , equiv
     , unify
     , unifyOccurs
-    -- subsumes
+    , subsumes
     
     -- * Helper functions
     -- | Client code should not need to use these functions, but
@@ -262,11 +268,54 @@ freshen =
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
+-- BUG: have to give the signatures for Haddock :(
 
--- TODO: redo this with some codensity. (MaybeK ())?
--- TODO: sharing? reason for failure?
+-- | 'equals'
+(===)
+    :: (BindingMonad v t m)
+    => MutTerm v t  -- ^
+    -> MutTerm v t  -- ^
+    -> m Bool       -- ^
+(===) = equals
+infix 4 ===, `equals`
+
+
+-- | 'equiv'
+(=~=)
+    :: (BindingMonad v t m)
+    => MutTerm v t               -- ^
+    -> MutTerm v t               -- ^
+    -> m (Maybe (IM.IntMap Int)) -- ^
+(=~=) = equiv
+infix 4 =~=, `equiv`
+
+
+-- | 'unify'
+(=:=)
+    ::  ( BindingMonad v t m
+        , MonadTrans e
+        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
+        , MonadError (UnificationFailure v t) (e m)
+        )
+    => MutTerm v t       -- ^
+    -> MutTerm v t       -- ^
+    -> e m (MutTerm v t) -- ^
+(=:=) = unify
+infix 4 =:=, `unify`
+
+
+-- | 'subsumes'
+(<:=) :: a
+(<:=) = subsumes
+infix 4 <:=, `subsumes`
+
+----------------------------------------------------------------
+
+-- TODO: should we offer a variant which gives the reason for failure?
 --
--- | Determine if two terms are structurally equal. N.B., this
+-- | Determine if two terms are structurally equal. This is essentially
+-- equivalent to @('==')@ except that it does not require applying
+-- bindings before comparing, so it is more efficient. N.B., this
 -- function does not consider alpha-variance, and thus variables
 -- with different names are considered unequal. Cf., 'equiv'.
 equals
@@ -274,26 +323,33 @@ equals
     => MutTerm v t  -- ^
     -> MutTerm v t  -- ^
     -> m Bool       -- ^
-equals tl0 tr0 = do
-    tl <- semiprune tl0
-    tr <- semiprune tr0
-    case (tl, tr) of
-        (MutVar vl', MutVar vr')
-            | vl' `eqVar` vr' -> return True
-            | otherwise       -> do
-                mtl <- lookupVar vl'
-                mtr <- lookupVar vr'
-                case (mtl, mtr) of
-                    (Nothing,  Nothing ) -> return False
-                    (Nothing,  Just _  ) -> return False
-                    (Just _  , Nothing ) -> return False
-                    (Just tl', Just tr') -> equals tl' tr' -- BUG: should just jump to match
-        (MutVar  _,   MutTerm _  ) -> return False
-        (MutTerm _,   MutVar  _  ) -> return False
-        (MutTerm tl', MutTerm tr') ->
-            case zipMatch tl' tr' of
-            Nothing  -> return False
-            Just tlr -> and <$> mapM (uncurry equals) tlr -- TODO: use fold?
+equals =
+    \tl tr -> do
+        mb <- runMaybeKT (loop tl tr)
+        case mb of
+            Nothing -> return False
+            Just () -> return True
+    where
+    loop tl0 tr0 = do
+        tl <- lift $ semiprune tl0
+        tr <- lift $ semiprune tr0
+        case (tl, tr) of
+            (MutVar vl', MutVar vr')
+                | vl' `eqVar` vr' -> return () -- success
+                | otherwise       -> do
+                    mtl <- lift $ lookupVar vl'
+                    mtr <- lift $ lookupVar vr'
+                    case (mtl, mtr) of
+                        (Nothing,  Nothing ) -> mzero
+                        (Nothing,  Just _  ) -> mzero
+                        (Just _,   Nothing ) -> mzero
+                        (Just tl', Just tr') -> loop tl' tr' -- TODO: should just jump to match
+            (MutVar  _,   MutTerm _  ) -> mzero
+            (MutTerm _,   MutVar  _  ) -> mzero
+            (MutTerm tl', MutTerm tr') ->
+                case zipMatch tl' tr' of
+                Nothing  -> mzero
+                Just tlr -> mapM_ (uncurry loop) tlr
 
 
 -- TODO: is that the most helpful return type?
@@ -497,6 +553,11 @@ unify =
                 case zipMatch tl' tr' of
                 Nothing  -> lift . throwError $ TermMismatch tl' tr'
                 Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
+
+----------------------------------------------------------------
+-- | Determine whether the left term subsumes the right term. That is, whereas @(tl =:= tr)@ will compute the most general substitution @s@ such that @(s tl === s tr)@, @(tl <:= tr)@ computes the most general substitution @s@ such that @(s tl === tr)@. This means that @tl@ is less defined than and consistent with @tr@.
+subsumes :: a
+subsumes = undefined
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.
