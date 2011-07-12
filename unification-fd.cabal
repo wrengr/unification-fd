@@ -51,8 +51,7 @@ Library
                    , Control.Unification.Ranked.STVar
                    , Control.Unification.Ranked.IntVar
     
-    Build-Depends:   transformers >= 0.2.0
-                   , logict       >= 0.4
+    Build-Depends:   logict       >= 0.4
                    -- Require a version of base with Applicative.
                    -- We refuse to do without it any longer.
                    , base         >= 2.0
