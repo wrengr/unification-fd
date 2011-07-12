@@ -11,12 +11,33 @@
 -- Stability   :  experimental
 -- Portability :  semi-portable (MPTCs, FlexibleContexts)
 --
--- This module defines ...
+-- This module provides first-order structural unification over
+-- general structure types. It also provides the standard suite of
+-- functions accompanying unification (applying bindings, getting
+-- free variables, etc.).
+--
+-- The implementation makes use of numerous optimization techniques.
+-- First, we use path compression everywhere (for weighted path
+-- compression see "Control.Unification.Ranked"). Second, we replace
+-- the occurs-check with visited-sets. Third, we use a technique
+-- for aggressive opportunistic observable sharing; that is, we
+-- track as much sharing as possible in the bindings (without
+-- introducing new variables), so that we can compare bound variables
+-- directly and therefore eliminate redundant unifications.
 ----------------------------------------------------------------
 module Control.Unification
     (
     -- * Data types, classes, etc
-      module Control.Unification.Types
+    -- ** Mutable terms
+      MutTerm(..)
+    , freeze
+    , unfreeze
+    -- ** Errors
+    , UnificationFailure(..)
+    -- ** Basic type classes
+    , Unifiable(..)
+    , Variable(..)
+    , BindingMonad(..)
     
     -- * Operations on one term
     , getFreeVars
@@ -35,6 +56,8 @@ module Control.Unification
     -- subsumes
     
     -- * Helper functions
+    -- | Client code should not need to use these functions, but
+    -- they are exposed just in case they are needed.
     , fullprune
     , semiprune
     , occursIn
@@ -60,9 +83,9 @@ import Control.Unification.Types
 
 -- BUG: this assumes there are no directly-cyclic chains!
 --
--- | Canonicalize a chain of mutable variables so they all point
--- directly to the term at the end of the chain (or the free variable,
--- if the chain is unbound), and return that end.
+-- | Canonicalize a chain of variables so they all point directly
+-- to the term at the end of the chain (or the free variable, if
+-- the chain is unbound), and return that end.
 --
 -- N.B., this is almost never the function you want. Cf., 'semiprune'.
 fullprune :: (BindingMonad v t m) => MutTerm v t -> m (MutTerm v t)
@@ -81,11 +104,11 @@ fullprune t0 =
 
 -- BUG: this assumes there are no directly-cyclic chains!
 --
--- | Canonicalize a chain of mutable variables so they all point
--- directly to the last variable in the chain, regardless of whether
--- it is bound or not. This allows detecting many cases where
--- multiple variables point to the same term, thereby allowing us
--- to avoid re-unifying the term they point to.
+-- | Canonicalize a chain of variables so they all point directly
+-- to the last variable in the chain, regardless of whether it is
+-- bound or not. This allows detecting many cases where multiple
+-- variables point to the same term, thereby allowing us to avoid
+-- re-unifying the term they point to.
 semiprune :: (BindingMonad v t m) => MutTerm v t -> m (MutTerm v t)
 semiprune =
     \t0 ->
@@ -107,10 +130,10 @@ semiprune =
                     return finalVar
 
 
--- | Determine if a mutable variable appears free somewhere inside
--- a term. Since occurs checks only make sense when we're about to
--- bind the variable to the term, we do not bother checking for the
--- possibility of the variable occuring bound in the term.
+-- | Determine if a variable appears free somewhere inside a term.
+-- Since occurs checks only make sense when we're about to bind the
+-- variable to the term, we do not bother checking for the possibility
+-- of the variable occuring bound in the term.
 occursIn :: (BindingMonad v t m) => v (MutTerm v t) -> MutTerm v t -> m Bool
 occursIn v t0 = do
     t <- fullprune t0
@@ -315,8 +338,8 @@ equiv =
 -- | A variant of 'unify' which uses 'occursIn' instead of visited-sets.
 -- This should only be used when eager throwing of 'OccursIn' errors
 -- is absolutely essential (or for testing the correctness of
--- @unify@). Performing the occurs-check is expensive, not only is
--- it slow but it's asymptotically slow since it can cause the same
+-- @unify@). Performing the occurs-check is expensive. Not only is
+-- it slow, it's asymptotically slow since it can cause the same
 -- subterm to be traversed multiple times.
 unifyOccurs
     ::  ( BindingMonad v t m

@@ -57,7 +57,7 @@ import Control.Monad.Error (MonadError(..))
 --
 -- Another benefit over MTL's @Error@ is that it doesn't artificially
 -- restrict the error type. In fact, there's no reason why @e@ must
--- denote ``errors'' per se. This could also denote computations
+-- denote \"errors\" per se. This could also denote computations
 -- which short-circuit with the final answer, or similar methods
 -- of non-local control flow.
 --
@@ -79,7 +79,8 @@ toEitherK (Right a) = return a
 {-# INLINE toEitherK #-}
 
 
--- | Throw an error in the @EitherK@ monad.
+-- | Throw an error in the @EitherK@ monad. This is identical to
+-- 'throwError'.
 throwEitherK :: e -> EitherK e a
 throwEitherK e = EK (\_ -> Left e)
 {-# INLINE throwEitherK #-}
@@ -166,7 +167,8 @@ lowerEitherK = liftM toEitherK . runEitherKT
 {-# INLINE lowerEitherK #-}
 
 
--- | Throw an error in the @EitherKT@ monad.
+-- | Throw an error in the @EitherKT@ monad. This is identical to
+-- 'throwError'.
 throwEitherKT :: (Monad m) => e -> EitherKT e m a
 throwEitherKT e = EKT (\_ -> return (Left e))
 {-# INLINE throwEitherKT #-}

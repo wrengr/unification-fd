@@ -53,11 +53,12 @@ data MutTerm v t
     = MutVar  !(v (MutTerm v t))
     | MutTerm !(t (MutTerm v t))
 
+
 instance (Show (v (MutTerm v t)), Show (t (MutTerm v t))) =>
     Show (MutTerm v t)
     where
-    show (MutVar  v) = show v
-    show (MutTerm t) = show t
+    showsPrec p (MutVar  v) = showsPrec p v
+    showsPrec p (MutTerm t) = showsPrec p t
 
 
 -- | /O(n)/. Embed a pure term as a mutable term.
@@ -68,7 +69,7 @@ unfreeze = MutTerm . fmap unfreeze . unFix
 -- | /O(n)/. Extract a pure term from a mutable term, or return
 -- @Nothing@ if the mutable term actually contains variables. N.B.,
 -- this function is pure, so you should manually apply bindings
--- before calling it; cf., 'freezeM'.
+-- before calling it.
 freeze :: (Traversable t) => MutTerm v t -> Maybe (Fix t)
 freeze (MutVar  _) = Nothing
 freeze (MutTerm t) = Fix <$> mapM freeze t
@@ -81,8 +82,7 @@ freeze (MutTerm t) = Fix <$> mapM freeze t
 -- unification and related functions. While many of the functions
 -- could be given more accurate types if we used ad-hoc combinations
 -- of these constructors (i.e., because they can only throw one of
--- the errors), the extra complexity is not yet considered worth
--- it.
+-- the errors), the extra complexity is not considered worth it.
 data UnificationFailure v t
     
     = OccursIn (v (MutTerm v t)) (MutTerm v t)
@@ -96,12 +96,12 @@ data UnificationFailure v t
         --
         -- Note that since, by default, the library uses visited-sets
         -- instead of the occurs-check these errors will be thrown
-        -- at the point where the cycle is dereferenced\/unfolded
+        -- at the point where the cycle is dereferenced\/unrolled
         -- (e.g., when applying bindings), instead of at the time
-        -- when the variable is bound to the cycle. However, the
-        -- arguments to this constructor should express the same
-        -- context as if we had performed the occurs-check, in order
-        -- for error messages to be intelligable.
+        -- when the cycle is created. However, the arguments to
+        -- this constructor should express the same context as if
+        -- we had performed the occurs-check, in order for error
+        -- messages to be intelligable.
     
     | TermMismatch (t (MutTerm v t)) (t (MutTerm v t))
         -- ^ The top-most level of the terms do not match (according
@@ -131,8 +131,12 @@ instance Error (UnificationFailure v t) where
 
 ----------------------------------------------------------------
 
--- | An implementation of syntactically unifiable structure.
+-- | An implementation of syntactically unifiable structure. The
+-- @Traversable@ constraint is there because we also require terms
+-- to be functors and require the distributivity of 'sequence' or
+-- 'mapM'.
 class (Traversable t) => Unifiable t where
+    
     -- | Perform one level of equality testing for terms. If the
     -- term constructors are unequal then return @Nothing@; if they
     -- are equal, then return the one-level spine filled with pairs
@@ -140,10 +144,17 @@ class (Traversable t) => Unifiable t where
     zipMatch :: t a -> t b -> Maybe (t (a,b))
 
 
--- | An implementation of unification variables.
+-- | An implementation of unification variables. Note that we do
+-- not require variables to be functors. Thus, it does not matter
+-- whether you give them vacuous functor instances, or use clever
+-- tricks like @CoYoneda STRef@ to give them real functor instances.
 class Variable v where
+    
     -- | Determine whether two variables are equal /as variables/,
-    -- without considering what they are bound to.
+    -- without considering what they are bound to. The default
+    -- implementation is:
+    --
+    -- > eqVar x y = getVarID x == getVarID y
     eqVar :: v a -> v b -> Bool
     eqVar x y = getVarID x == getVarID y
     
@@ -158,25 +169,33 @@ class Variable v where
 -- stored in a monad. These three functionalities could be split
 -- apart, but are combined in order to simplify contexts. Also,
 -- because most functions reading bindings will also perform path
--- compression, there's no way to distinguish ``true'' mutation
+-- compression, there's no way to distinguish \"true\" mutation
 -- from mere path compression.
+--
+-- The superclass constraints are there to simplify contexts, since
+-- we make the same assumptions everywhere we use @BindingMonad@.
 
 class (Unifiable t, Variable v, Applicative m, Monad m) =>
     BindingMonad v t m | m -> v t
     where
     
-    -- | Given a variable pointing to @t@, return the @t@ it's bound
-    -- to (or @Nothing@ if the variable is unbound).
+    -- | Given a variable pointing to @MutTerm v t@, return the
+    -- term it's bound to, or @Nothing@ if the variable is unbound.
     lookupVar :: v (MutTerm v t) -> m (Maybe (MutTerm v t))
-
+    
+    
     -- | Generate a new free variable guaranteed to be fresh in
     -- @m@.
     freeVar :: m (v (MutTerm v t))
     
+    
     -- | Generate a new variable (fresh in @m@) bound to the given
-    -- term.
+    -- term. The default implementation is:
+    --
+    -- > newVar t = do { v <- freeVar ; bindVar v t ; return v }
     newVar :: MutTerm v t -> m (v (MutTerm v t))
     newVar t = do { v <- freeVar ; bindVar v t ; return v }
+    
     
     -- | Bind a variable to a term, overriding any previous binding.
     bindVar :: v (MutTerm v t) -> MutTerm v t -> m ()
@@ -185,7 +204,7 @@ class (Unifiable t, Variable v, Applicative m, Monad m) =>
 ----------------------------------------------------------------
 -- | The target of variables for 'RankedBindingMonad's. In order
 -- to support weighted path compression, each variable is bound to
--- both another term (possibly) and also a ``rank'' which is related
+-- both another term (possibly) and also a \"rank\" which is related
 -- to the length of the variable chain to the term it's ultimately
 -- bound to.
 --
@@ -219,14 +238,17 @@ instance Monoid (Rank v t) where
 -- supported by 'BindingMonad'.
 
 class (BindingMonad v t m) => RankedBindingMonad v t m | m -> v t where
-    -- | Given a variable pointing to @t@, return its rank and the
-    -- @t@ it's bound to (or @Nothing@ if the variable is unbound).
+    -- | Given a variable pointing to @MutTerm v t@, return its
+    -- rank and the term it's bound to.
     lookupRankVar :: v (MutTerm v t) -> m (Rank v t)
     
     -- | Increase the rank of a variable by one.
     incrementRank :: v (MutTerm v t) -> m ()
     
-    -- | Bind a variable to a term and increment the rank at the same time.
+    -- | Bind a variable to a term and increment the rank at the
+    -- same time. The default implementation is:
+    --
+    -- > incrementBindVar v t = do { incrementRank v ; bindVar v t }
     incrementBindVar :: v (MutTerm v t) -> MutTerm v t -> m ()
     incrementBindVar v t = do { incrementRank v ; bindVar v t }
 

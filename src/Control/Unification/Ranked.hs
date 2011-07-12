@@ -1,9 +1,5 @@
 
-{-# LANGUAGE MultiParamTypeClasses
-           , UndecidableInstances
-           , FlexibleInstances
-           , FlexibleContexts
-           #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
 --                                                  ~ 2011.07.11
@@ -13,7 +9,7 @@
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  highly experimental
--- Portability :  semi-portable (MPTCs,...)
+-- Portability :  semi-portable (MPTCs, FlexibleContexts)
 --
 -- This module provides the API of "Control.Unification" except
 -- using 'RankedBindingMonad' where appropriate. This module (and
@@ -22,7 +18,7 @@
 ----------------------------------------------------------------
 module Control.Unification.Ranked
     (
-    -- * Terms, and other ...
+    -- * Data types, classes, etc
       module Control.Unification.Types
     
     -- * Operations on one term

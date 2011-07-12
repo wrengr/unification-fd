@@ -1,4 +1,4 @@
-0.4.1 (2011-XX-XX):
+0.5.0 (2011-XX-XX):
     - Moved UnificationFailure to Control.Unification.Types
     - Renamed NonUnifiable to TermMismatch
     - Control.Unification: exposed fullprune, semiprune, occursIn

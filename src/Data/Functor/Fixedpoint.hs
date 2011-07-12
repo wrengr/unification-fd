@@ -9,7 +9,7 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 
 ----------------------------------------------------------------
---                                                    2011.06.30
+--                                                    2011.07.11
 -- |
 -- Module      :  Data.Functor.Fixedpoint
 -- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
@@ -22,11 +22,18 @@
 -- For Haskell the least and greatest fixed points coincide, so we
 -- needn't distinguish them. This abstract nonsense is helpful in
 -- conjunction with other category theoretic tricks like Swierstra's
--- coproduct types in "Control.Functor.Coproduct". For more on
+-- functor coproducts (not provided by this package). For more on
 -- the utility of two-level recursive types, see:
 --
 --     * Tim Sheard (2001) /Generic Unification via Two-Level Types/
 --         /and Paramterized Modules/, Functional Pearl, ICFP.
+--
+--     * Tim Sheard & Emir Pasalic (2004) /Two-Level Types and/
+--         /Parameterized Modules/. JFP 14(5): 547--587. This is
+--         an expanded version of Sheard (2001) with new examples.
+--
+--     * Wouter Swierstra (2008) /Data types a la carte/, Functional
+--         Pearl. JFP 18: 423--436.
 ----------------------------------------------------------------
 
 module Data.Functor.Fixedpoint

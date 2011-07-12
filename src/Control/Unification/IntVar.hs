@@ -48,7 +48,7 @@ import Control.Unification.Types
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
--- | A ``mutable'' unification variable implemented by an integer.
+-- | A \"mutable\" unification variable implemented by an integer.
 -- This provides an entirely pure alternative to truly mutable
 -- alternatives (like @STVar@), which can make backtracking easier.
 --
