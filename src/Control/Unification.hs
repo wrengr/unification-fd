@@ -30,8 +30,8 @@ module Control.Unification
     -- * Operations on two terms
     , equals
     , equiv
-    -- , unifyOccurs
     , unify
+    , unifyOccurs
     -- subsumes
     
     -- * Helper functions
@@ -310,6 +310,90 @@ equiv =
 
 
 ----------------------------------------------------------------
+-- Not quite unify2 from the benchmarks, since we do AOOS.
+--
+-- | A variant of 'unify' which uses 'occursIn' instead of visited-sets.
+-- This should only be used when eager throwing of 'OccursIn' errors
+-- is absolutely essential (or for testing the correctness of
+-- @unify@). Performing the occurs-check is expensive, not only is
+-- it slow but it's asymptotically slow since it can cause the same
+-- subterm to be traversed multiple times.
+unifyOccurs
+    ::  ( BindingMonad v t m
+        , MonadTrans e
+        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
+        , MonadError (UnificationFailure v t) (e m)
+        )
+    => MutTerm v t       -- ^
+    -> MutTerm v t       -- ^
+    -> e m (MutTerm v t) -- ^
+unifyOccurs = loop
+    where
+    {-# INLINE (=:) #-}
+    v =: t = lift $ v `bindVar` t
+    
+    {-# INLINE acyclicBindVar #-}
+    acyclicBindVar v t = do
+        b <- lift $ v `occursIn` t
+        if b
+            then throwError $ OccursIn v t
+            else v =: t
+    
+    -- TODO: cf todos in 'unify'
+    loop tl0 tr0 = do
+        tl <- lift $ semiprune tl0
+        tr <- lift $ semiprune tr0
+        case (tl, tr) of
+            (MutVar vl', MutVar vr')
+                | vl' `eqVar` vr' -> return tr
+                | otherwise       -> do
+                    mtl <- lift $ lookupVar vl'
+                    mtr <- lift $ lookupVar vr'
+                    case (mtl, mtr) of
+                        (Nothing,  Nothing ) -> do
+                            vl' =: tr
+                            return tr
+                        (Nothing,  Just _  ) -> do
+                            vl' `acyclicBindVar` tr
+                            return tr
+                        (Just _  , Nothing ) -> do
+                            vr' `acyclicBindVar` tl
+                            return tl
+                        (Just tl', Just tr') -> do
+                            t <- loop tl' tr'
+                            vr' =: t
+                            vl' =: tr
+                            return tr
+            
+            (MutVar vl', MutTerm _) -> do
+                mtl <- lift $ lookupVar vl'
+                case mtl of
+                    Nothing  -> do
+                        vl' `acyclicBindVar` tr
+                        return tl
+                    Just tl' -> do
+                        t <- loop tl' tr
+                        vl' =: t
+                        return tl
+            
+            (MutTerm _, MutVar vr') -> do
+                mtr <- lift $ lookupVar vr'
+                case mtr of
+                    Nothing  -> do
+                        vr' `acyclicBindVar` tl
+                        return tr
+                    Just tr' -> do
+                        t <- loop tl tr'
+                        vr' =: t
+                        return tr
+            
+            (MutTerm tl', MutTerm tr') ->
+                case zipMatch tl' tr' of
+                Nothing  -> throwError $ TermMismatch tl' tr'
+                Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
+
+
+----------------------------------------------------------------
 -- TODO: verify correctness, especially for the visited-set stuff.
 -- 
 -- | Unify two terms, or throw an error with an explanation of why
@@ -341,6 +425,7 @@ unify =
             Just t' -> lift . throwError $ OccursIn v t'
             Nothing -> put $! IM.insert (getVarID v) t seenVars
     
+    -- TODO: would it be beneficial to manually fuse @x <- lift m; y <- lift n@ to @(x,y) <- lift (m;n)@ everywhere we can?
     loop tl0 tr0 = do
         tl <- lift . lift $ semiprune tl0
         tr <- lift . lift $ semiprune tr0
