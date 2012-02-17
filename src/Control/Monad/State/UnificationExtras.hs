@@ -46,20 +46,20 @@ liftReader = liftReaderT
 
 -- | A strict version of 'modify'.
 modify' :: (MonadState s m) => (s -> s) -> m ()
+{-# INLINE modify' #-}
 modify' f = do
     s <- get
     put $! f s
-{-# INLINE modify' #-}
 
 
 -- | Run a state action and undo the state changes at the end.
 localState :: (MonadState s m) => m a -> m a
+{-# INLINE localState #-}
 localState m = do
     s <- get
     x <- m
     put s
     return x
-{-# INLINE localState #-}
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

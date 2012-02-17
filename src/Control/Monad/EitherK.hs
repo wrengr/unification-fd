@@ -67,41 +67,41 @@ newtype EitherK e a = EK (forall r. (a -> Either e r) -> Either e r)
 
 -- | Execute an @EitherK@ and return the concrete @Either@ encoding.
 runEitherK :: EitherK e a -> Either e a
-runEitherK (EK m) = m Right
 {-# INLINE runEitherK #-}
+runEitherK (EK m) = m Right
 
 
 -- | Lift an @Either@ into an @EitherK@.
 toEitherK :: Either e a -> EitherK e a
+{-# INLINE toEitherK #-}
 toEitherK (Left  e) = throwEitherK e
 toEitherK (Right a) = return a
-{-# INLINE toEitherK #-}
 
 
 -- | Throw an error in the @EitherK@ monad. This is identical to
 -- 'throwError'.
 throwEitherK :: e -> EitherK e a
-throwEitherK e = EK (\_ -> Left e)
 {-# INLINE throwEitherK #-}
+throwEitherK e = EK (\_ -> Left e)
 
 
 -- | Handle errors in the @EitherK@ monad. N.B., this type is more
 -- general than that of 'catchError', allowing the type of the
 -- errors to change.
 catchEitherK :: EitherK e a -> (e -> EitherK f a) -> EitherK f a
-catchEitherK m handler = eitherK handler return m
 {-# INLINE catchEitherK #-}
+catchEitherK m handler = eitherK handler return m
 
 
 -- | A version of 'either' on @EitherK@, for convenience. N.B.,
 -- using this function inserts a case match, reducing the range of
 -- short-circuiting.
 eitherK :: (e -> b) -> (a -> b) -> EitherK e a -> b
+{-# INLINE eitherK #-}
 eitherK left right m =
     case runEitherK m of
         Left  e -> left  e
         Right a -> right a
-{-# INLINE eitherK #-}
 
 
 instance Functor (EitherK e) where
@@ -141,36 +141,36 @@ newtype EitherKT e m a =
 
 -- | Execute an @EitherKT@ and return the concrete @Either@ encoding.
 runEitherKT :: (Monad m) => EitherKT e m a -> m (Either e a)
-runEitherKT (EKT m) = m (return . Right)
 {-# INLINE runEitherKT #-}
+runEitherKT (EKT m) = m (return . Right)
 
 
 -- | Lift an @Either@ into an @EitherKT@.
 toEitherKT :: (Monad m) => Either e a -> EitherKT e m a
+{-# INLINE toEitherKT #-}
 toEitherKT (Left  e) = throwEitherKT e
 toEitherKT (Right a) = return a
-{-# INLINE toEitherKT #-}
 
 
 -- TODO: isn't there a better implementation that doesn't lose shortcircuiting?
 -- | Lift an @EitherK@ into an @EitherKT@.
 liftEitherK :: (Monad m) => EitherK e a -> EitherKT e m a
-liftEitherK = toEitherKT . runEitherK
 {-# INLINE liftEitherK #-}
+liftEitherK = toEitherKT . runEitherK
 
 
 -- TODO: is there a better implementation?
 -- | Lower an @EitherKT@ into an @EitherK@.
 lowerEitherK :: (Monad m) => EitherKT e m a -> m (EitherK e a)
-lowerEitherK = liftM toEitherK . runEitherKT
 {-# INLINE lowerEitherK #-}
+lowerEitherK = liftM toEitherK . runEitherKT
 
 
 -- | Throw an error in the @EitherKT@ monad. This is identical to
 -- 'throwError'.
 throwEitherKT :: (Monad m) => e -> EitherKT e m a
-throwEitherKT e = EKT (\_ -> return (Left e))
 {-# INLINE throwEitherKT #-}
+throwEitherKT e = EKT (\_ -> return (Left e))
 
 
 -- | Handle errors in the @EitherKT@ monad. N.B., this type is more
@@ -179,12 +179,12 @@ throwEitherKT e = EKT (\_ -> return (Left e))
 catchEitherKT
     :: (Monad m)
     => EitherKT e m a -> (e -> EitherKT f m a) -> EitherKT f m a
+{-# INLINE catchEitherKT #-}
 catchEitherKT m handler = EKT $ \k -> do
     ea <- runEitherKT m
     case ea of
         Left  e -> case handler e of EKT m' -> m' k
         Right a -> k a
-{-# INLINE catchEitherKT #-}
 
 
 instance Functor (EitherKT e m) where

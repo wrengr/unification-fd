@@ -95,9 +95,9 @@ instance (Ord (f (Fix f))) => Ord (Fix f) where
 -- | A higher-order map taking a natural transformation @(f -> g)@
 -- and lifting it to operate on @Fix@.
 hmap :: (Functor f, Functor g) => (forall a. f a -> g a) -> Fix f -> Fix g
+{-# INLINE [0] hmap #-}
 hmap eps = ana (eps . unFix)
     -- == cata (Fix . eps) -- But the anamorphism is a better producer.
-{-# INLINE [0] hmap #-}
 
 {-# RULES
 "hmap id"
@@ -113,8 +113,8 @@ hmap eps = ana (eps . unFix)
 hmapM
     :: (Functor f, Traversable g, Monad m)
     => (forall a. f a -> m (g a)) -> Fix f -> m (Fix g)
-hmapM eps = anaM (eps . unFix)
 {-# INLINE [0] hmapM #-}
+hmapM eps = anaM (eps . unFix)
 
 {-# RULES
 "hmapM return"                                  hmapM return = return
@@ -126,8 +126,8 @@ hmapM eps = anaM (eps . unFix)
 -- is, this maps the function over the first layer of recursive
 -- structure.
 ymap :: (Functor f) => (Fix f -> Fix f) -> Fix f -> Fix f
-ymap f = Fix . fmap f . unFix
 {-# INLINE [0] ymap #-}
+ymap f = Fix . fmap f . unFix
 
 {-# RULES
 "ymap id"                          ymap id = id
@@ -136,9 +136,10 @@ ymap f = Fix . fmap f . unFix
 
 
 -- | A monadic variant of 'ymap'.
-ymapM :: (Traversable f, Monad m) => (Fix f -> m (Fix f)) -> Fix f -> m (Fix f)
-ymapM f = liftM Fix . mapM f . unFix
+ymapM :: (Traversable f, Monad m)
+      => (Fix f -> m (Fix f)) -> Fix f -> m (Fix f)
 {-# INLINE ymapM #-}
+ymapM f = liftM Fix . mapM f . unFix
 
 {-# RULES
 "ymapM id"                          ymapM return = return
@@ -152,8 +153,8 @@ ymapM f = liftM Fix . mapM f . unFix
 -- | Take a Church encoding of a fixed point into the data
 -- representation of the fixed point.
 build :: (Functor f) => (forall r. (f r -> r) -> r) -> Fix f
-build g = g Fix
 {-# INLINE [0] build #-}
+build g = g Fix
 
 -- N.B., the signature is required on @g@ in order to be Rank-2.
 -- The signature is required on @phi@ in order to bring @f@ into
@@ -169,10 +170,10 @@ build g = g Fix
 -- This function applies the @f@-algebra from the bottom up over
 -- @Fix f@ to create some residual value.
 cata :: (Functor f) => (f a -> a) -> (Fix f -> a)
+{-# INLINE [0] cata #-}
 cata phi = self
     where
     self = phi . fmap self . unFix
-{-# INLINE [0] cata #-}
 
 {-# RULES
 "cata-refl"
@@ -198,10 +199,10 @@ cata phi = self
 --
 -- N.B., this orders the side effects from the bottom up.
 cataM :: (Traversable f, Monad m) => (f a -> m a) -> (Fix f -> m a)
+{-# INLINE cataM #-}
 cataM phiM = self
     where
     self = phiM <=< (mapM self . unFix)
-{-# INLINE cataM #-}
 
 -- TODO: other rules for cataM
 {-# RULES
@@ -218,16 +219,16 @@ cataM phiM = self
 -- If you don't like either @fmap@ or @cata@, then maybe this is
 -- what you were thinking?
 ycata :: (Functor f) => (Fix f -> Fix f) -> Fix f -> Fix f
-ycata f = cata (f . Fix)
 {-# INLINE ycata #-}
+ycata f = cata (f . Fix)
 
 
 -- TODO: remove this, or add similar versions for ana* and hylo*?
 -- | Monadic variant of 'ycata'.
 ycataM :: (Traversable f, Monad m)
        => (Fix f -> m (Fix f)) -> Fix f -> m (Fix f)
-ycataM f = cataM (f . Fix)
 {-# INLINE ycataM #-}
+ycataM f = cataM (f . Fix)
 
 
 ----------------------------------------------------------------
@@ -235,10 +236,10 @@ ycataM f = cataM (f . Fix)
 -- functor. This function applies an @f@-coalgebra from the top
 -- down to expand a seed into a @Fix f@.
 ana :: (Functor f) => (a -> f a) -> (a -> Fix f)
+{-# INLINE [0] ana #-}
 ana psi = self
     where
     self = Fix . fmap self . psi
-{-# INLINE [0] ana #-}
 
 
 {-# RULES
@@ -266,10 +267,10 @@ ana psi = self
 --
 -- N.B., this orders the side effects from the top down.
 anaM :: (Traversable f, Monad m) => (a -> m (f a)) -> (a -> m (Fix f))
+{-# INLINE anaM #-}
 anaM psiM = self
     where
     self = (liftM Fix . mapM self) <=< psiM
-{-# INLINE anaM #-}
 
 
 ----------------------------------------------------------------
@@ -281,10 +282,10 @@ anaM psiM = self
 
 -- | @hylo phi psi == cata phi . ana psi@
 hylo :: (Functor f) => (f b -> b) -> (a -> f a) -> (a -> b)
+{-# INLINE hylo #-}
 hylo phi psi = self
     where
     self = phi . fmap self . psi
-{-# INLINE hylo #-}
 
 -- TODO: rules for hylo?
 
@@ -292,10 +293,10 @@ hylo phi psi = self
 -- | @hyloM phiM psiM == cataM phiM <=< anaM psiM@
 hyloM :: (Traversable f, Monad m)
       => (f b -> m b) -> (a -> m (f a)) -> (a -> m b)
+{-# INLINE hyloM #-}
 hyloM phiM psiM = self
     where
     self = phiM <=< mapM self <=< psiM
-{-# INLINE hyloM #-}
 
 -- TODO: rules for hyloM?
 

@@ -59,15 +59,15 @@ newtype MaybeK a = MK (forall r. (a -> Maybe r) -> Maybe r)
 
 -- | Execute the @MaybeK@ and return the concrete @Maybe@ encoding.
 runMaybeK :: MaybeK a -> Maybe a
-runMaybeK (MK m) = m return
 {-# INLINE runMaybeK #-}
+runMaybeK (MK m) = m return
 
 
 -- | Lift a @Maybe@ into @MaybeK@.
 toMaybeK :: Maybe a -> MaybeK a
+{-# INLINE toMaybeK #-}
 toMaybeK Nothing  = mzero
 toMaybeK (Just a) = return a
-{-# INLINE toMaybeK #-}
 
 
 -- | A version of 'maybe' for convenience. This is almost identical
@@ -75,11 +75,11 @@ toMaybeK (Just a) = return a
 -- as well as handling @Nothing@ errors. If you only want to handle
 -- the errors, use 'mplus' instead.
 maybeK :: b -> (a -> b) -> MaybeK a -> b
+{-# INLINE maybeK #-}
 maybeK nothing just m =
     case runMaybeK m of
     Nothing -> nothing
     Just a  -> just a
-{-# INLINE maybeK #-}
 
 
 instance Functor MaybeK where
@@ -116,29 +116,29 @@ newtype MaybeKT m a = MKT (forall r . (a -> m (Maybe r)) -> m (Maybe r))
 
 -- | Execute a @MaybeKT@ and return the concrete @Maybe@ encoding.
 runMaybeKT :: (Monad m) => MaybeKT m a -> m (Maybe a)
-runMaybeKT (MKT m) = m (return . Just)
 {-# INLINE runMaybeKT #-}
+runMaybeKT (MKT m) = m (return . Just)
 
 
 -- | Lift a @Maybe@ into an @MaybeKT@.
 toMaybeKT :: (Monad m) => Maybe a -> MaybeKT m a
+{-# INLINE toMaybeKT #-}
 toMaybeKT Nothing  = mzero
 toMaybeKT (Just a) = return a
-{-# INLINE toMaybeKT #-}
 
 
 -- TODO: isn't there a better implementation that doesn't lose shortcircuiting?
 -- | Lift an @MaybeK@ into an @MaybeKT@.
 liftMaybeK :: (Monad m) => MaybeK a -> MaybeKT m a
-liftMaybeK = toMaybeKT . runMaybeK
 {-# INLINE liftMaybeK #-}
+liftMaybeK = toMaybeKT . runMaybeK
 
 
 -- TODO: is there a better implementation?
 -- | Lower an @MaybeKT@ into an @MaybeK@.
 lowerMaybeK :: (Monad m) => MaybeKT m a -> m (MaybeK a)
-lowerMaybeK = liftM toMaybeK . runMaybeKT
 {-# INLINE lowerMaybeK #-}
+lowerMaybeK = liftM toMaybeK . runMaybeKT
 
 
 instance Functor (MaybeKT m) where

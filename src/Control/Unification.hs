@@ -159,12 +159,12 @@ seenAs
     => v               -- ^
     -> MutTerm v t     -- ^
     -> StateT (IM.IntMap (MutTerm v t)) (e m) ()
+{-# INLINE seenAs #-}
 seenAs v t = do
     seenVars <- get
     case IM.lookup (getVarID v) seenVars of
         Just t' -> lift . throwError $ OccursIn v t'
         Nothing -> put $! IM.insert (getVarID v) t seenVars
-{-# INLINE seenAs #-}
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
