@@ -14,7 +14,9 @@ Nathaniel W. Filardo --- for helping to figure out the intricacies
     based on that work).
 
 Edward Kmett --- for pointing out the weighted extension to path
-    compression (popular in the union--find literature).
+    compression (popular in the union--find literature), and for
+    suggsting the switch to having variables be of kind * rather
+    than *->*
 
 
 === Related Work ===

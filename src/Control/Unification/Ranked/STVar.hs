@@ -1,16 +1,14 @@
-
 {-# LANGUAGE Rank2Types
            , MultiParamTypeClasses
            , UndecidableInstances
            , FlexibleInstances
            #-}
-
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.06
+--                                                  ~ 2012.02.17
 -- |
 -- Module      :  Control.Unification.Ranked.STVar
--- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  highly experimental
@@ -41,15 +39,14 @@ import Control.Unification.Types
 -- addition to the @STRef@ for the term itself, we also track the
 -- variable's ID (to support visited-sets) and rank (to support
 -- weighted path compression).
-data STRVar s t a =
+data STRVar s t =
     STRVar
         {-# UNPACK #-} !Int
         {-# UNPACK #-} !(STRef s Word8)
         {-# UNPACK #-} !(STRef s (Maybe (MutTerm (STRVar s t) t)))
 -- BUG: can we actually unpack STRef?
--- BUG: we need a phantom @a@ to get the kinds to work out now...
 
-instance Show (STRVar s t a) where
+instance Show (STRVar s t) where
     show (STRVar i _ _) = "STRVar " ++ show i
 
 instance Variable (STRVar s t) where
@@ -102,7 +99,7 @@ instance Monad (STRBinding s) where
 _newSTRVar
     :: String
     -> Maybe (MutTerm (STRVar s t) t)
-    -> STRBinding s (STRVar s t (MutTerm (STRVar s t) t))
+    -> STRBinding s (STRVar s t)
 _newSTRVar fun mb = STRB $ do
     nr <- ask
     lift $ do

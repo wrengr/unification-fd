@@ -4,12 +4,11 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
-
 ----------------------------------------------------------------
---                                                  ~ 2011.07.11
+--                                                  ~ 2012.02.17
 -- |
 -- Module      :  Control.Unification.Types
--- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -50,11 +49,11 @@ import Control.Monad.Error     (Error(..))
 -- variable type should implement 'Variable'. The 'Show' instance
 -- doesn't show the constructors, for legibility.
 data MutTerm v t
-    = MutVar  !(v (MutTerm v t))
+    = MutVar  !v
     | MutTerm !(t (MutTerm v t))
 
 
-instance (Show (v (MutTerm v t)), Show (t (MutTerm v t))) =>
+instance (Show v, Show (t (MutTerm v t))) =>
     Show (MutTerm v t)
     where
     showsPrec p (MutVar  v) = showsPrec p v
@@ -85,7 +84,7 @@ freeze (MutTerm t) = Fix <$> mapM freeze t
 -- the errors), the extra complexity is not considered worth it.
 data UnificationFailure v t
     
-    = OccursIn (v (MutTerm v t)) (MutTerm v t)
+    = OccursIn v (MutTerm v t)
         -- ^ A cyclic term was encountered (i.e., the variable
         -- occurs free in a term it would have to be bound to in
         -- order to succeed). Infinite terms like this are not
@@ -117,7 +116,7 @@ data UnificationFailure v t
 
 
 -- Can't derive this because it's an UndecidableInstance
-instance (Show (t (MutTerm v t)), Show (v (MutTerm v t))) =>
+instance (Show (t (MutTerm v t)), Show v) =>
     Show (UnificationFailure v t)
     where
     -- TODO: implement 'showsPrec' instead
@@ -144,10 +143,7 @@ class (Traversable t) => Unifiable t where
     zipMatch :: t a -> t b -> Maybe (t (a,b))
 
 
--- | An implementation of unification variables. Note that we do
--- not require variables to be functors. Thus, it does not matter
--- whether you give them vacuous functor instances, or use clever
--- tricks like @CoYoneda STRef@ to give them real functor instances.
+-- | An implementation of unification variables.
 class Variable v where
     
     -- | Determine whether two variables are equal /as variables/,
@@ -155,12 +151,12 @@ class Variable v where
     -- implementation is:
     --
     -- > eqVar x y = getVarID x == getVarID y
-    eqVar :: v a -> v b -> Bool
+    eqVar :: v -> v -> Bool
     eqVar x y = getVarID x == getVarID y
     
     -- | Return a unique identifier for this variable, in order to
     -- support the use of visited-sets instead of occurs-checks.
-    getVarID :: v a -> Int
+    getVarID :: v -> Int
 
 
 ----------------------------------------------------------------
@@ -181,24 +177,24 @@ class (Unifiable t, Variable v, Applicative m, Monad m) =>
     
     -- | Given a variable pointing to @MutTerm v t@, return the
     -- term it's bound to, or @Nothing@ if the variable is unbound.
-    lookupVar :: v (MutTerm v t) -> m (Maybe (MutTerm v t))
+    lookupVar :: v -> m (Maybe (MutTerm v t))
     
     
     -- | Generate a new free variable guaranteed to be fresh in
     -- @m@.
-    freeVar :: m (v (MutTerm v t))
+    freeVar :: m v
     
     
     -- | Generate a new variable (fresh in @m@) bound to the given
     -- term. The default implementation is:
     --
     -- > newVar t = do { v <- freeVar ; bindVar v t ; return v }
-    newVar :: MutTerm v t -> m (v (MutTerm v t))
+    newVar :: MutTerm v t -> m v
     newVar t = do { v <- freeVar ; bindVar v t ; return v }
     
     
     -- | Bind a variable to a term, overriding any previous binding.
-    bindVar :: v (MutTerm v t) -> MutTerm v t -> m ()
+    bindVar :: v -> MutTerm v t -> m ()
 
 
 ----------------------------------------------------------------
@@ -216,7 +212,7 @@ data Rank v t =
     Rank {-# UNPACK #-} !Word8 !(Maybe (MutTerm v t))
 
 -- Can't derive this because it's an UndecidableInstance
-instance (Show (v (MutTerm v t)), Show (t (MutTerm v t))) =>
+instance (Show v, Show (t (MutTerm v t))) =>
     Show (Rank v t)
     where
     show (Rank n mb) = "Rank "++show n++" "++show mb
@@ -240,16 +236,16 @@ instance Monoid (Rank v t) where
 class (BindingMonad v t m) => RankedBindingMonad v t m | m -> v t where
     -- | Given a variable pointing to @MutTerm v t@, return its
     -- rank and the term it's bound to.
-    lookupRankVar :: v (MutTerm v t) -> m (Rank v t)
+    lookupRankVar :: v -> m (Rank v t)
     
     -- | Increase the rank of a variable by one.
-    incrementRank :: v (MutTerm v t) -> m ()
+    incrementRank :: v -> m ()
     
     -- | Bind a variable to a term and increment the rank at the
     -- same time. The default implementation is:
     --
     -- > incrementBindVar v t = do { incrementRank v ; bindVar v t }
-    incrementBindVar :: v (MutTerm v t) -> MutTerm v t -> m ()
+    incrementBindVar :: v -> MutTerm v t -> m ()
     incrementBindVar v t = do { incrementRank v ; bindVar v t }
 
 ----------------------------------------------------------------

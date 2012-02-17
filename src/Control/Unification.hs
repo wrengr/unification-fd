@@ -1,11 +1,10 @@
-
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.11
+--                                                  ~ 2012.02.17
 -- |
 -- Module      :  Control.Unification
--- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -87,7 +86,7 @@ import Control.Unification.Types
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
--- BUG: this assumes there are no directly-cyclic chains!
+-- N.B., this assumes there are no directly-cyclic chains!
 --
 -- | Canonicalize a chain of variables so they all point directly
 -- to the term at the end of the chain (or the free variable, if
@@ -108,7 +107,7 @@ fullprune t0 =
                 return finalTerm
 
 
--- BUG: this assumes there are no directly-cyclic chains!
+-- N.B., this assumes there are no directly-cyclic chains!
 --
 -- | Canonicalize a chain of variables so they all point directly
 -- to the last variable in the chain, regardless of whether it is
@@ -140,7 +139,7 @@ semiprune =
 -- Since occurs checks only make sense when we're about to bind the
 -- variable to the term, we do not bother checking for the possibility
 -- of the variable occuring bound in the term.
-occursIn :: (BindingMonad v t m) => v (MutTerm v t) -> MutTerm v t -> m Bool
+occursIn :: (BindingMonad v t m) => v -> MutTerm v t -> m Bool
 occursIn v t0 = do
     t <- fullprune t0
     case t of
@@ -157,7 +156,7 @@ seenAs
         , MonadTrans e
         , MonadError (UnificationFailure v t) (e m)
         )
-    => v (MutTerm v t) -- ^
+    => v               -- ^
     -> MutTerm v t     -- ^
     -> StateT (IM.IntMap (MutTerm v t)) (e m) ()
 seenAs v t = do
@@ -182,7 +181,7 @@ seenAs v t = do
 -- | Walk a term and determine what variables are still free. N.B.,
 -- this function does not detect cyclic terms (i.e., throw errors),
 -- but it will return the correct answer for them in finite time.
-getFreeVars :: (BindingMonad v t m) => MutTerm v t -> m [v (MutTerm v t)]
+getFreeVars :: (BindingMonad v t m) => MutTerm v t -> m [v]
 getFreeVars =
     \t -> IM.elems <$> evalStateT (loop t) IS.empty
     where

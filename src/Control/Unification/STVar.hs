@@ -1,16 +1,14 @@
-
 {-# LANGUAGE Rank2Types
            , MultiParamTypeClasses
            , UndecidableInstances
            , FlexibleInstances
            #-}
-
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.06
+--                                                  ~ 2012.02.17
 -- |
 -- Module      :  Control.Unification.STVar
--- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -40,16 +38,16 @@ import Control.Unification.Types
 -- | Unification variables implemented by 'STRef's. In addition to
 -- the @STRef@ for the term itself, we also track the variable's
 -- ID (to support visited-sets).
-data STVar s a =
+data STVar s t =
     STVar
         {-# UNPACK #-} !Int
-        {-# UNPACK #-} !(STRef s (Maybe a))
+        {-# UNPACK #-} !(STRef s (Maybe (MutTerm (STVar s t) t)))
 -- BUG: can we actually unpack STRef?
 
-instance Show (STVar s a) where
+instance Show (STVar s t) where
     show (STVar i _) = "STVar " ++ show i
 
-instance Variable (STVar s) where
+instance Variable (STVar s t) where
     eqVar (STVar i _) (STVar j _) = i == j
     
     getVarID  (STVar i _) = i
@@ -99,8 +97,8 @@ instance Monad (STBinding s) where
 
 _newSTVar
     :: String
-    -> Maybe (MutTerm (STVar s) t)
-    -> STBinding s (STVar s (MutTerm (STVar s) t))
+    -> Maybe (MutTerm (STVar s t) t)
+    -> STBinding s (STVar s t)
 _newSTVar fun mb = STB $ do
     nr <- ask
     lift $ do
@@ -111,7 +109,9 @@ _newSTVar fun mb = STB $ do
                 writeSTRef nr $! n+1
                 STVar n <$> newSTRef mb
 
-instance (Unifiable t) => BindingMonad (STVar s) t (STBinding s) where
+instance (Unifiable t) =>
+    BindingMonad (STVar s t) t (STBinding s)
+    where
 
     lookupVar (STVar _ p) = STB . lift $ readSTRef p
     

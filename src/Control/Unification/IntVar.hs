@@ -1,11 +1,13 @@
-
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses
+           , FlexibleInstances
+           , UndecidableInstances
+           #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.06
+--                                                  ~ 2012.02.17
 -- |
 -- Module      :  Control.Unification.IntVar
--- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -54,13 +56,13 @@ import Control.Unification.Types
 --
 -- N.B., because this implementation is pure, we can use it for
 -- both ranked and unranked monads.
-newtype IntVar t = IntVar Int
+newtype IntVar = IntVar Int
     deriving (Show)
 
 {-
 -- BUG: This part works, but we'd want to change Show IntBindingState too.
 
-instance Show (IntVar t) where
+instance Show IntVar where
     show (IntVar i) = "IntVar " ++ show (boundedInt2Word i)
 
 -- | Convert an integer to a word, via the continuous mapping that

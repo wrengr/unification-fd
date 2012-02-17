@@ -1,4 +1,3 @@
-
 -- The MPTCs and FlexibleInstances are only for
 -- mtl:Control.Monad.Error.MonadError
 {-# LANGUAGE Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}

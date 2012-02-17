@@ -1,11 +1,13 @@
-
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses
+           , FlexibleInstances
+           , UndecidableInstances
+           #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
 --                                                  ~ 2011.07.06
 -- |
 -- Module      :  Control.Unification.Ranked.IntVar
--- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  highly experimental
@@ -66,7 +68,7 @@ newtype IntRBindingT t m a = IRBT { unIRBT :: StateT (IntRBindingState t) m a }
 instance (Functor m) => Functor (IntRBindingT t m) where
     fmap f = IRBT . fmap f . unIRBT
 
--- BUG: can't reduce dependency to Applicative because of StateT's instance.
+-- N.B., it's not possible to reduce the dependency to Applicative.
 instance (Functor m, Monad m) => Applicative (IntRBindingT t m) where
     pure    = IRBT . pure
     x <*> y = IRBT (unIRBT x <*> unIRBT y)

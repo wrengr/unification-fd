@@ -1,4 +1,3 @@
-
 -- For the Show (Fix f) instance
 {-# LANGUAGE UndecidableInstances #-}
 -- For 'build' and 'hmap'
@@ -7,12 +6,11 @@
 {-# OPTIONS_GHC -O2 -fglasgow-exts #-}
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
-
 ----------------------------------------------------------------
 --                                                    2011.07.11
 -- |
 -- Module      :  Data.Functor.Fixedpoint
--- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  provisional
