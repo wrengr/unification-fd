@@ -42,7 +42,6 @@ data STVar s t =
     STVar
         {-# UNPACK #-} !Int
         {-# UNPACK #-} !(STRef s (Maybe (MutTerm (STVar s t) t)))
--- BUG: can we actually unpack STRef?
 
 instance Show (STVar s t) where
     show (STVar i _) = "STVar " ++ show i
