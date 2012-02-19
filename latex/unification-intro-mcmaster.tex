@@ -8,19 +8,6 @@
 % looks like the non-obsolete successor to ha-prosper which is an
 % (also obsolete) successor to prosper. Powerdot has a version of
 % fyma, but it has the same alignment problem...
-%
-% fymafaintblue {0.88 0.95 1.00}
-% fymalightblue {0.43 0.61 0.84} The bullets and lines
-% fymablue      {0.24 0.45 0.70} The \ColorFoot (only marginally darker)
-% fymadarkblue  {0.14 0.34 0.55} The regular text
-% fymaroyalblue {0.06 0.25 0.41} The title text
-\newgray{gris1}{.30}           % This was gris3 in rico/ricoDeux
-\newgray{gris2}{.85}
-\newrgbcolor{ocean}{0.00392156863 0.6 0.592156863}        % 0x01,99,97
-\newrgbcolor{wine}{0.321568627 0.00392156863 0.333333333} % 0x52,01,55
-% TODO: how to use \expandafter in order to redefine \emph?
-\newcommand{\unhilight}[1]{{\color{gris2}#1}}
-\newcommand{\hilighten}[1]{{\color{fymablue}#1}}
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 %\hypersetup{pdfpagemode=FullScreen} % make AcrobatReader auto full-screen
@@ -52,6 +39,8 @@
 \usepackage{listings}
 \lstloadlanguages{Haskell,Prolog}
 
+\renewcommand{\emptyset}{\varnothing}
+
 \newcommand{\opr}[1]{\ensuremath{\operatorname{#1}}}
 \newcommand{\var}[1]{\ensuremath{\text{\textrm{\textit{#1}}}}}
 \newcommand{\cat}[1]{\ensuremath{\mathbf{#1}}}
@@ -64,6 +53,7 @@
 \newcommand{\FREEVARS}{\ensuremath{\var{FV}}}
 \newcommand{\UNIFIERS}{\ensuremath{\mathcal{U}\!}}
 
+\newcommand{\suchthat}{\ensuremath{\opr{~s.\!t.~}}}
 \newcommand{\unify}{\ensuremath{\doteq}}
 \newcommand{\isom}{\ensuremath{\cong}}
 \newcommand{\notisom}{\ensuremath{\!\not{\!\!\isom\,}\,}}
@@ -72,13 +62,13 @@
 \newcommand{\notsubsume}{\ensuremath{\!\not\!\!\subsume\,}}
 
 % N.B., \it and \bf use serif fonts; whereas \textit, \textbf use sans-serif
-\renewcommand{\emph}[1]{\hilighten{\textbf{#1}}}
-\newcommand{\defn}[1]{\textbf{#1}}
+\renewcommand{\emph}[1]{\textbf{#1}}
 
 \makeatletter
 \newcommand{\thm}[1][]{%
     \def\thm@tmp{#1}%
-    \textbf{Theorem\ifx\thm@tmp\@empty\relax\else\ (\thm@tmp)\fi:}\ }
+    {\color{wine}%
+    \textbf{Theorem\ifx\thm@tmp\@empty\relax\else\ (\thm@tmp)\fi:}\ }}
 \makeatother
 
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,7 +116,7 @@
 	\item They can be generalized and clarified by a categorical treatment
         \begin{itemize}
         \item E.g., Goguen (1989)
-        \item But I don't think I've taught you enough category theory for that to be worth pursuing here
+        \item But I don't presume you know enough category theory for that to be worth pursuing here
         \end{itemize}
 	\vspace{1em}
     \item The set-theoretic terminology is worth being familiar with
@@ -135,7 +125,7 @@
         \item It's essential for understanding any of the ``old'' papers
             \begin{itemize}
             \item i.e., late-1980s through mid-1990s
-            \item let alone papers which actually are old (e.g.\ 1960s)
+            \item let alone papers which actually are old (e.g., 1960s)
             \end{itemize}
         \end{itemize}
 	\end{itemize}
@@ -181,19 +171,23 @@
 \land & (\forall p \in \WHOLE.~
 	\forall f\in A_p.~
 		\forall t_1,\ldots,t_p \in \TERMS{A}.~
-			~\SYM(f)(t_1,\ldots,t_p) \in \TERMS{A}) \\
+			~\SYM(f)\emph{(}t_1\emph{,}\ldots\emph{,}t_p\emph{)} \in \TERMS{A}) \\
 \end{array}
 \]
     \item Let $\FREEVARS : \TERMS{\mathcal{F}\uplus\mathcal{X}} \to 2^{\mathcal{X}}$ map terms to a set of \defn{free variables}
     	\begin{itemize}
-    	\item $\forall t \in \TERMS{\mathcal{F}\uplus\mathcal{X}}.~~ t \in \TERMS{\mathcal{F}\uplus\FREEVARS(t)}$
+    	\item Namely, $\FREEVARS(t)$ is the smallest set such that $t \in \TERMS{\mathcal{F}\uplus\FREEVARS(t)}$
+        %    $\forall t \in \TERMS{\mathcal{F}\uplus\mathcal{X}}.~~
+        %        t \in \TERMS{\mathcal{F}\uplus\FREEVARS(t)}
+        %        \land \lnot\exists \mathcal{Y} \subset \FREEVARS(t).~~
+        %            t \in \TERMS{\mathcal{F}\uplus\mathcal{Y}}$
     	\end{itemize}
-    \item A term $t \in \TERMS{\mathcal{F}\uplus\mathcal{X}}$ is called \defn{ground} or \defn{closed}$\null^\dagger$ iff $\FREEVARS(t) = \emptyset$
+    \item A term is called \defn{ground}$\null^\dagger$ or \defn{closed} iff $\FREEVARS(t) = \emptyset$
     \item A term is called \defn{linear} if each free variable occurs at most once
 	\vspace{1em}
     \item Since $\mathcal{X}$ is defined essentially by its cardinality
         \begin{itemize}
-        \item Without loss of generality, we will consider $\TERMS{\mathcal{F}\uplus\mathcal{X}}$ an $\alpha$-equivelence class over all $\TERMS{\mathcal{F}\uplus\mathcal{X'}} \opr{~s.t.~} \lvert\mathcal{X'}\rvert = \lvert\mathcal{X}\rvert$
+        \item Without loss of generality, we will consider $\TERMS{\mathcal{F}\uplus\mathcal{X}}$ an $\alpha$-equivelence class over all $\TERMS{\mathcal{F}\uplus\mathcal{X'}} \suchthat \lvert\mathcal{X'}\rvert = \lvert\mathcal{X}\rvert$
         \end{itemize}
 	\end{itemize}
 \end{slide}
@@ -215,7 +209,7 @@
     \item Substitutions form a category
         \begin{itemize}
         \item Objects are term universes
-        \item There are identity substitutions: $\sigma_\emptyset = \opr{id}_{\TERMS{\mathcal{F}\uplus\mathcal{X}}}$
+        \item There are identity substitutions: $\sigma_\emptyset = \opr{id}_{(\TERMS{\mathcal{F}\uplus\mathcal{X}})}$
         \item Substitutions can be composed: $(\sigma \circ \theta) t = \sigma (\theta t)$
         \end{itemize}
 	\end{itemize}
@@ -276,7 +270,7 @@
     	\begin{itemize}
     	\item For now, equality is sufficient
     	\end{itemize}
-	\item For terms $s,t$ if there exists a substitution $\sigma \opr{~s.t.~} \sigma s \isom t$
+	\item For terms $s,t$ if there exists a substitution $\sigma \suchthat \sigma s \isom t$
     	\begin{itemize}
 	    \item We say that $s$ \defn{generalizes} or \defn{subsumes} $t$
 	    \item Dually, we say that $t$ \defn{refines} or \defn{specializes} $s$
@@ -290,7 +284,7 @@
     	\end{itemize}
     \item For a set $S$ of substitutions, $\sigma\in S$ is called a \defn{least substitution} iff $\forall \theta\in S.~ \sigma \subsumeq \theta$
     	\begin{itemize}
-    	\item N.B., this means $\sigma\in S \opr{~s.t.~} \forall \theta\in S.~ \exists \rho.~~ \rho\circ\sigma \isom \theta$
+    	\item N.B., this means $\sigma\in S \suchthat \forall \theta\in S.~ \exists \rho.~~ \rho\circ\sigma \isom \theta$
             \begin{itemize}
             \item i.e., $\rho$ need not be in $S$
             \item and $\rho$ can be different for each $\theta$
@@ -307,7 +301,7 @@
         \item Equivalent to consider it an operation on (finite) sets of terms
         \end{itemize}
     \item A \defn{unifier} of a set $D$ of terms is a substitution
-        \\ $\sigma \opr{~s.t.~} \forall d,d'\in D.~ \sigma d \isom \sigma d'$
+        \\ $\sigma \suchthat \forall d,d'\in D.~ \sigma d \isom \sigma d'$
     \item Let $\UNIFIERS(D)$ denote the set of all unifiers of $D$
     \item $D$ is called \defn{unifiable} if $\UNIFIERS(D) \neq \emptyset$
         \begin{itemize}

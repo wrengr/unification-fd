@@ -48,8 +48,8 @@ are:
     Rank2Types
     MultiParamTypeClasses
     FunctionalDependencies -- Alas, necessary for type inference
-    FlexibleContexts       -- Generally necessary for practical use of MPTCs
-    FlexibleInstances      -- Generally necessary for practical use of MPTCs
+    FlexibleContexts       -- Necessary for practical use of MPTCs
+    FlexibleInstances      -- Necessary for practical use of MPTCs
     UndecidableInstances   -- Needed for Show instances due to two-level types
 
 ----------------------------------------------------------- fin.

@@ -8,19 +8,6 @@
 % looks like the non-obsolete successor to ha-prosper which is an
 % (also obsolete) successor to prosper. Powerdot has a version of
 % fyma, but it has the same alignment problem...
-%
-% fymafaintblue {0.88 0.95 1.00}
-% fymalightblue {0.43 0.61 0.84} The bullets and lines
-% fymablue      {0.24 0.45 0.70} The \ColorFoot (only marginally darker)
-% fymadarkblue  {0.14 0.34 0.55} The regular text
-% fymaroyalblue {0.06 0.25 0.41} The title text
-\newgray{gris1}{.30}           % This was gris3 in rico/ricoDeux
-\newgray{gris2}{.85}
-\newrgbcolor{ocean}{0.00392156863 0.6 0.592156863}        % 0x01,99,97
-\newrgbcolor{wine}{0.321568627 0.00392156863 0.333333333} % 0x52,01,55
-% TODO: how to use \expandafter in order to redefine \emph?
-\newcommand{\unhilight}[1]{{\color{gris2}#1}}
-\newcommand{\hilighten}[1]{{\color{fymablue}#1}}
 
 %\hypersetup{pdfpagemode=FullScreen} % make AcrobatReader auto full-screen
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -61,16 +48,37 @@
 \newcommand{\notsubsume}{\ensuremath{\!\not\!\!\subsume\,}}
 
 % N.B., \it and \bf use serif fonts; whereas \textit, \textbf use sans-serif
-\renewcommand{\emph}[1]{\hilighten{\textbf{#1}}}
-\newcommand{\defn}[1]{\textbf{#1}}
+\renewcommand{\emph}[1]{\textbf{#1}}
+
+%% <http://tex.stackexchange.com/questions/33793/symbol-for-proper-ideal-unlhd-lneq>
+%\newcommand{\properideal}{\mathrel{\ooalign{$\lneq$\cr\raise.22ex\hbox{$\lhd$}\cr}}}
+
+\usepackage{relsize}
+\newcommand{\fmap}{%
+    \mathrel{\raise.16ex\hbox{\ooalign{%
+    $\mathsmaller{\bigcirc}$\cr%
+    \raise-.16ex\hbox{\kern.19em$\mathsmaller{\mathdollar}$}\cr}}}}
+
+\usepackage{textcomp}
+\newcommand{\haskellInfix}[1]{\ensuremath{\mathrel{%
+    \:\raise-.18ex\hbox{\text{\textasciigrave}}\!%
+    \Varid{#1}%
+    \raise-.18ex\hbox{\text{\textasciigrave}}\:}}}
 
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 %include polycode.fmt
-%format (MT v t) = "\TERMS{" t "\uplus " v "}"
-%format vv       = "\ensuremath{\mathcal{X}}"
-%format tm       = "\ensuremath{\mathcal{F}}"
-%format `eqVar`  = "\ensuremath{\equiv_{\null_V}}"
-%format `acyclicBindVar` = "\ensuremath{:=_\Varid{acyc}}"
+%format ; = ";\;\;"
+%% TODO: how to render "case<-" and "if<-" without the extraneous space?
+
+%format (MT t v)         = "\TERMS{" t "\uplus " v "}"
+%format vv               = "\ensuremath{\mathcal{X}}"
+%format tm               = "\ensuremath{\mathcal{F}}"
+%format `eqVar`          = "\ensuremath{\equiv_{\null{}_V}}"
+%format :=               = "\ensuremath{\mathrel{:=}}"
+%format `acyclicBindVar` = "\ensuremath{\mathrel{:=_\Varid{acyc}}}"
+%format `occursIn`       = "\haskellInfix{occursIn}"
+%format `seenAs`         = "\haskellInfix{seenAs}"
+%format mapM_            = "\Varid{mapM\!\!\!\raise.16ex\hbox{\_}}"
 
 %format v0
 %format v'
@@ -92,7 +100,7 @@
 %format alpha    = "\ensuremath{\alpha}"
 %format beta     = "\ensuremath{\beta}"
 
-%format <$> = "\ensuremath{\odot}"
+%format <$> = "\ensuremath{\fmap}"
 %format <*> = "\ensuremath{\circledast}"
 %format <*  = "\ensuremath{\olessthan}"
 %format  *> = "\ensuremath{\ogreaterthan}"
@@ -128,7 +136,7 @@
     \vspace{1em}
     \begin{itemize}
     \item The na{\"\i}ve approach
-    \item Not quite so na{\"\i}ve: Cardelli (1987), a~la Sheard (2001)
+    \item Not quite so na{\"\i}ve: Cardelli (1987), \`{a}~la Sheard (2001)
         \begin{itemize}
         \item Implicit substitutions
         \item Full pruning: aka path compression
@@ -164,7 +172,7 @@
     \toprule
     & &&
         \multicolumn{2}{c}{Na{\"\i}ve} &&
-        \multicolumn{2}{c}{a~la Sheard} &&
+        \multicolumn{2}{c}{\`{a}~la Sheard} &&
         \multicolumn{2}{c}{w/o Occurs} \\
     \cmidrule(r){4-5}
     \cmidrule(r){7-8}
@@ -186,36 +194,36 @@
 \end{slide}
 
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\begin{slide}{Cardelli (1987), a~la Sheard (2001)}
+\begin{slide}{Cardelli (1987), \`{a}~la Sheard (2001)}
     \vspace{1em}
     \begin{itemize}
     \item Two-level type of mutable terms
 \begin{code}
-data (MT) (vv :: * -> *) (tm :: * -> *) where
-    MutVar   :: vv  ((MT vv tm)) -> MT vv tm
-    MutTerm  :: tm  ((MT vv tm)) -> MT vv tm
+data (MT) (tm :: * -> *) (vv :: *) where
+    MutVar   :: vv                -> MT tm vv
+    MutTerm  :: tm  ((MT tm vv))  -> MT tm vv
 \end{code}
     \item We assume the structural type implements |Traversable|
     \item And we assume the variable type implements
 \begin{code}
 class Variable vv where
-    eqVar     :: vv alpha -> vv alpha -> Bool
-    getVarID  :: vv alpha -> Int
+    eqVar     :: vv -> vv -> Bool
+    getVarID  :: vv -> Int
 \end{code}
     \item We will write |eqVar| infix as |(`eqVar`)|%'% Fix syntax hilighting
     \end{itemize}
 \end{slide}
 
-\begin{slide}{Cardelli (1987), a~la Sheard (2001)}
+\begin{slide}{Cardelli (1987), \`{a}~la Sheard (2001)}
     \vspace{1em}
     \begin{itemize}
     \item Store substitutions in a monad
 \begin{code}
-class (...) => BindingMonad vv tm m where
-    lookupVar  :: vv ((MT vv tm))               ->  m (Maybe (MT vv tm))
-    freeVar    ::                                   m (vv ((MT vv tm)))
-    newVar     ::                     MT vv tm  ->  m (vv ((MT vv tm)))
-    bindVar    :: vv ((MT vv tm)) ->  MT vv tm  ->  m ()
+class (...) => BindingMonad tm vv m where
+    lookupVar  :: vv                ->  m (Maybe ((MT tm vv)))
+    freeVar    ::                       m vv
+    newVar     ::         MT tm vv  ->  m vv
+    bindVar    :: vv  ->  MT tm vv  ->  m ()
 \end{code}
     \item We will abbreviate |bindVar v t|, |lift (bindVar v t)|, etc, by |v := t|
 % TODO: talk about the class constraints, and fundeps/assoctypes
@@ -223,7 +231,7 @@ class (...) => BindingMonad vv tm m where
     \end{itemize}
 \end{slide}
 
-\begin{slide}{Cardelli (1987), a~la Sheard (2001)}
+\begin{slide}{Cardelli (1987), \`{a}~la Sheard (2001)}
     \vspace{1em}
     \begin{itemize}
     \item Full pruning: aka path compression
@@ -240,7 +248,7 @@ prune (MutVar   v0)  =
     \end{itemize}
 \end{slide}
 
-\begin{slide}{Cardelli (1987), a~la Sheard (2001)}
+\begin{slide}{Cardelli (1987), \`{a}~la Sheard (2001)}
     \vspace{1em}
     \begin{itemize}
     \item The occurs check
@@ -256,11 +264,11 @@ acyclicBindVar v0 t0 =
     then  throwError (OccursIn v0 t0)
     else  v0 := t0
 \end{code}
-    \item We abbreviate |acyclicBindVar| infix as |`acyclicBindVar`|%'% Fix syntax hilighting
+    \item We abbreviate |acyclicBindVar| infix as |`acyclicBindVar`|
     \end{itemize}
 \end{slide}
 
-\begin{slide}{Cardelli (1987), a~la Sheard (2001)}
+\begin{slide}{Cardelli (1987), \`{a}~la Sheard (2001)}
 \begin{code}
 unify1 tl0 tr0 = do
     tl <- lift (prune tl0)
@@ -503,11 +511,11 @@ unify4 = \tl tr -> evalStateT (loop tl tr) IM.empty
 
 %% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 \begin{slide}{Optimization 4: Weighted path compression}
-    \vspace{1em}
     \begin{itemize}
     \item In pathological cases, we could still build up long variable chains
         \begin{itemize}
-        \item Up to $O(V * \log V)$ for a base access time of $O(\log V)$
+        \item Up to length $O(V)$
+        \item Times whatever the base access time is; e.g., $O(\log V)$
         \item We'll only have to traverse it once (thanks to pruning),
         \item But can we do better?
         \end{itemize}
