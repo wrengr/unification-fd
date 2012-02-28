@@ -60,6 +60,9 @@ module Control.Unification
     , unifyOccurs
     , subsumes
     
+    -- * Operations on many terms
+    , freshenMany
+
     -- * Helper functions
     -- | Client code should not need to use these functions, but
     -- they are exposed just in case they are needed.
@@ -75,6 +78,7 @@ import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
 import Data.Foldable
 import Data.Traversable
+import Control.Monad.Identity (Identity(..))
 import Control.Applicative
 import Control.Monad       (MonadPlus(..))
 import Control.Monad.Trans (MonadTrans(..))
@@ -258,8 +262,32 @@ freshen
         )
     => MutTerm t v       -- ^
     -> e m (MutTerm t v) -- ^
-freshen =
-    \t -> evalStateT (loop t) IM.empty
+freshen = fmap runIdentity . freshenMany . Identity
+
+-- | Same as 'freshen', but works on several terms simultaneously.
+--
+-- This is different from 'freshen'ing each term separately, because
+-- 'freshenMany' preserves the relationship between the terms.
+--
+-- For instance, the result of
+--
+-- >mapM freshen [Var 1, Var 1]
+--
+-- could be @[Var 2, Var 3]@, while the result of
+-- 
+-- >freshenMany [Var 1, Var 1]
+--
+-- could be @[Var 2, Var 2]@.
+freshenMany
+    ::  ( BindingMonad v t m
+        , MonadTrans e
+        , Functor (e m)
+        , MonadError (UnificationFailure v t) (e m)
+        , Traversable s
+        )
+    => s (MutTerm v t)       -- ^
+    -> e m (s (MutTerm v t)) -- ^
+freshenMany ts = evalStateT (mapM loop ts) IM.empty
     where
     loop t0 = do
         t1 <- lift . lift $ semiprune t0
