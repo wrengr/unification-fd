@@ -62,6 +62,7 @@ module Control.Unification
     
     -- * Operations on many terms
     , freshenMany
+    -- subsumesAll -- to ensure that there's a single coherent substitution allowing the schema to subsume all the terms in some collection. 
 
     -- * Helper functions
     -- | Client code should not need to use these functions, but
@@ -264,29 +265,28 @@ freshen
     -> e m (MutTerm t v) -- ^
 freshen = fmap runIdentity . freshenMany . Identity
 
+
 -- | Same as 'freshen', but works on several terms simultaneously.
---
 -- This is different from 'freshen'ing each term separately, because
--- 'freshenMany' preserves the relationship between the terms.
+-- 'freshenMany' preserves the relationship between the terms. For
+-- instance, the result of
 --
--- For instance, the result of
---
--- >mapM freshen [Var 1, Var 1]
+-- > mapM freshen [Var 1, Var 1]
 --
 -- could be @[Var 2, Var 3]@, while the result of
--- 
--- >freshenMany [Var 1, Var 1]
 --
--- could be @[Var 2, Var 2]@.
+-- > freshenMany [Var 1, Var 1]
+--
+-- must be @[Var 2, Var 2]@ or something alpha-equivalent.
 freshenMany
-    ::  ( BindingMonad v t m
+    ::  ( BindingMonad t v m
         , MonadTrans e
-        , Functor (e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
+        , MonadError (UnificationFailure t v) (e m)
         , Traversable s
         )
-    => s (MutTerm v t)       -- ^
-    -> e m (s (MutTerm v t)) -- ^
+    => s (MutTerm t v)       -- ^
+    -> e m (s (MutTerm t v)) -- ^
 freshenMany ts = evalStateT (mapM loop ts) IM.empty
     where
     loop t0 = do
