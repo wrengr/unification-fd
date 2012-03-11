@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.02.17
+--                                                  ~ 2012.03.11
 -- |
 -- Module      :  Control.Unification
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -93,7 +93,7 @@ import Control.Unification.Types
 -- the chain is unbound), and return that end.
 --
 -- N.B., this is almost never the function you want. Cf., 'semiprune'.
-fullprune :: (BindingMonad v t m) => MutTerm v t -> m (MutTerm v t)
+fullprune :: (BindingMonad t v m) => MutTerm t v -> m (MutTerm t v)
 fullprune t0 =
     case t0 of
     MutTerm _ -> return t0
@@ -114,7 +114,7 @@ fullprune t0 =
 -- bound or not. This allows detecting many cases where multiple
 -- variables point to the same term, thereby allowing us to avoid
 -- re-unifying the term they point to.
-semiprune :: (BindingMonad v t m) => MutTerm v t -> m (MutTerm v t)
+semiprune :: (BindingMonad t v m) => MutTerm t v -> m (MutTerm t v)
 semiprune =
     \t0 ->
         case t0 of
@@ -139,7 +139,7 @@ semiprune =
 -- Since occurs checks only make sense when we're about to bind the
 -- variable to the term, we do not bother checking for the possibility
 -- of the variable occuring bound in the term.
-occursIn :: (BindingMonad v t m) => v -> MutTerm v t -> m Bool
+occursIn :: (BindingMonad t v m) => v -> MutTerm t v -> m Bool
 occursIn v t0 = do
     t <- fullprune t0
     case t of
@@ -152,13 +152,13 @@ occursIn v t0 = do
 -- been seen with a given binding, or throw 'OccursIn' if the
 -- variable has already been seen.
 seenAs
-    ::  ( BindingMonad v t m
+    ::  ( BindingMonad t v m
         , MonadTrans e
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
     => v               -- ^
-    -> MutTerm v t     -- ^
-    -> StateT (IM.IntMap (MutTerm v t)) (e m) ()
+    -> MutTerm t v     -- ^
+    -> StateT (IM.IntMap (MutTerm t v)) (e m) ()
 {-# INLINE seenAs #-}
 seenAs v t = do
     seenVars <- get
@@ -181,7 +181,7 @@ seenAs v t = do
 -- | Walk a term and determine what variables are still free. N.B.,
 -- this function does not detect cyclic terms (i.e., throw errors),
 -- but it will return the correct answer for them in finite time.
-getFreeVars :: (BindingMonad v t m) => MutTerm v t -> m [v]
+getFreeVars :: (BindingMonad t v m) => MutTerm t v -> m [v]
 getFreeVars =
     \t -> IM.elems <$> evalStateT (loop t) IS.empty
     where
@@ -212,13 +212,13 @@ getFreeVars =
 -- If any cyclic bindings are detected, then an 'OccursIn' exception
 -- will be thrown.
 applyBindings
-    ::  ( BindingMonad v t m
+    ::  ( BindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm v t       -- ^
-    -> e m (MutTerm v t) -- ^
+    => MutTerm t v       -- ^
+    -> e m (MutTerm t v) -- ^
 applyBindings =
     \t -> evalStateT (loop t) IM.empty
     where
@@ -251,13 +251,13 @@ applyBindings =
 -- If any cyclic bindings are detected, then an 'OccursIn' exception
 -- will be thrown.
 freshen
-    ::  ( BindingMonad v t m
+    ::  ( BindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm v t       -- ^
-    -> e m (MutTerm v t) -- ^
+    => MutTerm t v       -- ^
+    -> e m (MutTerm t v) -- ^
 freshen =
     \t -> evalStateT (loop t) IM.empty
     where
@@ -291,9 +291,9 @@ freshen =
 
 -- | 'equals'
 (===)
-    :: (BindingMonad v t m)
-    => MutTerm v t  -- ^
-    -> MutTerm v t  -- ^
+    :: (BindingMonad t v m)
+    => MutTerm t v  -- ^
+    -> MutTerm t v  -- ^
     -> m Bool       -- ^
 (===) = equals
 infix 4 ===, `equals`
@@ -301,9 +301,9 @@ infix 4 ===, `equals`
 
 -- | 'equiv'
 (=~=)
-    :: (BindingMonad v t m)
-    => MutTerm v t               -- ^
-    -> MutTerm v t               -- ^
+    :: (BindingMonad t v m)
+    => MutTerm t v               -- ^
+    -> MutTerm t v               -- ^
     -> m (Maybe (IM.IntMap Int)) -- ^
 (=~=) = equiv
 infix 4 =~=, `equiv`
@@ -311,27 +311,27 @@ infix 4 =~=, `equiv`
 
 -- | 'unify'
 (=:=)
-    ::  ( BindingMonad v t m
+    ::  ( BindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm v t       -- ^
-    -> MutTerm v t       -- ^
-    -> e m (MutTerm v t) -- ^
+    => MutTerm t v       -- ^
+    -> MutTerm t v       -- ^
+    -> e m (MutTerm t v) -- ^
 (=:=) = unify
 infix 4 =:=, `unify`
 
 
 -- | 'subsumes'
 (<:=)
-    ::  ( BindingMonad v t m
+    ::  ( BindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm v t -- ^
-    -> MutTerm v t -- ^
+    => MutTerm t v -- ^
+    -> MutTerm t v -- ^
     -> e m Bool
 (<:=) = subsumes
 infix 4 <:=, `subsumes`
@@ -346,9 +346,9 @@ infix 4 <:=, `subsumes`
 -- function does not consider alpha-variance, and thus variables
 -- with different names are considered unequal. Cf., 'equiv'.
 equals
-    :: (BindingMonad v t m)
-    => MutTerm v t  -- ^
-    -> MutTerm v t  -- ^
+    :: (BindingMonad t v m)
+    => MutTerm t v  -- ^
+    -> MutTerm t v  -- ^
     -> m Bool       -- ^
 equals =
     \tl tr -> do
@@ -386,9 +386,9 @@ equals =
 -- mapping from variable IDs of the left term to variable IDs of
 -- the right term, indicating the renaming used.
 equiv
-    :: (BindingMonad v t m)
-    => MutTerm v t               -- ^
-    -> MutTerm v t               -- ^
+    :: (BindingMonad t v m)
+    => MutTerm t v               -- ^
+    -> MutTerm t v               -- ^
     -> m (Maybe (IM.IntMap Int)) -- ^
 equiv =
     \tl tr -> runMaybeKT (execStateT (loop tl tr) IM.empty)
@@ -425,14 +425,14 @@ equiv =
 -- it slow, it's asymptotically slow since it can cause the same
 -- subterm to be traversed multiple times.
 unifyOccurs
-    ::  ( BindingMonad v t m
+    ::  ( BindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm v t       -- ^
-    -> MutTerm v t       -- ^
-    -> e m (MutTerm v t) -- ^
+    => MutTerm t v       -- ^
+    -> MutTerm t v       -- ^
+    -> e m (MutTerm t v) -- ^
 unifyOccurs = loop
     where
     {-# INLINE (=:) #-}
@@ -501,7 +501,7 @@ unifyOccurs = loop
 
 ----------------------------------------------------------------
 -- TODO: verify correctness, especially for the visited-set stuff.
--- TODO: return Maybe(MutTerm v t) in the loop so we can avoid updating bindings trivially
+-- TODO: return Maybe(MutTerm t v) in the loop so we can avoid updating bindings trivially
 -- TODO: figure out why unifyOccurs is so much faster on pure ground terms!! The only difference there is in lifting over StateT...
 -- 
 -- | Unify two terms, or throw an error with an explanation of why
@@ -511,14 +511,14 @@ unifyOccurs = loop
 -- aggressive opportunistic observable sharing, so it will be more
 -- efficient to use it in future calculations than either argument.
 unify
-    ::  ( BindingMonad v t m
+    ::  ( BindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm v t       -- ^
-    -> MutTerm v t       -- ^
-    -> e m (MutTerm v t) -- ^
+    => MutTerm t v       -- ^
+    -> MutTerm t v       -- ^
+    -> e m (MutTerm t v) -- ^
 unify =
     \tl tr -> evalStateT (loop tl tr) IM.empty
     where
@@ -598,13 +598,13 @@ unify =
 -- or else requires specifying too much about the implementation
 -- of variables.
 subsumes
-    ::  ( BindingMonad v t m
+    ::  ( BindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm v t -- ^
-    -> MutTerm v t -- ^
+    => MutTerm t v -- ^
+    -> MutTerm t v -- ^
     -> e m Bool
 subsumes =
     \tl tr -> evalStateT (loop tl tr) IM.empty

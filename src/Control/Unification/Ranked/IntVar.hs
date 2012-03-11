@@ -4,7 +4,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.06
+--                                                  ~ 2012.03.11
 -- |
 -- Module      :  Control.Unification.Ranked.IntVar
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -40,11 +40,11 @@ import Control.Unification.IntVar (IntVar(..))
 -- | Ranked binding state for 'IntVar'.
 data IntRBindingState t = IntRBindingState
     { nextFreeVar :: {-# UNPACK #-} !Int
-    , varBindings :: IM.IntMap (Rank IntVar t)
+    , varBindings :: IM.IntMap (Rank t IntVar)
     }
 
 -- Can't derive this because it's an UndecidableInstance
-instance (Show (t (MutTerm IntVar t))) =>
+instance (Show (t (MutTerm t IntVar))) =>
     Show (IntRBindingState t)
     where
     show (IntRBindingState nr bs) =
@@ -131,7 +131,7 @@ execIntRBindingT (IRBT m) = execStateT m emptyIntRBindingState
 ----------------------------------------------------------------
 
 instance (Unifiable t, Applicative m, Monad m) =>
-    BindingMonad IntVar t (IntRBindingT t m)
+    BindingMonad t IntVar (IntRBindingT t m)
     where
     
     lookupVar (IntVar v) = IRBT $ do
@@ -167,7 +167,7 @@ instance (Unifiable t, Applicative m, Monad m) =>
     
     
 instance (Unifiable t, Applicative m, Monad m) =>
-    RankedBindingMonad IntVar t (IntRBindingT t m)
+    RankedBindingMonad t IntVar (IntRBindingT t m)
     where
     lookupRankVar (IntVar v) = IRBT $ do
         mb <- gets (IM.lookup v . varBindings)

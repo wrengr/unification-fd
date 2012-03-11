@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.11
+--                                                  ~ 2012.03.11
 -- |
 -- Module      :  Control.Unification.Ranked
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -60,14 +60,14 @@ import Control.Unification hiding (unify, (=:=))
 
 -- | 'unify'
 (=:=)
-    ::  ( RankedBindingMonad v t m
+    ::  ( RankedBindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm v t       -- ^
-    -> MutTerm v t       -- ^
-    -> e m (MutTerm v t) -- ^
+    => MutTerm t v       -- ^
+    -> MutTerm t v       -- ^
+    -> e m (MutTerm t v) -- ^
 (=:=) = unify
 infix 4 =:=, `unify`
 
@@ -81,14 +81,14 @@ infix 4 =:=, `unify`
 -- aggressive opportunistic observable sharing, so it will be more
 -- efficient to use it in future calculations than either argument.
 unify
-    ::  ( RankedBindingMonad v t m
+    ::  ( RankedBindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure v t) (e m)
+        , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm v t       -- ^
-    -> MutTerm v t       -- ^
-    -> e m (MutTerm v t) -- ^
+    => MutTerm t v       -- ^
+    -> MutTerm t v       -- ^
+    -> e m (MutTerm t v) -- ^
 unify =
     \tl tr -> evalStateT (loop tl tr) IM.empty
     where

@@ -5,7 +5,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.02.17
+--                                                  ~ 2012.03.11
 -- |
 -- Module      :  Control.Unification.STVar
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -41,7 +41,7 @@ import Control.Unification.Types
 data STVar s t =
     STVar
         {-# UNPACK #-} !Int
-        {-# UNPACK #-} !(STRef s (Maybe (MutTerm (STVar s t) t)))
+        {-# UNPACK #-} !(STRef s (Maybe (MutTerm t (STVar s t))))
 
 instance Show (STVar s t) where
     show (STVar i _) = "STVar " ++ show i
@@ -96,7 +96,7 @@ instance Monad (STBinding s) where
 
 _newSTVar
     :: String
-    -> Maybe (MutTerm (STVar s t) t)
+    -> Maybe (MutTerm t (STVar s t))
     -> STBinding s (STVar s t)
 _newSTVar fun mb = STB $ do
     nr <- ask
@@ -109,7 +109,7 @@ _newSTVar fun mb = STB $ do
                 STVar n <$> newSTRef mb
 
 instance (Unifiable t) =>
-    BindingMonad (STVar s t) t (STBinding s)
+    BindingMonad t (STVar s t) (STBinding s)
     where
 
     lookupVar (STVar _ p) = STB . lift $ readSTRef p

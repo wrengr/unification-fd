@@ -5,7 +5,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.02.17
+--                                                  ~ 2012.03.11
 -- |
 -- Module      :  Control.Unification.Ranked.STVar
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -43,7 +43,7 @@ data STRVar s t =
     STRVar
         {-# UNPACK #-} !Int
         {-# UNPACK #-} !(STRef s Word8)
-        {-# UNPACK #-} !(STRef s (Maybe (MutTerm (STRVar s t) t)))
+        {-# UNPACK #-} !(STRef s (Maybe (MutTerm t (STRVar s t))))
 
 instance Show (STRVar s t) where
     show (STRVar i _ _) = "STRVar " ++ show i
@@ -97,7 +97,7 @@ instance Monad (STRBinding s) where
 
 _newSTRVar
     :: String
-    -> Maybe (MutTerm (STRVar s t) t)
+    -> Maybe (MutTerm t (STRVar s t))
     -> STRBinding s (STRVar s t)
 _newSTRVar fun mb = STRB $ do
     nr <- ask
@@ -113,7 +113,7 @@ _newSTRVar fun mb = STRB $ do
                 return (STRVar n rk ptr)
 
 
-instance (Unifiable t) => BindingMonad (STRVar s t) t (STRBinding s) where
+instance (Unifiable t) => BindingMonad t (STRVar s t) (STRBinding s) where
     lookupVar (STRVar _ _ p) = STRB . lift $ readSTRef p
     
     freeVar  = _newSTRVar "freeVar" Nothing
@@ -124,7 +124,7 @@ instance (Unifiable t) => BindingMonad (STRVar s t) t (STRBinding s) where
 
 
 instance (Unifiable t) =>
-    RankedBindingMonad (STRVar s t) t (STRBinding s)
+    RankedBindingMonad t (STRVar s t) (STRBinding s)
     where
     
     lookupRankVar (STRVar _ r p) = STRB . lift $ do
