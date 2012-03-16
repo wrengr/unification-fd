@@ -70,6 +70,7 @@ module Control.Unification
     , fullprune
     , semiprune
     , occursIn
+    -- TODO: add a post-hoc occurs check in order to have a version of unify which is fast, yet is also guaranteed to fail when it out to (rather than deferring the failure until later, as the current unify does).
     ) where
 
 import Prelude
