@@ -47,20 +47,35 @@ equalsK tl tr = do
     case mb of
         Nothing -> return False
         Just () -> return True
+    where
+    equals_loop tl0 tr0 = do
+        tl <- lift $ semiprune tl0
+        tr <- lift $ semiprune tr0
+        case (tl, tr) of
+            (MutVar vl', MutVar vr')
+                | vl' `eqVar` vr' -> return () -- success
+                | otherwise       -> do
+                    mtl <- lift $ lookupVar vl'
+                    mtr <- lift $ lookupVar vr'
+                    case (mtl, mtr) of
+                        (Nothing,  Nothing ) -> mzero
+                        (Nothing,  Just _  ) -> mzero
+                        (Just _,   Nothing ) -> mzero
+                        (Just tl', Just tr') -> equals_loop tl' tr' -- TODO: should just jump to match
+            (MutVar  _,   MutTerm _  ) -> mzero
+            (MutTerm _,   MutVar  _  ) -> mzero
+            (MutTerm tl', MutTerm tr') ->
+                case zipMatch tl' tr' of
+                Nothing  -> mzero
+                Just tlr -> mapM_ (uncurry equals_loop) tlr
 
 equalsMb tl tr = do
     mb <- runMaybeT (equals_loop tl tr)
     case mb of
         Nothing -> return False
         Just () -> return True
-
-equals_loop
-    :: (MonadTrans n, MonadPlus (n m), BindingMonad t v m)
-    => MutTerm t v  -- ^
-    -> MutTerm t v  -- ^
-    -> n m ()       -- ^
-{-# INLINE equals_loop #-}
-equals_loop tl0 tr0 = do
+    where
+    equals_loop tl0 tr0 = do
         tl <- lift $ semiprune tl0
         tr <- lift $ semiprune tr0
         case (tl, tr) of
@@ -92,6 +107,7 @@ equivK, equivMb
 equivK  tl tr = runMaybeKT (execStateT (equiv_loop tl tr) IM.empty)
 equivMb tl tr = runMaybeT  (execStateT (equiv_loop tl tr) IM.empty)
 
+-- BUG: this doesn't actually inline/specialize...
 equiv_loop
     ::  ( MonadTrans n, MonadPlus (n m)
         , MonadTrans s, MonadState (IM.IntMap Int) (s (n m))
@@ -149,6 +165,9 @@ bar1 x = s "bar" [x]
 baz0 :: STerm
 baz0 = s "baz" []
 
+bar0 :: STerm
+bar0 = s "bar" []
+
 -- N.B., don't go deeper than about 15 if you're printing the term.
 fooN :: Int -> STerm
 fooN n
@@ -180,16 +199,55 @@ withNVars = \n io -> print . runIdentity . runIntBindingT $ go [] n io
 runIntBinding  = runIdentity . runIntBindingT
 evalIntBinding = runIdentity . evalIntBindingT
 
-runCriterionTests :: STerm -> STerm -> IO ()
-runCriterionTests tl tr =
+main :: IO ()
+main =
+    let f t = foo2 (foo2 (foo2 baz0 baz0) (foo2 baz0 baz0))
+                   (foo2 (foo2 baz0 baz0) (foo2 baz0 t))
+        t0l = f baz0
+        t0r = f bar0
+        t1l = f t0l
+        t1r = f t0r
+        t2l = f t1l
+        t2r = f t1r
+        t3l = f t2l
+        t3r = f t2r
+    in
     defaultMain
-        [ bgroup "equals (False)"
-            [ bench "equalsK"  $ nf (evalIntBinding . equalsK  tl) tr
-            , bench "equalsMb" $ nf (evalIntBinding . equalsMb tl) tr
+        [ bgroup "equalsK (False)"
+            [ bench "t0" $ nf (evalIntBinding . equalsK t0l) t0r
+            , bench "t1" $ nf (evalIntBinding . equalsK t1l) t1r
+            , bench "t2" $ nf (evalIntBinding . equalsK t2l) t2r
+            , bench "t3" $ nf (evalIntBinding . equalsK t3l) t3r
             ]
-        , bgroup "equals (True)"
-            [ bench "equalsK"  $ nf (evalIntBinding . equalsK  tl) tl
-            , bench "equalsMb" $ nf (evalIntBinding . equalsMb tl) tl
+        , bgroup "equalsK (True)"
+            [ bench "t0" $ nf (evalIntBinding . equalsK t0l) t0l
+            , bench "t1" $ nf (evalIntBinding . equalsK t1l) t1l
+            , bench "t2" $ nf (evalIntBinding . equalsK t2l) t2l
+            , bench "t3" $ nf (evalIntBinding . equalsK t3l) t3l
+            ]
+        , bgroup "equalsMb (False)"
+            [ bench "t0" $ nf (evalIntBinding . equalsMb t0l) t0r
+            , bench "t1" $ nf (evalIntBinding . equalsMb t1l) t1r
+            , bench "t2" $ nf (evalIntBinding . equalsMb t2l) t2r
+            , bench "t3" $ nf (evalIntBinding . equalsMb t3l) t3r
+            ]
+        , bgroup "equalsMb (True)"
+            [ bench "t0" $ nf (evalIntBinding . equalsMb t0l) t0l
+            , bench "t1" $ nf (evalIntBinding . equalsMb t1l) t1l
+            , bench "t2" $ nf (evalIntBinding . equalsMb t2l) t2l
+            , bench "t3" $ nf (evalIntBinding . equalsMb t3l) t3l
+            ]
+        , bgroup "equalsLib (False)"
+            [ bench "t0" $ nf (evalIntBinding . equals t0l) t0r
+            , bench "t1" $ nf (evalIntBinding . equals t1l) t1r
+            , bench "t2" $ nf (evalIntBinding . equals t2l) t2r
+            , bench "t3" $ nf (evalIntBinding . equals t3l) t3r
+            ]
+        , bgroup "equalsLib (True)"
+            [ bench "t0" $ nf (evalIntBinding . equals t0l) t0l
+            , bench "t1" $ nf (evalIntBinding . equals t1l) t1l
+            , bench "t2" $ nf (evalIntBinding . equals t2l) t2l
+            , bench "t3" $ nf (evalIntBinding . equals t3l) t3l
             ]
         {-
         -- BUG: No instances for (Control.DeepSeq.NFData (IntBindingState S),
@@ -215,28 +273,6 @@ test0
             , equalsK  tr tr
             , equalsMb tr tr
             ]
-
-t0 =
-    (foo2
-        (foo2
-            (foo2 baz0 baz0)
-            (foo2 baz0 baz0))
-        (foo2
-            (foo2 baz0 baz0)
-            (foo2 baz0 baz0)))
-t1 =
-    (foo2
-        (foo2
-            (foo2 baz0 baz0)
-            (foo2 baz0 baz0))
-        (foo2
-            (foo2 baz0 baz0)
-            (foo2 baz0 (s "bar" []))))
-
-main :: IO ()
-main = do
-    test0
-    runCriterionTests t0 t1
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.
