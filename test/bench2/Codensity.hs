@@ -203,52 +203,34 @@ main :: IO ()
 main =
     let f t = foo2 (foo2 (foo2 baz0 baz0) (foo2 baz0 baz0))
                    (foo2 (foo2 baz0 baz0) (foo2 baz0 t))
-        t0l = f baz0
-        t0r = f bar0
-        t1l = f t0l
-        t1r = f t0r
-        t2l = f t1l
-        t2r = f t1r
-        t3l = f t2l
-        t3r = f t2r
+        g t = foo2 (foo2 (foo2 baz0 baz0) (foo2 baz0 t))
+                   (foo2 (foo2 baz0 baz0) (foo2 baz0 baz0))
+        f1z = f baz0; f1r = f bar0; g1z = g baz0; g1r = g bar0
+        f2z = f f1z;  f2r = f f1r;  g2z = g g1z;  g2r = g g1r
+        f3z = f f2z;  f3r = f f2r;  g3z = g g2z;  g3r = g g2r
+        f4z = f f3z;  f4r = f f3r;  g4z = g g3z;  g4r = g g3r
+        
+        mkBGroup tl tr =
+            [ bench "equalsK"   $ nf (evalIntBinding . equalsK  tl) tr
+            , bench "equalsMb"  $ nf (evalIntBinding . equalsMb tl) tr
+            , bench "equalsLib" $ nf (evalIntBinding . equals   tl) tr
+            ]
     in
     defaultMain
-        [ bgroup "equalsK (False)"
-            [ bench "t0" $ nf (evalIntBinding . equalsK t0l) t0r
-            , bench "t1" $ nf (evalIntBinding . equalsK t1l) t1r
-            , bench "t2" $ nf (evalIntBinding . equalsK t2l) t2r
-            , bench "t3" $ nf (evalIntBinding . equalsK t3l) t3r
-            ]
-        , bgroup "equalsK (True)"
-            [ bench "t0" $ nf (evalIntBinding . equalsK t0l) t0l
-            , bench "t1" $ nf (evalIntBinding . equalsK t1l) t1l
-            , bench "t2" $ nf (evalIntBinding . equalsK t2l) t2l
-            , bench "t3" $ nf (evalIntBinding . equalsK t3l) t3l
-            ]
-        , bgroup "equalsMb (False)"
-            [ bench "t0" $ nf (evalIntBinding . equalsMb t0l) t0r
-            , bench "t1" $ nf (evalIntBinding . equalsMb t1l) t1r
-            , bench "t2" $ nf (evalIntBinding . equalsMb t2l) t2r
-            , bench "t3" $ nf (evalIntBinding . equalsMb t3l) t3r
-            ]
-        , bgroup "equalsMb (True)"
-            [ bench "t0" $ nf (evalIntBinding . equalsMb t0l) t0l
-            , bench "t1" $ nf (evalIntBinding . equalsMb t1l) t1l
-            , bench "t2" $ nf (evalIntBinding . equalsMb t2l) t2l
-            , bench "t3" $ nf (evalIntBinding . equalsMb t3l) t3l
-            ]
-        , bgroup "equalsLib (False)"
-            [ bench "t0" $ nf (evalIntBinding . equals t0l) t0r
-            , bench "t1" $ nf (evalIntBinding . equals t1l) t1r
-            , bench "t2" $ nf (evalIntBinding . equals t2l) t2r
-            , bench "t3" $ nf (evalIntBinding . equals t3l) t3r
-            ]
-        , bgroup "equalsLib (True)"
-            [ bench "t0" $ nf (evalIntBinding . equals t0l) t0l
-            , bench "t1" $ nf (evalIntBinding . equals t1l) t1l
-            , bench "t2" $ nf (evalIntBinding . equals t2l) t2l
-            , bench "t3" $ nf (evalIntBinding . equals t3l) t3l
-            ]
+        [ bgroup "g1zr" $ mkBGroup g1z g1r
+        , bgroup "g2zr" $ mkBGroup g2z g2r
+        , bgroup "g3zr" $ mkBGroup g3z g3r
+        , bgroup "g4zr" $ mkBGroup g4z g4r
+        --
+        , bgroup "f1zr" $ mkBGroup f1z f1r
+        , bgroup "f2zr" $ mkBGroup f2z f2r
+        , bgroup "f3zr" $ mkBGroup f3z f3r
+        , bgroup "f4zr" $ mkBGroup f4z f4r
+        --
+        , bgroup "f1zz" $ mkBGroup f1z f1z
+        , bgroup "f2zz" $ mkBGroup f2z f2z
+        , bgroup "f3zz" $ mkBGroup f3z f3z
+        , bgroup "f4zz" $ mkBGroup f4z f4z
         {-
         -- BUG: No instances for (Control.DeepSeq.NFData (IntBindingState S),
                       Control.DeepSeq.NFData (IM.IntMap Int))
@@ -258,21 +240,6 @@ main =
             ]
         -}
         ]
-
-test0
-    = print
-    . runIntBinding
-    $ do
-        tl <- fooNxl 15
-        tr <- fooNxr 15
-        sequence
-            [ equalsK  tl tr
-            , equalsMb tl tr
-            , equalsK  tl tl
-            , equalsMb tl tl
-            , equalsK  tr tr
-            , equalsMb tr tr
-            ]
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.
