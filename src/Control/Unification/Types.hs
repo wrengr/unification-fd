@@ -5,7 +5,7 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.11
+--                                                  ~ 2012.03.16
 -- |
 -- Module      :  Control.Unification.Types
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -38,8 +38,10 @@ import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 
 import Data.Word               (Word8)
 import Data.Functor.Fixedpoint (Fix(..))
+import Data.Foldable           (Foldable(..))
 import Data.Traversable        (Traversable(..))
-import Control.Applicative     (Applicative(..), (<$>))
+import Control.Applicative     (Applicative(..), (<$>), Alternative(..))
+import Control.Monad           (MonadPlus(..))
 import Control.Monad.Error     (Error(..))
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -51,28 +53,64 @@ import Control.Monad.Error     (Error(..))
 -- variable type should implement 'Variable'.
 --
 -- The 'Show' instance doesn't show the constructors, for legibility.
--- The 'Functor' instance is provided because it is often useful;
--- however, beware that since it must be pure it cannot read variables
--- bound in the current monadic context, and therefore can allow
--- incoherent results. Therefore, you should apply the current
--- bindings before using 'fmap'.
+-- All the category theoretic instances ('Functor', 'Foldable',
+-- 'Traversable',...) are provided because they are often useful;
+-- however, beware that since the implementations must be pure,
+-- they cannot read variables bound in the current context and
+-- therefore can create incoherent results. Therefore, you should
+-- apply the current bindings before using any of the functions
+-- provided by those classes.
+
 data MutTerm t v
     = MutVar  !v
     | MutTerm !(t (MutTerm t v))
 
-instance (Show v, Show (t (MutTerm t v))) =>
-    Show (MutTerm t v)
-    where
+instance (Show v, Show (t (MutTerm t v))) => Show (MutTerm t v) where
     showsPrec p (MutVar  v) = showsPrec p v
     showsPrec p (MutTerm t) = showsPrec p t
 
 instance (Functor t) => Functor (MutTerm t) where
-    fmap f (MutVar  v) = MutVar (f v)
+    fmap f (MutVar  v) = MutVar  (f v)
     fmap f (MutTerm t) = MutTerm (fmap (fmap f) t)
 
--- TODO: Foldable, Traversable.
+instance (Foldable t) => Foldable (MutTerm t) where
+    foldMap f (MutVar  v) = f v
+    foldMap f (MutTerm t) = foldMap (foldMap f) t
 
--- Can we get Applicative or Monad instances to make sense?
+instance (Traversable t) => Traversable (MutTerm t) where
+    traverse f (MutVar  v) = MutVar  <$> f v
+    traverse f (MutTerm t) = MutTerm <$> traverse (traverse f) t
+
+-- Does this even make sense for MutTerm? It'd mean (a->b) is a
+-- variable type...
+instance (Functor t) => Applicative (MutTerm t) where
+    pure                      = MutVar
+    MutVar  a  <*> MutVar  b  = MutVar  (a b)
+    MutVar  a  <*> MutTerm mb = MutTerm (fmap a  <$> mb)
+    MutTerm ma <*> b          = MutTerm ((<*> b) <$> ma)
+
+-- Does this even make sense for MutTerm? It may be helpful for
+-- building terms at least; though bind is inefficient for that.
+-- Should use the cheaper free...
+instance (Functor t) => Monad (MutTerm t) where
+    return          = MutVar
+    MutVar  v >>= f = f v
+    MutTerm t >>= f = MutTerm ((>>= f) <$> t)
+
+-- This really doesn't make sense for MutTerm...
+instance (Alternative t) => Alternative (MutTerm t) where
+    empty   = MutTerm empty
+    a <|> b = MutTerm (pure a <|> pure b)
+
+-- This really doesn't make sense for MutTerm...
+instance (Functor t, MonadPlus t) => MonadPlus (MutTerm t) where
+    mzero       = MutTerm mzero
+    a `mplus` b = MutTerm (return a `mplus` return b)
+
+-- There's also MonadTrans, MonadWriter, MonadReader, MonadState,
+-- MonadError, MonadCont; which make even less sense for us. See
+-- Ed Kmett's free package for the implementations.
+
 
 -- | /O(n)/. Embed a pure term as a mutable term.
 unfreeze :: (Functor t) => Fix t -> MutTerm t v
@@ -226,9 +264,7 @@ data Rank t v =
     Rank {-# UNPACK #-} !Word8 !(Maybe (MutTerm t v))
 
 -- Can't derive this because it's an UndecidableInstance
-instance (Show v, Show (t (MutTerm t v))) =>
-    Show (Rank t v)
-    where
+instance (Show v, Show (t (MutTerm t v))) => Show (Rank t v) where
     show (Rank n mb) = "Rank "++show n++" "++show mb
 
 -- TODO: flatten the Rank.Maybe.MutTerm so that we can tell that if semiprune returns a bound variable then it's bound to a term (not another var)?
@@ -246,8 +282,8 @@ instance Monoid (Rank t v) where
 -- compression is asymptotically optimal, the constant factors may
 -- make it worthwhile to stick with the unweighted path compression
 -- supported by 'BindingMonad'.
-
 class (BindingMonad t v m) => RankedBindingMonad t v m | m -> t v where
+    
     -- | Given a variable pointing to @MutTerm t v@, return its
     -- rank and the term it's bound to.
     lookupRankVar :: v -> m (Rank t v)
