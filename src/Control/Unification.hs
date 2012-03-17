@@ -141,6 +141,7 @@ semiprune t0@(MutVar  v0) = loop t0 v0
 -- variable to the term, we do not bother checking for the possibility
 -- of the variable occuring bound in the term.
 occursIn :: (BindingMonad t v m) => v -> MutTerm t v -> m Bool
+{-# INLINE occursIn #-}
 occursIn v0 t0 = do
     t0 <- fullprune t0
     case t0 of
@@ -366,6 +367,15 @@ infix 4 <:=, `subsumes`
 
 ----------------------------------------------------------------
 
+{- BUG:
+If we don't use anything special, then there's a 2x overhead for
+calling 'equals' (and probably the rest of them too). If we add a
+SPECIALIZE pragma, or if we try to use MaybeT instead of MaybeKT
+then that jumps up to 4x overhead. However, if we add an INLINE
+pragma then it gets faster than the same implementation in the
+benchmark file. I've no idea what's going on here...
+-}
+
 -- TODO: should we offer a variant which gives the reason for failure?
 --
 -- | Determine if two terms are structurally equal. This is essentially
@@ -378,7 +388,6 @@ equals
     => MutTerm t v  -- ^
     -> MutTerm t v  -- ^
     -> m Bool       -- ^
-{-# INLINE equals #-}
 equals tl0 tr0 = do
     mb <- runMaybeKT (loop tl0 tr0)
     case mb of
