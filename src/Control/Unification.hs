@@ -378,6 +378,7 @@ equals
     => MutTerm t v  -- ^
     -> MutTerm t v  -- ^
     -> m Bool       -- ^
+{-# INLINE equals #-}
 equals tl0 tr0 = do
     mb <- runMaybeKT (loop tl0 tr0)
     case mb of
