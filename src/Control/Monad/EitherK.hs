@@ -3,7 +3,7 @@
 {-# LANGUAGE Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.06.30
+--                                                  ~ 2012.03.16
 -- |
 -- Module      :  Control.Monad.EitherK
 -- License     :  BSD
@@ -108,8 +108,10 @@ instance Functor (EitherK e) where
     fmap f (EK m) = EK (\k -> m (k . f))
 
 instance Applicative (EitherK e) where
-    pure  = return
-    (<*>) = ap
+    pure   = return
+    (<*>)  = ap
+    (*>)   = (>>)
+    x <* y = x >>= \a -> y >> return a
 
 instance Monad (EitherK e) where
     return a   = EK (\k -> k a)
@@ -191,8 +193,10 @@ instance Functor (EitherKT e m) where
     fmap f (EKT m) = EKT (\k -> m (k . f))
 
 instance Applicative (EitherKT e m) where
-    pure  = return
-    (<*>) = ap
+    pure   = return
+    (<*>)  = ap
+    (*>)   = (>>)
+    x <* y = x >>= \a -> y >> return a
 
 instance Monad (EitherKT e m) where
     return a    = EKT (\k -> k a)

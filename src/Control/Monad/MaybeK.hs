@@ -2,7 +2,7 @@
 {-# LANGUAGE Rank2Types, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.06.30
+--                                                  ~ 2012.03.16
 -- |
 -- Module      :  Control.Monad.MaybeK
 -- License     :  BSD
@@ -86,8 +86,10 @@ instance Functor MaybeK where
     fmap f (MK m) = MK (\k -> m (k . f))
 
 instance Applicative MaybeK where
-    pure  = return
-    (<*>) = ap
+    pure   = return
+    (<*>)  = ap
+    (*>)   = (>>)
+    x <* y = x >>= \a -> y >> return a
 
 instance Monad MaybeK where
     return a   = MK (\k -> k a)
@@ -145,8 +147,10 @@ instance Functor (MaybeKT m) where
     fmap f (MKT m) = MKT (\k -> m (k . f))
 
 instance Applicative (MaybeKT m) where
-    pure  = return
-    (<*>) = ap
+    pure   = return
+    (<*>)  = ap
+    (*>)   = (>>)
+    x <* y = x >>= \a -> y >> return a
 
 instance Monad (MaybeKT m) where
     return a    = MKT (\k -> k a)

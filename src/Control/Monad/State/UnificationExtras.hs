@@ -35,12 +35,14 @@ import Control.Monad.State.Lazy (MonadState(..), State(), StateT(..))
 -- | Lift a reader into a state monad. More particularly, this
 -- allows disabling mutability in a local context within @StateT@.
 liftReaderT :: (Monad m) => ReaderT e m a -> StateT e m a
+{-# INLINE liftReaderT #-}
 liftReaderT r = StateT $ \e -> liftM (\a -> (a,e)) (runReaderT r e)
 
 
 -- | Lift a reader into a state monad. More particularly, this
 -- allows disabling mutability in a local context within @State@.
 liftReader :: Reader e a -> State e a
+{-# INLINE liftReader #-}
 liftReader = liftReaderT
 
 
