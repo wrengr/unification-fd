@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
-{-# OPTIONS_GHC -Wall -fwarn-tabs #-}
+{-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.11
+--                                                  ~ 2012.03.16
 -- |
 -- Module      :  Control.Unification.Ranked
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -69,6 +69,7 @@ import Control.Unification hiding (unify, (=:=))
     -> MutTerm t v       -- ^
     -> e m (MutTerm t v) -- ^
 (=:=) = unify
+{-# INLINE (=:=) #-}
 infix 4 =:=, `unify`
 
 
@@ -89,8 +90,7 @@ unify
     => MutTerm t v       -- ^
     -> MutTerm t v       -- ^
     -> e m (MutTerm t v) -- ^
-unify =
-    \tl tr -> evalStateT (loop tl tr) IM.empty
+unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     -- TODO: use IM.insertWith or the like to do this in one pass
     {-# INLINE seenAs #-}
@@ -104,11 +104,11 @@ unify =
     v =: t = bindVar v t >> return t
     
     loop tl0 tr0 = do
-        tl1 <- lift . lift $ semiprune tl0
-        tr1 <- lift . lift $ semiprune tr0
-        case (tl1, tr1) of
+        tl0 <- lift . lift $ semiprune tl0
+        tr0 <- lift . lift $ semiprune tr0
+        case (tl0, tr0) of
             (MutVar vl, MutVar vr)
-                | vl `eqVar` vr -> return tr1
+                | vl `eqVar` vr -> return tr0
                 | otherwise     -> do
                     Rank rl mtl <- lift . lift $ lookupRankVar vl
                     Rank rr mtr <- lift . lift $ lookupRankVar vr
@@ -116,21 +116,21 @@ unify =
                     case (mtl, mtr) of
                         (Nothing, Nothing) -> lift . lift $
                             case cmp of
-                            LT -> do {                    vl =: tr1 }
-                            EQ -> do { incrementRank vr ; vl =: tr1 }
-                            GT -> do {                    vr =: tl1 }
+                            LT -> do {                    vl =: tr0 }
+                            EQ -> do { incrementRank vr ; vl =: tr0 }
+                            GT -> do {                    vr =: tl0 }
                       
                         (Nothing, Just tr) -> lift . lift $
                             case cmp of
-                            LT -> do {                    vl =: tr1 }
-                            EQ -> do { incrementRank vr ; vl =: tr1 }
-                            GT -> do { vl `bindVar` tr  ; vr =: tl1 }
+                            LT -> do {                    vl =: tr0 }
+                            EQ -> do { incrementRank vr ; vl =: tr0 }
+                            GT -> do { vl `bindVar` tr  ; vr =: tl0 }
                         
                         (Just tl, Nothing) -> lift . lift $
                             case cmp of
-                            LT -> do { vr `bindVar` tl  ; vl =: tr1 }
-                            EQ -> do { incrementRank vl ; vr =: tl1 }
-                            GT -> do {                    vr =: tl1 }
+                            LT -> do { vr `bindVar` tl  ; vl =: tr0 }
+                            EQ -> do { incrementRank vl ; vr =: tl0 }
+                            GT -> do {                    vr =: tl0 }
                         
                         (Just tl, Just tr) -> do
                             t <- localState $ do
@@ -139,33 +139,33 @@ unify =
                                 loop tl tr
                             lift . lift $
                                 case cmp of
-                                LT -> do { vr `bindVar` t        ; vl =: tr1 }
-                                EQ -> do { incrementBindVar vl t ; vr =: tl1 }
-                                GT -> do { vl `bindVar` t        ; vr =: tl1 }
+                                LT -> do { vr `bindVar` t        ; vl =: tr0 }
+                                EQ -> do { incrementBindVar vl t ; vr =: tl0 }
+                                GT -> do { vl `bindVar` t        ; vr =: tl0 }
             
             (MutVar vl, MutTerm _) -> do
                 t <- do
                     mtl <- lift . lift $ lookupVar vl
                     case mtl of
-                        Nothing -> return tr1
+                        Nothing -> return tr0
                         Just tl -> localState $ do
                             vl `seenAs` tl
-                            loop tl tr1
+                            loop tl tr0
                 lift . lift $ do
                     vl `bindVar` t
-                    return tl1
+                    return tl0
             
             (MutTerm _, MutVar vr) -> do
                 t <- do
                     mtr <- lift . lift $ lookupVar vr
                     case mtr of
-                        Nothing -> return tl1
+                        Nothing -> return tl0
                         Just tr -> localState $ do
                             vr `seenAs` tr
-                            loop tl1 tr
+                            loop tl0 tr
                 lift . lift $ do
                     vr `bindVar` t
-                    return tr1
+                    return tr0
             
             (MutTerm tl, MutTerm tr) ->
                 case zipMatch tl tr of

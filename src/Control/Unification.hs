@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
-{-# OPTIONS_GHC -Wall -fwarn-tabs #-}
+{-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.11
+--                                                  ~ 2012.03.16
 -- |
 -- Module      :  Control.Unification
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -100,17 +100,15 @@ import Control.Unification.Types
 --
 -- N.B., this is almost never the function you want. Cf., 'semiprune'.
 fullprune :: (BindingMonad t v m) => MutTerm t v -> m (MutTerm t v)
-fullprune t0 =
-    case t0 of
-    MutTerm _ -> return t0
-    MutVar  v -> do
-        mb <- lookupVar v
-        case mb of
-            Nothing -> return t0
-            Just t  -> do
-                finalTerm <- fullprune t
-                v `bindVar` finalTerm
-                return finalTerm
+fullprune t0@(MutTerm _ ) = return t0
+fullprune t0@(MutVar  v0) = do
+    mb <- lookupVar v0
+    case mb of
+        Nothing -> return t0
+        Just t  -> do
+            finalTerm <- fullprune t
+            v0 `bindVar` finalTerm
+            return finalTerm
 
 
 -- N.B., this assumes there are no directly-cyclic chains!
@@ -121,23 +119,20 @@ fullprune t0 =
 -- variables point to the same term, thereby allowing us to avoid
 -- re-unifying the term they point to.
 semiprune :: (BindingMonad t v m) => MutTerm t v -> m (MutTerm t v)
-semiprune =
-    \t0 ->
-        case t0 of
-        MutTerm _  -> return t0
-        MutVar  v0 -> loop t0 v0
+semiprune t0@(MutTerm _ ) = return t0
+semiprune t0@(MutVar  v0) = loop t0 v0
     where
     -- We pass the @t@ for @v@ in order to add just a little more sharing.
-    loop t v = do
-        mb <- lookupVar v
+    loop t0 v0 = do
+        mb <- lookupVar v0
         case mb of
-            Nothing -> return t
-            Just t' -> 
-                case t' of
-                MutTerm _  -> return t
-                MutVar  v' -> do
-                    finalVar <- loop t' v'
-                    v `bindVar` finalVar
+            Nothing -> return t0
+            Just t  -> 
+                case t  of
+                MutTerm _  -> return t0
+                MutVar  v  -> do
+                    finalVar <- loop t v
+                    v0 `bindVar` finalVar
                     return finalVar
 
 
@@ -146,11 +141,13 @@ semiprune =
 -- variable to the term, we do not bother checking for the possibility
 -- of the variable occuring bound in the term.
 occursIn :: (BindingMonad t v m) => v -> MutTerm t v -> m Bool
-occursIn v t0 = do
-    t <- fullprune t0
-    case t of
-        MutTerm t' -> or <$> mapM (v `occursIn`) t' -- TODO: use foldlM instead
-        MutVar  v' -> return $! v `eqVar` v'
+occursIn v0 t0 = do
+    t0 <- fullprune t0
+    case t0 of
+        MutTerm t -> or <$> mapM (v0 `occursIn`) t
+            -- TODO: benchmark the following for shortcircuiting
+            -- > Traversable.foldlM (\b t' -> if b then return True else v0 `occursIn` t') t
+        MutVar  v -> return $! v0 `eqVar` v
 
 
 -- TODO: use IM.insertWith or the like to do this in one pass
@@ -162,15 +159,15 @@ seenAs
         , MonadTrans e
         , MonadError (UnificationFailure t v) (e m)
         )
-    => v               -- ^
-    -> MutTerm t v     -- ^
-    -> StateT (IM.IntMap (MutTerm t v)) (e m) ()
+    => v -- ^
+    -> MutTerm t v -- ^
+    -> StateT (IM.IntMap (MutTerm t v)) (e m) () -- ^
 {-# INLINE seenAs #-}
-seenAs v t = do
+seenAs v0 t0 = do
     seenVars <- get
-    case IM.lookup (getVarID v) seenVars of
-        Just t' -> lift . throwError $ OccursIn v t'
-        Nothing -> put $! IM.insert (getVarID v) t seenVars
+    case IM.lookup (getVarID v0) seenVars of
+        Just t  -> lift . throwError $ OccursIn v0 t
+        Nothing -> put $! IM.insert (getVarID v0) t0 seenVars
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -188,12 +185,11 @@ seenAs v t = do
 -- this function does not detect cyclic terms (i.e., throw errors),
 -- but it will return the correct answer for them in finite time.
 getFreeVars :: (BindingMonad t v m) => MutTerm t v -> m [v]
-getFreeVars =
-    \t -> IM.elems <$> evalStateT (loop t) IS.empty
+getFreeVars t0 = IM.elems <$> evalStateT (loop t0) IS.empty
     where
     loop t0 = do
-        t1 <- lift $ semiprune t0
-        case t1 of
+        t0 <- lift $ semiprune t0
+        case t0 of
             MutTerm t -> fold <$> mapM loop t -- TODO: use foldlM instead?
             MutVar  v -> do
                 seenVars <- get
@@ -225,12 +221,11 @@ applyBindings
         )
     => MutTerm t v       -- ^
     -> e m (MutTerm t v) -- ^
-applyBindings =
-    \t -> evalStateT (loop t) IM.empty
+applyBindings t0 = evalStateT (loop t0) IM.empty
     where
     loop t0 = do
-        t1 <- lift . lift $ semiprune t0
-        case t1 of
+        t0 <- lift . lift $ semiprune t0
+        case t0 of
             MutTerm t -> MutTerm <$> mapM loop t
             MutVar  v -> do
                 let i = getVarID v
@@ -241,7 +236,7 @@ applyBindings =
                     Nothing -> do
                         mb' <- lift . lift $ lookupVar v
                         case mb' of
-                            Nothing -> return t1
+                            Nothing -> return t0
                             Just t  -> do
                                 modify' . IM.insert i $ Left t
                                 t' <- loop t
@@ -288,11 +283,11 @@ freshenMany
         )
     => s (MutTerm t v)       -- ^
     -> e m (s (MutTerm t v)) -- ^
-freshenMany ts = evalStateT (mapM loop ts) IM.empty
+freshenMany ts0 = evalStateT (mapM loop ts0) IM.empty
     where
     loop t0 = do
-        t1 <- lift . lift $ semiprune t0
-        case t1 of
+        t0 <- lift . lift $ semiprune t0
+        case t0 of
             MutTerm t -> MutTerm <$> mapM loop t
             MutVar  v -> do
                 let i = getVarID v
@@ -325,6 +320,7 @@ freshenMany ts = evalStateT (mapM loop ts) IM.empty
     -> MutTerm t v  -- ^
     -> m Bool       -- ^
 (===) = equals
+{-# INLINE (===) #-}
 infix 4 ===, `equals`
 
 
@@ -335,6 +331,7 @@ infix 4 ===, `equals`
     -> MutTerm t v               -- ^
     -> m (Maybe (IM.IntMap Int)) -- ^
 (=~=) = equiv
+{-# INLINE (=~=) #-}
 infix 4 =~=, `equiv`
 
 
@@ -349,6 +346,7 @@ infix 4 =~=, `equiv`
     -> MutTerm t v       -- ^
     -> e m (MutTerm t v) -- ^
 (=:=) = unify
+{-# INLINE (=:=) #-}
 infix 4 =:=, `unify`
 
 
@@ -363,6 +361,7 @@ infix 4 =:=, `unify`
     -> MutTerm t v -- ^
     -> e m Bool
 (<:=) = subsumes
+{-# INLINE (<:=) #-}
 infix 4 <:=, `subsumes`
 
 ----------------------------------------------------------------
@@ -379,17 +378,16 @@ equals
     => MutTerm t v  -- ^
     -> MutTerm t v  -- ^
     -> m Bool       -- ^
-equals =
-    \tl tr -> do
-        mb <- runMaybeKT (loop tl tr)
-        case mb of
-            Nothing -> return False
-            Just () -> return True
+equals tl0 tr0 = do
+    mb <- runMaybeKT (loop tl0 tr0)
+    case mb of
+        Nothing -> return False
+        Just () -> return True
     where
     loop tl0 tr0 = do
-        tl <- lift $ semiprune tl0
-        tr <- lift $ semiprune tr0
-        case (tl, tr) of
+        tl0 <- lift $ semiprune tl0
+        tr0 <- lift $ semiprune tr0
+        case (tl0, tr0) of
             (MutVar vl', MutVar vr')
                 | vl' `eqVar` vr' -> return () -- success
                 | otherwise       -> do
@@ -419,13 +417,12 @@ equiv
     => MutTerm t v               -- ^
     -> MutTerm t v               -- ^
     -> m (Maybe (IM.IntMap Int)) -- ^
-equiv =
-    \tl tr -> runMaybeKT (execStateT (loop tl tr) IM.empty)
+equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
     where
     loop tl0 tr0 = do
-        tl <- lift . lift $ fullprune tl0
-        tr <- lift . lift $ fullprune tr0
-        case (tl, tr) of
+        tl0 <- lift . lift $ fullprune tl0
+        tr0 <- lift . lift $ fullprune tr0
+        case (tl0, tr0) of
             (MutVar vl',  MutVar  vr') -> do
                 let il = getVarID vl'
                 let ir = getVarID vr'
@@ -476,51 +473,51 @@ unifyOccurs = loop
     
     -- TODO: cf todos in 'unify'
     loop tl0 tr0 = do
-        tl <- lift $ semiprune tl0
-        tr <- lift $ semiprune tr0
-        case (tl, tr) of
+        tl0 <- lift $ semiprune tl0
+        tr0 <- lift $ semiprune tr0
+        case (tl0, tr0) of
             (MutVar vl', MutVar vr')
-                | vl' `eqVar` vr' -> return tr
+                | vl' `eqVar` vr' -> return tr0
                 | otherwise       -> do
                     mtl <- lift $ lookupVar vl'
                     mtr <- lift $ lookupVar vr'
                     case (mtl, mtr) of
                         (Nothing,  Nothing ) -> do
-                            vl' =: tr
-                            return tr
+                            vl' =: tr0
+                            return tr0
                         (Nothing,  Just _  ) -> do
-                            vl' `acyclicBindVar` tr
-                            return tr
+                            vl' `acyclicBindVar` tr0
+                            return tr0
                         (Just _  , Nothing ) -> do
-                            vr' `acyclicBindVar` tl
-                            return tl
+                            vr' `acyclicBindVar` tl0
+                            return tl0
                         (Just tl', Just tr') -> do
                             t <- loop tl' tr'
                             vr' =: t
-                            vl' =: tr
-                            return tr
+                            vl' =: tr0
+                            return tr0
             
             (MutVar vl', MutTerm _) -> do
                 mtl <- lift $ lookupVar vl'
                 case mtl of
                     Nothing  -> do
-                        vl' `acyclicBindVar` tr
-                        return tl
+                        vl' `acyclicBindVar` tr0
+                        return tl0
                     Just tl' -> do
-                        t <- loop tl' tr
+                        t <- loop tl' tr0
                         vl' =: t
-                        return tl
+                        return tl0
             
             (MutTerm _, MutVar vr') -> do
                 mtr <- lift $ lookupVar vr'
                 case mtr of
                     Nothing  -> do
-                        vr' `acyclicBindVar` tl
-                        return tr
+                        vr' `acyclicBindVar` tl0
+                        return tr0
                     Just tr' -> do
-                        t <- loop tl tr'
+                        t <- loop tl0 tr'
                         vr' =: t
-                        return tr
+                        return tr0
             
             (MutTerm tl', MutTerm tr') ->
                 case zipMatch tl' tr' of
@@ -548,56 +545,55 @@ unify
     => MutTerm t v       -- ^
     -> MutTerm t v       -- ^
     -> e m (MutTerm t v) -- ^
-unify =
-    \tl tr -> evalStateT (loop tl tr) IM.empty
+unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}
     v =: t = lift . lift $ v `bindVar` t
     
     -- TODO: would it be beneficial to manually fuse @x <- lift m; y <- lift n@ to @(x,y) <- lift (m;n)@ everywhere we can?
     loop tl0 tr0 = do
-        tl <- lift . lift $ semiprune tl0
-        tr <- lift . lift $ semiprune tr0
-        case (tl, tr) of
+        tl0 <- lift . lift $ semiprune tl0
+        tr0 <- lift . lift $ semiprune tr0
+        case (tl0, tr0) of
             (MutVar vl', MutVar vr')
-                | vl' `eqVar` vr' -> return tr
+                | vl' `eqVar` vr' -> return tr0
                 | otherwise       -> do
                     mtl <- lift . lift $ lookupVar vl'
                     mtr <- lift . lift $ lookupVar vr'
                     case (mtl, mtr) of
-                        (Nothing,  Nothing ) -> do vl' =: tr ; return tr
-                        (Nothing,  Just _  ) -> do vl' =: tr ; return tr
-                        (Just _  , Nothing ) -> do vr' =: tl ; return tl
+                        (Nothing,  Nothing ) -> do vl' =: tr0 ; return tr0
+                        (Nothing,  Just _  ) -> do vl' =: tr0 ; return tr0
+                        (Just _  , Nothing ) -> do vr' =: tl0 ; return tl0
                         (Just tl', Just tr') -> do
                             t <- localState $ do
                                 vl' `seenAs` tl'
                                 vr' `seenAs` tr'
                                 loop tl' tr' -- TODO: should just jump to match
                             vr' =: t
-                            vl' =: tr
-                            return tr
+                            vl' =: tr0
+                            return tr0
             
             (MutVar vl', MutTerm _) -> do
                 t <- do
                     mtl <- lift . lift $ lookupVar vl'
                     case mtl of
-                        Nothing  -> return tr
+                        Nothing  -> return tr0
                         Just tl' -> localState $ do
                             vl' `seenAs` tl'
-                            loop tl' tr -- TODO: should just jump to match
+                            loop tl' tr0 -- TODO: should just jump to match
                 vl' =: t
-                return tl
+                return tl0
             
             (MutTerm _, MutVar vr') -> do
                 t <- do
                     mtr <- lift . lift $ lookupVar vr'
                     case mtr of
-                        Nothing  -> return tl
+                        Nothing  -> return tl0
                         Just tr' -> localState $ do
                             vr' `seenAs` tr'
-                            loop tl tr' -- TODO: should just jump to match
+                            loop tl0 tr' -- TODO: should just jump to match
                 vr' =: t
-                return tr
+                return tr0
             
             (MutTerm tl', MutTerm tr') ->
                 case zipMatch tl' tr' of
@@ -634,26 +630,25 @@ subsumes
         )
     => MutTerm t v -- ^
     -> MutTerm t v -- ^
-    -> e m Bool
-subsumes =
-    \tl tr -> evalStateT (loop tl tr) IM.empty
+    -> e m Bool    -- ^
+subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}
     v =: t = lift . lift $ do v `bindVar` t ; return True
     
     -- TODO: cf todos in 'unify'
     loop tl0 tr0 = do
-        tl <- lift . lift $ semiprune tl0
-        tr <- lift . lift $ semiprune tr0
-        case (tl, tr) of
+        tl0 <- lift . lift $ semiprune tl0
+        tr0 <- lift . lift $ semiprune tr0
+        case (tl0, tr0) of
             (MutVar vl', MutVar vr')
                 | vl' `eqVar` vr' -> return True
                 | otherwise       -> do
                     mtl <- lift . lift $ lookupVar vl'
                     mtr <- lift . lift $ lookupVar vr'
                     case (mtl, mtr) of
-                        (Nothing,  Nothing ) -> vl' =: tr
-                        (Nothing,  Just _  ) -> vl' =: tr
+                        (Nothing,  Nothing ) -> vl' =: tr0
+                        (Nothing,  Just _  ) -> vl' =: tr0
                         (Just _  , Nothing ) -> return False
                         (Just tl', Just tr') ->
                             localState $ do
@@ -664,10 +659,10 @@ subsumes =
             (MutVar vl',  MutTerm _  ) -> do
                 mtl <- lift . lift $ lookupVar vl'
                 case mtl of
-                    Nothing  -> vl' =: tr
+                    Nothing  -> vl' =: tr0
                     Just tl' -> localState $ do
                         vl' `seenAs` tl'
-                        loop tl' tr
+                        loop tl' tr0
             
             (MutTerm _,   MutVar  _  ) -> return False
             
@@ -675,6 +670,7 @@ subsumes =
                 case zipMatch tl' tr' of
                 Nothing  -> return False
                 Just tlr -> and <$> mapM (uncurry loop) tlr
+                    -- TODO: use foldlM?
     
 
 ----------------------------------------------------------------
