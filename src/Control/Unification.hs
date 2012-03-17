@@ -388,20 +388,20 @@ equals tl0 tr0 = do
         tl0 <- lift $ semiprune tl0
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl', MutVar vr')
-                | vl' `eqVar` vr' -> return () -- success
-                | otherwise       -> do
-                    mtl <- lift $ lookupVar vl'
-                    mtr <- lift $ lookupVar vr'
+            (MutVar vl, MutVar vr)
+                | vl `eqVar` vr -> return () -- success
+                | otherwise     -> do
+                    mtl <- lift $ lookupVar vl
+                    mtr <- lift $ lookupVar vr
                     case (mtl, mtr) of
-                        (Nothing,  Nothing ) -> mzero
-                        (Nothing,  Just _  ) -> mzero
-                        (Just _,   Nothing ) -> mzero
-                        (Just tl', Just tr') -> loop tl' tr' -- TODO: should just jump to match
-            (MutVar  _,   MutTerm _  ) -> mzero
-            (MutTerm _,   MutVar  _  ) -> mzero
-            (MutTerm tl', MutTerm tr') ->
-                case zipMatch tl' tr' of
+                        (Nothing, Nothing ) -> mzero
+                        (Nothing, Just _  ) -> mzero
+                        (Just _,  Nothing ) -> mzero
+                        (Just tl, Just tr) -> loop tl tr -- TODO: should just jump to match
+            (MutVar  _,  MutTerm _  ) -> mzero
+            (MutTerm _,  MutVar  _  ) -> mzero
+            (MutTerm tl, MutTerm tr) ->
+                case zipMatch tl tr of
                 Nothing  -> mzero
                 Just tlr -> mapM_ (uncurry loop) tlr
 
@@ -423,9 +423,9 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
         tl0 <- lift . lift $ fullprune tl0
         tr0 <- lift . lift $ fullprune tr0
         case (tl0, tr0) of
-            (MutVar vl',  MutVar  vr') -> do
-                let il = getVarID vl'
-                let ir = getVarID vr'
+            (MutVar vl,  MutVar  vr) -> do
+                let il = getVarID vl
+                let ir = getVarID vr
                 xs <- get
                 case IM.lookup il xs of
                     Just x
@@ -433,10 +433,10 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
                         | otherwise -> lift mzero
                     Nothing         -> put $! IM.insert il ir xs
             
-            (MutVar _,    MutTerm _  ) -> lift mzero
-            (MutTerm _,   MutVar  _  ) -> lift mzero
-            (MutTerm tl', MutTerm tr') ->
-                case zipMatch tl' tr' of
+            (MutVar  _,  MutTerm _ ) -> lift mzero
+            (MutTerm _,  MutVar  _ ) -> lift mzero
+            (MutTerm tl, MutTerm tr) ->
+                case zipMatch tl tr of
                 Nothing  -> lift mzero
                 Just tlr -> mapM_ (uncurry loop) tlr
 
@@ -476,52 +476,52 @@ unifyOccurs = loop
         tl0 <- lift $ semiprune tl0
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl', MutVar vr')
-                | vl' `eqVar` vr' -> return tr0
-                | otherwise       -> do
-                    mtl <- lift $ lookupVar vl'
-                    mtr <- lift $ lookupVar vr'
+            (MutVar vl, MutVar vr)
+                | vl `eqVar` vr -> return tr0
+                | otherwise     -> do
+                    mtl <- lift $ lookupVar vl
+                    mtr <- lift $ lookupVar vr
                     case (mtl, mtr) of
                         (Nothing,  Nothing ) -> do
-                            vl' =: tr0
+                            vl =: tr0
                             return tr0
                         (Nothing,  Just _  ) -> do
-                            vl' `acyclicBindVar` tr0
+                            vl `acyclicBindVar` tr0
                             return tr0
                         (Just _  , Nothing ) -> do
-                            vr' `acyclicBindVar` tl0
+                            vr `acyclicBindVar` tl0
                             return tl0
-                        (Just tl', Just tr') -> do
-                            t <- loop tl' tr'
-                            vr' =: t
-                            vl' =: tr0
+                        (Just tl, Just tr) -> do
+                            t <- loop tl tr
+                            vr =: t
+                            vl =: tr0
                             return tr0
             
-            (MutVar vl', MutTerm _) -> do
-                mtl <- lift $ lookupVar vl'
+            (MutVar vl, MutTerm _) -> do
+                mtl <- lift $ lookupVar vl
                 case mtl of
                     Nothing  -> do
-                        vl' `acyclicBindVar` tr0
+                        vl `acyclicBindVar` tr0
                         return tl0
-                    Just tl' -> do
-                        t <- loop tl' tr0
-                        vl' =: t
+                    Just tl -> do
+                        t <- loop tl tr0
+                        vl =: t
                         return tl0
             
-            (MutTerm _, MutVar vr') -> do
-                mtr <- lift $ lookupVar vr'
+            (MutTerm _, MutVar vr) -> do
+                mtr <- lift $ lookupVar vr
                 case mtr of
                     Nothing  -> do
-                        vr' `acyclicBindVar` tl0
+                        vr `acyclicBindVar` tl0
                         return tr0
-                    Just tr' -> do
-                        t <- loop tl0 tr'
-                        vr' =: t
+                    Just tr -> do
+                        t <- loop tl0 tr
+                        vr =: t
                         return tr0
             
-            (MutTerm tl', MutTerm tr') ->
-                case zipMatch tl' tr' of
-                Nothing  -> throwError $ TermMismatch tl' tr'
+            (MutTerm tl, MutTerm tr) ->
+                case zipMatch tl tr of
+                Nothing  -> throwError $ TermMismatch tl tr
                 Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
 
 
@@ -555,49 +555,49 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
         tl0 <- lift . lift $ semiprune tl0
         tr0 <- lift . lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl', MutVar vr')
-                | vl' `eqVar` vr' -> return tr0
-                | otherwise       -> do
-                    mtl <- lift . lift $ lookupVar vl'
-                    mtr <- lift . lift $ lookupVar vr'
+            (MutVar vl, MutVar vr)
+                | vl `eqVar` vr -> return tr0
+                | otherwise     -> do
+                    mtl <- lift . lift $ lookupVar vl
+                    mtr <- lift . lift $ lookupVar vr
                     case (mtl, mtr) of
-                        (Nothing,  Nothing ) -> do vl' =: tr0 ; return tr0
-                        (Nothing,  Just _  ) -> do vl' =: tr0 ; return tr0
-                        (Just _  , Nothing ) -> do vr' =: tl0 ; return tl0
-                        (Just tl', Just tr') -> do
+                        (Nothing, Nothing) -> do vl =: tr0 ; return tr0
+                        (Nothing, Just _ ) -> do vl =: tr0 ; return tr0
+                        (Just _ , Nothing) -> do vr =: tl0 ; return tl0
+                        (Just tl, Just tr) -> do
                             t <- localState $ do
-                                vl' `seenAs` tl'
-                                vr' `seenAs` tr'
-                                loop tl' tr' -- TODO: should just jump to match
-                            vr' =: t
-                            vl' =: tr0
+                                vl `seenAs` tl
+                                vr `seenAs` tr
+                                loop tl tr -- TODO: should just jump to match
+                            vr =: t
+                            vl =: tr0
                             return tr0
             
-            (MutVar vl', MutTerm _) -> do
+            (MutVar vl, MutTerm _) -> do
                 t <- do
-                    mtl <- lift . lift $ lookupVar vl'
+                    mtl <- lift . lift $ lookupVar vl
                     case mtl of
                         Nothing  -> return tr0
-                        Just tl' -> localState $ do
-                            vl' `seenAs` tl'
-                            loop tl' tr0 -- TODO: should just jump to match
-                vl' =: t
+                        Just tl -> localState $ do
+                            vl `seenAs` tl
+                            loop tl tr0 -- TODO: should just jump to match
+                vl =: t
                 return tl0
             
-            (MutTerm _, MutVar vr') -> do
+            (MutTerm _, MutVar vr) -> do
                 t <- do
-                    mtr <- lift . lift $ lookupVar vr'
+                    mtr <- lift . lift $ lookupVar vr
                     case mtr of
                         Nothing  -> return tl0
-                        Just tr' -> localState $ do
-                            vr' `seenAs` tr'
-                            loop tl0 tr' -- TODO: should just jump to match
-                vr' =: t
+                        Just tr -> localState $ do
+                            vr `seenAs` tr
+                            loop tl0 tr -- TODO: should just jump to match
+                vr =: t
                 return tr0
             
-            (MutTerm tl', MutTerm tr') ->
-                case zipMatch tl' tr' of
-                Nothing  -> lift . throwError $ TermMismatch tl' tr'
+            (MutTerm tl, MutTerm tr) ->
+                case zipMatch tl tr of
+                Nothing  -> lift . throwError $ TermMismatch tl tr
                 Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
 
 ----------------------------------------------------------------
@@ -641,33 +641,33 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
         tl0 <- lift . lift $ semiprune tl0
         tr0 <- lift . lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl', MutVar vr')
-                | vl' `eqVar` vr' -> return True
-                | otherwise       -> do
-                    mtl <- lift . lift $ lookupVar vl'
-                    mtr <- lift . lift $ lookupVar vr'
+            (MutVar vl, MutVar vr)
+                | vl `eqVar` vr -> return True
+                | otherwise     -> do
+                    mtl <- lift . lift $ lookupVar vl
+                    mtr <- lift . lift $ lookupVar vr
                     case (mtl, mtr) of
-                        (Nothing,  Nothing ) -> vl' =: tr0
-                        (Nothing,  Just _  ) -> vl' =: tr0
-                        (Just _  , Nothing ) -> return False
-                        (Just tl', Just tr') ->
+                        (Nothing, Nothing) -> vl =: tr0
+                        (Nothing, Just _ ) -> vl =: tr0
+                        (Just _ , Nothing) -> return False
+                        (Just tl, Just tr) ->
                             localState $ do
-                                vl' `seenAs` tl'
-                                vr' `seenAs` tr'
-                                loop tl' tr'
+                                vl `seenAs` tl
+                                vr `seenAs` tr
+                                loop tl tr
             
-            (MutVar vl',  MutTerm _  ) -> do
-                mtl <- lift . lift $ lookupVar vl'
+            (MutVar vl,  MutTerm _ ) -> do
+                mtl <- lift . lift $ lookupVar vl
                 case mtl of
-                    Nothing  -> vl' =: tr0
-                    Just tl' -> localState $ do
-                        vl' `seenAs` tl'
-                        loop tl' tr0
+                    Nothing  -> vl =: tr0
+                    Just tl -> localState $ do
+                        vl `seenAs` tl
+                        loop tl tr0
             
-            (MutTerm _,   MutVar  _  ) -> return False
+            (MutTerm _,  MutVar  _ ) -> return False
             
-            (MutTerm tl', MutTerm tr') ->
-                case zipMatch tl' tr' of
+            (MutTerm tl, MutTerm tr) ->
+                case zipMatch tl tr of
                 Nothing  -> return False
                 Just tlr -> and <$> mapM (uncurry loop) tlr
                     -- TODO: use foldlM?
