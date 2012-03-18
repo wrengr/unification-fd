@@ -310,14 +310,14 @@ freshen = fmap runIdentity . freshenAll . Identity
 -- @freshenAll@ preserves the relationship between the terms. For
 -- instance, the result of
 --
--- > mapM freshen [Var 1, Var 1]
+-- > mapM freshen [UVar 1, UVar 1]
 --
--- would be @[Var 2, Var 3]@ or something alpha-equivalent, whereas
+-- would be @[UVar 2, UVar 3]@ or something alpha-equivalent, whereas
 -- the result of
 --
--- > freshenAll [Var 1, Var 1]
+-- > freshenAll [UVar 1, UVar 1]
 --
--- must be @[Var 2, Var 2]@ or something alpha-equivalent.
+-- would be @[UVar 2, UVar 2]@ or something alpha-equivalent.
 --
 -- /Since: 0.7.0/
 freshenAll
