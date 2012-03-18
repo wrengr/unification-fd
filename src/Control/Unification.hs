@@ -72,7 +72,7 @@ module Control.Unification
     , fullprune
     , semiprune
     , occursIn
-    -- TODO: add a post-hoc occurs check in order to have a version of unify which is fast, yet is also guaranteed to fail when it out to (rather than deferring the failure until later, as the current unify does).
+    -- TODO: add a post-hoc occurs check in order to have a version of unify which is fast, yet is also guaranteed to fail when it ought to (rather than deferring the failure until later, as the current unify does).
     ) where
 
 import Prelude
@@ -190,11 +190,19 @@ seenAs v0 t0 = do
 getFreeVars :: (BindingMonad t v m) => UTerm t v -> m [v]
 getFreeVars = getFreeVarsAll . Identity
 
+
 -- TODO: Should we return the IntMap instead?
 --
--- | Walk a collection of terms and determine which variables are
--- still free. This is the same as 'getFreeVars', but somewhat more
--- efficient if you have multiple terms to traverse at once.
+-- | Same as 'getFreeVars', but works on several terms simultaneously.
+-- This is more efficient than getting the free variables for each
+-- of the terms separately because we can make use of sharing across
+-- the whole collection. That is, each time we move to the next
+-- term, we still remember the bound variables we've already looked
+-- at (and therefore do not need to traverse, since we've already
+-- seen whatever free variables there are down there); whereas we
+-- would forget between each call to @getFreeVars@.
+--
+-- /Since: 0.7.0/
 getFreeVarsAll
     :: (BindingMonad t v m, Foldable s)
     => s (UTerm t v) -> m [v]
@@ -245,6 +253,8 @@ applyBindings = fmap runIdentity . applyBindingsAll . Identity
 -- This function preserves sharing across the entire collection of
 -- terms, whereas applying the bindings to each term separately
 -- would only preserve sharing within each term.
+--
+-- /Since: 0.7.0/
 applyBindingsAll
     ::  ( BindingMonad t v m
         , MonadTrans e
@@ -296,17 +306,20 @@ freshen = fmap runIdentity . freshenAll . Identity
 
 
 -- | Same as 'freshen', but works on several terms simultaneously.
--- This is different from 'freshen'ing each term separately, because
--- 'freshenAll' preserves the relationship between the terms. For
+-- This is different from freshening each term separately, because
+-- @freshenAll@ preserves the relationship between the terms. For
 -- instance, the result of
 --
 -- > mapM freshen [Var 1, Var 1]
 --
--- could be @[Var 2, Var 3]@, while the result of
+-- would be @[Var 2, Var 3]@ or something alpha-equivalent, whereas
+-- the result of
 --
 -- > freshenAll [Var 1, Var 1]
 --
 -- must be @[Var 2, Var 2]@ or something alpha-equivalent.
+--
+-- /Since: 0.7.0/
 freshenAll
     ::  ( BindingMonad t v m
         , MonadTrans e
