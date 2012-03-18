@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.16
+--                                                  ~ 2012.03.18
 -- |
 -- Module      :  Control.Unification.Ranked
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -71,9 +71,9 @@ import Control.Unification hiding (unify, (=:=))
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm t v       -- ^
-    -> MutTerm t v       -- ^
-    -> e m (MutTerm t v) -- ^
+    => UTerm t v       -- ^
+    -> UTerm t v       -- ^
+    -> e m (UTerm t v) -- ^
 (=:=) = unify
 {-# INLINE (=:=) #-}
 infix 4 =:=, `unify`
@@ -93,9 +93,9 @@ unify
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm t v       -- ^
-    -> MutTerm t v       -- ^
-    -> e m (MutTerm t v) -- ^
+    => UTerm t v       -- ^
+    -> UTerm t v       -- ^
+    -> e m (UTerm t v) -- ^
 unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     -- TODO: use IM.insertWith or the like to do this in one pass
@@ -113,7 +113,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
         tl0 <- lift . lift $ semiprune tl0
         tr0 <- lift . lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl, MutVar vr)
+            (UVar vl, UVar vr)
                 | vl == vr  -> return tr0
                 | otherwise -> do
                     Rank rl mtl <- lift . lift $ lookupRankVar vl
@@ -149,7 +149,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                                 EQ -> do { incrementBindVar vl t ; vr =: tl0 }
                                 GT -> do { vl `bindVar` t        ; vr =: tl0 }
             
-            (MutVar vl, MutTerm _) -> do
+            (UVar vl, UTerm _) -> do
                 t <- do
                     mtl <- lift . lift $ lookupVar vl
                     case mtl of
@@ -161,7 +161,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                     vl `bindVar` t
                     return tl0
             
-            (MutTerm _, MutVar vr) -> do
+            (UTerm _, UVar vr) -> do
                 t <- do
                     mtr <- lift . lift $ lookupVar vr
                     case mtr of
@@ -173,10 +173,10 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                     vr `bindVar` t
                     return tr0
             
-            (MutTerm tl, MutTerm tr) ->
+            (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> lift . throwError $ TermMismatch tl tr
-                Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
+                Just tlr -> UTerm <$> mapM (uncurry loop) tlr
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

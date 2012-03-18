@@ -5,7 +5,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.11
+--                                                  ~ 2012.03.18
 -- |
 -- Module      :  Control.Unification.Ranked.STVar
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -43,7 +43,7 @@ data STRVar s t =
     STRVar
         {-# UNPACK #-} !Int
         {-# UNPACK #-} !(STRef s Word8)
-        {-# UNPACK #-} !(STRef s (Maybe (MutTerm t (STRVar s t))))
+        {-# UNPACK #-} !(STRef s (Maybe (UTerm t (STRVar s t))))
 
 instance Show (STRVar s t) where
     show (STRVar i _ _) = "STRVar " ++ show i
@@ -98,7 +98,7 @@ instance Monad (STRBinding s) where
 
 _newSTRVar
     :: String
-    -> Maybe (MutTerm t (STRVar s t))
+    -> Maybe (UTerm t (STRVar s t))
     -> STRBinding s (STRVar s t)
 _newSTRVar fun mb = STRB $ do
     nr <- ask

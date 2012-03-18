@@ -5,7 +5,7 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.16
+--                                                  ~ 2012.03.18
 -- |
 -- Module      :  Control.Unification.Types
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -19,8 +19,8 @@
 ----------------------------------------------------------------
 module Control.Unification.Types
     (
-    -- * Mutable terms
-      MutTerm(..)
+    -- * Unification terms
+      UTerm(..)
     , freeze
     , unfreeze
     -- * Errors
@@ -52,7 +52,9 @@ import Control.Monad.Error     (Error(..))
 -- @v@. The structure type should implement 'Unifiable' and the
 -- variable type should implement 'Variable'.
 --
--- The 'Show' instance doesn't show the constructors, for legibility.
+-- The 'Show' instance doesn't show the constructors, in order to
+-- improve legibility for large terms.
+--
 -- All the category theoretic instances ('Functor', 'Foldable',
 -- 'Traversable',...) are provided because they are often useful;
 -- however, beware that since the implementations must be pure,
@@ -61,51 +63,51 @@ import Control.Monad.Error     (Error(..))
 -- apply the current bindings before using any of the functions
 -- provided by those classes.
 
-data MutTerm t v
-    = MutVar  !v
-    | MutTerm !(t (MutTerm t v))
+data UTerm t v
+    = UVar  !v               -- ^ A unification variable.
+    | UTerm !(t (UTerm t v)) -- ^ Some structure containing subterms.
 
-instance (Show v, Show (t (MutTerm t v))) => Show (MutTerm t v) where
-    showsPrec p (MutVar  v) = showsPrec p v
-    showsPrec p (MutTerm t) = showsPrec p t
+instance (Show v, Show (t (UTerm t v))) => Show (UTerm t v) where
+    showsPrec p (UVar  v) = showsPrec p v
+    showsPrec p (UTerm t) = showsPrec p t
 
-instance (Functor t) => Functor (MutTerm t) where
-    fmap f (MutVar  v) = MutVar  (f v)
-    fmap f (MutTerm t) = MutTerm (fmap (fmap f) t)
+instance (Functor t) => Functor (UTerm t) where
+    fmap f (UVar  v) = UVar  (f v)
+    fmap f (UTerm t) = UTerm (fmap (fmap f) t)
 
-instance (Foldable t) => Foldable (MutTerm t) where
-    foldMap f (MutVar  v) = f v
-    foldMap f (MutTerm t) = foldMap (foldMap f) t
+instance (Foldable t) => Foldable (UTerm t) where
+    foldMap f (UVar  v) = f v
+    foldMap f (UTerm t) = foldMap (foldMap f) t
 
-instance (Traversable t) => Traversable (MutTerm t) where
-    traverse f (MutVar  v) = MutVar  <$> f v
-    traverse f (MutTerm t) = MutTerm <$> traverse (traverse f) t
+instance (Traversable t) => Traversable (UTerm t) where
+    traverse f (UVar  v) = UVar  <$> f v
+    traverse f (UTerm t) = UTerm <$> traverse (traverse f) t
 
--- Does this even make sense for MutTerm? It'd mean (a->b) is a
+-- Does this even make sense for UTerm? It'd mean (a->b) is a
 -- variable type...
-instance (Functor t) => Applicative (MutTerm t) where
-    pure                      = MutVar
-    MutVar  a  <*> MutVar  b  = MutVar  (a b)
-    MutVar  a  <*> MutTerm mb = MutTerm (fmap a  <$> mb)
-    MutTerm ma <*> b          = MutTerm ((<*> b) <$> ma)
+instance (Functor t) => Applicative (UTerm t) where
+    pure                  = UVar
+    UVar  a  <*> UVar  b  = UVar  (a b)
+    UVar  a  <*> UTerm mb = UTerm (fmap a  <$> mb)
+    UTerm ma <*> b        = UTerm ((<*> b) <$> ma)
 
--- Does this even make sense for MutTerm? It may be helpful for
+-- Does this even make sense for UTerm? It may be helpful for
 -- building terms at least; though bind is inefficient for that.
 -- Should use the cheaper free...
-instance (Functor t) => Monad (MutTerm t) where
-    return          = MutVar
-    MutVar  v >>= f = f v
-    MutTerm t >>= f = MutTerm ((>>= f) <$> t)
+instance (Functor t) => Monad (UTerm t) where
+    return        = UVar
+    UVar  v >>= f = f v
+    UTerm t >>= f = UTerm ((>>= f) <$> t)
 
--- This really doesn't make sense for MutTerm...
-instance (Alternative t) => Alternative (MutTerm t) where
-    empty   = MutTerm empty
-    a <|> b = MutTerm (pure a <|> pure b)
+-- This really doesn't make sense for UTerm...
+instance (Alternative t) => Alternative (UTerm t) where
+    empty   = UTerm empty
+    a <|> b = UTerm (pure a <|> pure b)
 
--- This really doesn't make sense for MutTerm...
-instance (Functor t, MonadPlus t) => MonadPlus (MutTerm t) where
-    mzero       = MutTerm mzero
-    a `mplus` b = MutTerm (return a `mplus` return b)
+-- This really doesn't make sense for UTerm...
+instance (Functor t, MonadPlus t) => MonadPlus (UTerm t) where
+    mzero       = UTerm mzero
+    a `mplus` b = UTerm (return a `mplus` return b)
 
 -- There's also MonadTrans, MonadWriter, MonadReader, MonadState,
 -- MonadError, MonadCont; which make even less sense for us. See
@@ -113,17 +115,17 @@ instance (Functor t, MonadPlus t) => MonadPlus (MutTerm t) where
 
 
 -- | /O(n)/. Embed a pure term as a mutable term.
-unfreeze :: (Functor t) => Fix t -> MutTerm t v
-unfreeze = MutTerm . fmap unfreeze . unFix
+unfreeze :: (Functor t) => Fix t -> UTerm t v
+unfreeze = UTerm . fmap unfreeze . unFix
 
 
 -- | /O(n)/. Extract a pure term from a mutable term, or return
 -- @Nothing@ if the mutable term actually contains variables. N.B.,
 -- this function is pure, so you should manually apply bindings
 -- before calling it.
-freeze :: (Traversable t) => MutTerm t v -> Maybe (Fix t)
-freeze (MutVar  _) = Nothing
-freeze (MutTerm t) = Fix <$> mapM freeze t
+freeze :: (Traversable t) => UTerm t v -> Maybe (Fix t)
+freeze (UVar  _) = Nothing
+freeze (UTerm t) = Fix <$> mapM freeze t
 
 
 ----------------------------------------------------------------
@@ -136,7 +138,7 @@ freeze (MutTerm t) = Fix <$> mapM freeze t
 -- the errors), the extra complexity is not considered worth it.
 data UnificationFailure t v
     
-    = OccursIn v (MutTerm t v)
+    = OccursIn v (UTerm t v)
         -- ^ A cyclic term was encountered (i.e., the variable
         -- occurs free in a term it would have to be bound to in
         -- order to succeed). Infinite terms like this are not
@@ -154,7 +156,7 @@ data UnificationFailure t v
         -- we had performed the occurs-check, in order for error
         -- messages to be intelligable.
     
-    | TermMismatch (t (MutTerm t v)) (t (MutTerm t v))
+    | TermMismatch (t (UTerm t v)) (t (UTerm t v))
         -- ^ The top-most level of the terms do not match (according
         -- to 'zipMatch'). In logic programming this should simply
         -- be treated as unification failure; in type checking this
@@ -162,13 +164,13 @@ data UnificationFailure t v
         -- with inferred type @Bar@\" error.
     
     | UnknownError String
-        -- ^ Required for the @Error@ instance, which in turn is
+        -- ^ Required for the 'Error' instance, which in turn is
         -- required to appease @ErrorT@ in the MTL. We do not use
         -- this anywhere.
 
 
 -- Can't derive this because it's an UndecidableInstance
-instance (Show (t (MutTerm t v)), Show v) =>
+instance (Show (t (UTerm t v)), Show v) =>
     Show (UnificationFailure t v)
     where
     -- TODO: implement 'showsPrec' instead
@@ -227,9 +229,9 @@ class (Unifiable t, Variable v, Applicative m, Monad m) =>
     BindingMonad t v m | m -> t v
     where
     
-    -- | Given a variable pointing to @MutTerm t v@, return the
+    -- | Given a variable pointing to @UTerm t v@, return the
     -- term it's bound to, or @Nothing@ if the variable is unbound.
-    lookupVar :: v -> m (Maybe (MutTerm t v))
+    lookupVar :: v -> m (Maybe (UTerm t v))
     
     
     -- | Generate a new free variable guaranteed to be fresh in
@@ -241,12 +243,12 @@ class (Unifiable t, Variable v, Applicative m, Monad m) =>
     -- term. The default implementation is:
     --
     -- > newVar t = do { v <- freeVar ; bindVar v t ; return v }
-    newVar :: MutTerm t v -> m v
+    newVar :: UTerm t v -> m v
     newVar t = do { v <- freeVar ; bindVar v t ; return v }
     
     
     -- | Bind a variable to a term, overriding any previous binding.
-    bindVar :: v -> MutTerm t v -> m ()
+    bindVar :: v -> UTerm t v -> m ()
 
 
 ----------------------------------------------------------------
@@ -261,13 +263,13 @@ class (Unifiable t, Variable v, Applicative m, Monad m) =>
 -- sufficient for @2^(2^8)@ variables, which is far more than can
 -- be indexed by 'getVarID' even on 64-bit architectures.
 data Rank t v =
-    Rank {-# UNPACK #-} !Word8 !(Maybe (MutTerm t v))
+    Rank {-# UNPACK #-} !Word8 !(Maybe (UTerm t v))
 
 -- Can't derive this because it's an UndecidableInstance
-instance (Show v, Show (t (MutTerm t v))) => Show (Rank t v) where
+instance (Show v, Show (t (UTerm t v))) => Show (Rank t v) where
     show (Rank n mb) = "Rank "++show n++" "++show mb
 
--- TODO: flatten the Rank.Maybe.MutTerm so that we can tell that if semiprune returns a bound variable then it's bound to a term (not another var)?
+-- TODO: flatten the Rank.Maybe.UTerm so that we can tell that if semiprune returns a bound variable then it's bound to a term (not another var)?
 
 {-
 instance Monoid (Rank t v) where
@@ -284,7 +286,7 @@ instance Monoid (Rank t v) where
 -- supported by 'BindingMonad'.
 class (BindingMonad t v m) => RankedBindingMonad t v m | m -> t v where
     
-    -- | Given a variable pointing to @MutTerm t v@, return its
+    -- | Given a variable pointing to @UTerm t v@, return its
     -- rank and the term it's bound to.
     lookupRankVar :: v -> m (Rank t v)
     
@@ -295,7 +297,7 @@ class (BindingMonad t v m) => RankedBindingMonad t v m | m -> t v where
     -- same time. The default implementation is:
     --
     -- > incrementBindVar t v = do { incrementRank v ; bindVar v t }
-    incrementBindVar :: v -> MutTerm t v -> m ()
+    incrementBindVar :: v -> UTerm t v -> m ()
     incrementBindVar v t = do { incrementRank v ; bindVar v t }
 
 ----------------------------------------------------------------

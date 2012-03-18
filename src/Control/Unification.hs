@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.16
+--                                                  ~ 2012.03.18
 -- |
 -- Module      :  Control.Unification
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -27,8 +27,8 @@
 module Control.Unification
     (
     -- * Data types, classes, etc
-    -- ** Mutable terms
-      MutTerm(..)
+    -- ** Unification terms
+      UTerm(..)
     , freeze
     , unfreeze
     -- ** Errors
@@ -101,9 +101,9 @@ import Control.Unification.Types
 -- the chain is unbound), and return that end.
 --
 -- N.B., this is almost never the function you want. Cf., 'semiprune'.
-fullprune :: (BindingMonad t v m) => MutTerm t v -> m (MutTerm t v)
-fullprune t0@(MutTerm _ ) = return t0
-fullprune t0@(MutVar  v0) = do
+fullprune :: (BindingMonad t v m) => UTerm t v -> m (UTerm t v)
+fullprune t0@(UTerm _ ) = return t0
+fullprune t0@(UVar  v0) = do
     mb <- lookupVar v0
     case mb of
         Nothing -> return t0
@@ -120,9 +120,9 @@ fullprune t0@(MutVar  v0) = do
 -- bound or not. This allows detecting many cases where multiple
 -- variables point to the same term, thereby allowing us to avoid
 -- re-unifying the term they point to.
-semiprune :: (BindingMonad t v m) => MutTerm t v -> m (MutTerm t v)
-semiprune t0@(MutTerm _ ) = return t0
-semiprune t0@(MutVar  v0) = loop t0 v0
+semiprune :: (BindingMonad t v m) => UTerm t v -> m (UTerm t v)
+semiprune t0@(UTerm _ ) = return t0
+semiprune t0@(UVar  v0) = loop t0 v0
     where
     -- We pass the @t@ for @v@ in order to add just a little more sharing.
     loop t0 v0 = do
@@ -131,8 +131,8 @@ semiprune t0@(MutVar  v0) = loop t0 v0
             Nothing -> return t0
             Just t  -> 
                 case t  of
-                MutTerm _  -> return t0
-                MutVar  v  -> do
+                UTerm _  -> return t0
+                UVar  v  -> do
                     finalVar <- loop t v
                     v0 `bindVar` finalVar
                     return finalVar
@@ -142,15 +142,15 @@ semiprune t0@(MutVar  v0) = loop t0 v0
 -- Since occurs checks only make sense when we're about to bind the
 -- variable to the term, we do not bother checking for the possibility
 -- of the variable occuring bound in the term.
-occursIn :: (BindingMonad t v m) => v -> MutTerm t v -> m Bool
+occursIn :: (BindingMonad t v m) => v -> UTerm t v -> m Bool
 {-# INLINE occursIn #-}
 occursIn v0 t0 = do
     t0 <- fullprune t0
     case t0 of
-        MutTerm t -> or <$> mapM (v0 `occursIn`) t
+        UTerm t -> or <$> mapM (v0 `occursIn`) t
             -- TODO: benchmark the following for shortcircuiting
             -- > Traversable.foldlM (\b t' -> if b then return True else v0 `occursIn` t') t
-        MutVar  v -> return $! v0 == v
+        UVar  v -> return $! v0 == v
 
 
 -- TODO: use IM.insertWith or the like to do this in one pass
@@ -163,8 +163,8 @@ seenAs
         , MonadError (UnificationFailure t v) (e m)
         )
     => v -- ^
-    -> MutTerm t v -- ^
-    -> StateT (IM.IntMap (MutTerm t v)) (e m) () -- ^
+    -> UTerm t v -- ^
+    -> StateT (IM.IntMap (UTerm t v)) (e m) () -- ^
 {-# INLINE seenAs #-}
 seenAs v0 t0 = do
     seenVars <- get
@@ -187,7 +187,7 @@ seenAs v0 t0 = do
 -- | Walk a term and determine which variables are still free. N.B.,
 -- this function does not detect cyclic terms (i.e., throw errors),
 -- but it will return the correct answer for them in finite time.
-getFreeVars :: (BindingMonad t v m) => MutTerm t v -> m [v]
+getFreeVars :: (BindingMonad t v m) => UTerm t v -> m [v]
 getFreeVars = getFreeVarsAll . Identity
 
 -- TODO: Should we return the IntMap instead?
@@ -197,7 +197,7 @@ getFreeVars = getFreeVarsAll . Identity
 -- efficient if you have multiple terms to traverse at once.
 getFreeVarsAll
     :: (BindingMonad t v m, Foldable s)
-    => s (MutTerm t v) -> m [v]
+    => s (UTerm t v) -> m [v]
 getFreeVarsAll ts0 =
     IM.elems <$> evalStateT (loopAll ts0) IS.empty
     where
@@ -207,8 +207,8 @@ getFreeVarsAll ts0 =
     loop t0 = do
         t0 <- lift $ semiprune t0
         case t0 of
-            MutTerm t -> fold <$> mapM loop t -- TODO: use foldlM instead?
-            MutVar  v -> do
+            UTerm t -> fold <$> mapM loop t -- TODO: use foldlM instead?
+            UVar  v -> do
                 seenVars <- get
                 let i = getVarID v
                 if IS.member i seenVars
@@ -236,15 +236,15 @@ applyBindings
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm t v       -- ^
-    -> e m (MutTerm t v) -- ^
+    => UTerm t v       -- ^
+    -> e m (UTerm t v) -- ^
 applyBindings t0 = evalStateT (loop t0) IM.empty
     where
     loop t0 = do
         t0 <- lift . lift $ semiprune t0
         case t0 of
-            MutTerm t -> MutTerm <$> mapM loop t
-            MutVar  v -> do
+            UTerm t -> UTerm <$> mapM loop t
+            UVar  v -> do
                 let i = getVarID v
                 mb <- IM.lookup i <$> get
                 case mb of
@@ -274,8 +274,8 @@ freshen
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm t v       -- ^
-    -> e m (MutTerm t v) -- ^
+    => UTerm t v       -- ^
+    -> e m (UTerm t v) -- ^
 freshen = fmap runIdentity . freshenAll . Identity
 
 
@@ -298,15 +298,15 @@ freshenAll
         , MonadError (UnificationFailure t v) (e m)
         , Traversable s
         )
-    => s (MutTerm t v)       -- ^
-    -> e m (s (MutTerm t v)) -- ^
+    => s (UTerm t v)       -- ^
+    -> e m (s (UTerm t v)) -- ^
 freshenAll ts0 = evalStateT (mapM loop ts0) IM.empty
     where
     loop t0 = do
         t0 <- lift . lift $ semiprune t0
         case t0 of
-            MutTerm t -> MutTerm <$> mapM loop t
-            MutVar  v -> do
+            UTerm t -> UTerm <$> mapM loop t
+            UVar  v -> do
                 let i = getVarID v
                 seenVars <- get
                 case IM.lookup i seenVars of
@@ -316,13 +316,13 @@ freshenAll ts0 = evalStateT (mapM loop ts0) IM.empty
                         mb <- lift . lift $ lookupVar v
                         case mb of
                             Nothing -> do
-                                v' <- lift . lift $ MutVar <$> freeVar
+                                v' <- lift . lift $ UVar <$> freeVar
                                 put $! IM.insert i (Right v') seenVars
                                 return v'
                             Just t  -> do
                                 put $! IM.insert i (Left t) seenVars
                                 t' <- loop t
-                                v' <- lift . lift $ MutVar <$> newVar t'
+                                v' <- lift . lift $ UVar <$> newVar t'
                                 modify' $ IM.insert i (Right v')
                                 return v'
 
@@ -333,9 +333,9 @@ freshenAll ts0 = evalStateT (mapM loop ts0) IM.empty
 -- | 'equals'
 (===)
     :: (BindingMonad t v m)
-    => MutTerm t v  -- ^
-    -> MutTerm t v  -- ^
-    -> m Bool       -- ^
+    => UTerm t v  -- ^
+    -> UTerm t v  -- ^
+    -> m Bool     -- ^
 (===) = equals
 {-# INLINE (===) #-}
 infix 4 ===, `equals`
@@ -344,8 +344,8 @@ infix 4 ===, `equals`
 -- | 'equiv'
 (=~=)
     :: (BindingMonad t v m)
-    => MutTerm t v               -- ^
-    -> MutTerm t v               -- ^
+    => UTerm t v                 -- ^
+    -> UTerm t v                 -- ^
     -> m (Maybe (IM.IntMap Int)) -- ^
 (=~=) = equiv
 {-# INLINE (=~=) #-}
@@ -359,9 +359,9 @@ infix 4 =~=, `equiv`
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm t v       -- ^
-    -> MutTerm t v       -- ^
-    -> e m (MutTerm t v) -- ^
+    => UTerm t v       -- ^
+    -> UTerm t v       -- ^
+    -> e m (UTerm t v) -- ^
 (=:=) = unify
 {-# INLINE (=:=) #-}
 infix 4 =:=, `unify`
@@ -374,9 +374,9 @@ infix 4 =:=, `unify`
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm t v -- ^
-    -> MutTerm t v -- ^
-    -> e m Bool
+    => UTerm t v -- ^
+    -> UTerm t v -- ^
+    -> e m Bool  -- ^
 (<:=) = subsumes
 {-# INLINE (<:=) #-}
 infix 4 <:=, `subsumes`
@@ -401,9 +401,9 @@ benchmark file. I've no idea what's going on here...
 -- with different names are considered unequal. Cf., 'equiv'.
 equals
     :: (BindingMonad t v m)
-    => MutTerm t v  -- ^
-    -> MutTerm t v  -- ^
-    -> m Bool       -- ^
+    => UTerm t v  -- ^
+    -> UTerm t v  -- ^
+    -> m Bool     -- ^
 equals tl0 tr0 = do
     mb <- runMaybeKT (loop tl0 tr0)
     case mb of
@@ -414,7 +414,7 @@ equals tl0 tr0 = do
         tl0 <- lift $ semiprune tl0
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl, MutVar vr)
+            (UVar vl, UVar vr)
                 | vl == vr  -> return () -- success
                 | otherwise -> do
                     mtl <- lift $ lookupVar vl
@@ -424,9 +424,9 @@ equals tl0 tr0 = do
                         (Nothing, Just _  ) -> mzero
                         (Just _,  Nothing ) -> mzero
                         (Just tl, Just tr) -> loop tl tr -- TODO: should just jump to match
-            (MutVar  _,  MutTerm _  ) -> mzero
-            (MutTerm _,  MutVar  _  ) -> mzero
-            (MutTerm tl, MutTerm tr) ->
+            (UVar  _,  UTerm _  ) -> mzero
+            (UTerm _,  UVar  _  ) -> mzero
+            (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> mzero
                 Just tlr -> mapM_ (uncurry loop) tlr
@@ -440,8 +440,8 @@ equals tl0 tr0 = do
 -- the right term, indicating the renaming used.
 equiv
     :: (BindingMonad t v m)
-    => MutTerm t v               -- ^
-    -> MutTerm t v               -- ^
+    => UTerm t v                 -- ^
+    -> UTerm t v                 -- ^
     -> m (Maybe (IM.IntMap Int)) -- ^
 equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
     where
@@ -449,7 +449,7 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
         tl0 <- lift . lift $ fullprune tl0
         tr0 <- lift . lift $ fullprune tr0
         case (tl0, tr0) of
-            (MutVar vl,  MutVar  vr) -> do
+            (UVar vl,  UVar  vr) -> do
                 let il = getVarID vl
                 let ir = getVarID vr
                 xs <- get
@@ -459,9 +459,9 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
                         | otherwise -> lift mzero
                     Nothing         -> put $! IM.insert il ir xs
             
-            (MutVar  _,  MutTerm _ ) -> lift mzero
-            (MutTerm _,  MutVar  _ ) -> lift mzero
-            (MutTerm tl, MutTerm tr) ->
+            (UVar  _,  UTerm _ ) -> lift mzero
+            (UTerm _,  UVar  _ ) -> lift mzero
+            (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> lift mzero
                 Just tlr -> mapM_ (uncurry loop) tlr
@@ -482,9 +482,9 @@ unifyOccurs
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm t v       -- ^
-    -> MutTerm t v       -- ^
-    -> e m (MutTerm t v) -- ^
+    => UTerm t v       -- ^
+    -> UTerm t v       -- ^
+    -> e m (UTerm t v) -- ^
 unifyOccurs = loop
     where
     {-# INLINE (=:) #-}
@@ -502,7 +502,7 @@ unifyOccurs = loop
         tl0 <- lift $ semiprune tl0
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl, MutVar vr)
+            (UVar vl, UVar vr)
                 | vl == vr  -> return tr0
                 | otherwise -> do
                     mtl <- lift $ lookupVar vl
@@ -523,7 +523,7 @@ unifyOccurs = loop
                             vl =: tr0
                             return tr0
             
-            (MutVar vl, MutTerm _) -> do
+            (UVar vl, UTerm _) -> do
                 mtl <- lift $ lookupVar vl
                 case mtl of
                     Nothing  -> do
@@ -534,7 +534,7 @@ unifyOccurs = loop
                         vl =: t
                         return tl0
             
-            (MutTerm _, MutVar vr) -> do
+            (UTerm _, UVar vr) -> do
                 mtr <- lift $ lookupVar vr
                 case mtr of
                     Nothing  -> do
@@ -545,15 +545,15 @@ unifyOccurs = loop
                         vr =: t
                         return tr0
             
-            (MutTerm tl, MutTerm tr) ->
+            (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> throwError $ TermMismatch tl tr
-                Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
+                Just tlr -> UTerm <$> mapM (uncurry loop) tlr
 
 
 ----------------------------------------------------------------
 -- TODO: verify correctness, especially for the visited-set stuff.
--- TODO: return Maybe(MutTerm t v) in the loop so we can avoid updating bindings trivially
+-- TODO: return Maybe(UTerm t v) in the loop so we can avoid updating bindings trivially
 -- TODO: figure out why unifyOccurs is so much faster on pure ground terms!! The only difference there is in lifting over StateT...
 -- 
 -- | Unify two terms, or throw an error with an explanation of why
@@ -568,9 +568,9 @@ unify
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm t v       -- ^
-    -> MutTerm t v       -- ^
-    -> e m (MutTerm t v) -- ^
+    => UTerm t v       -- ^
+    -> UTerm t v       -- ^
+    -> e m (UTerm t v) -- ^
 unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}
@@ -581,7 +581,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
         tl0 <- lift . lift $ semiprune tl0
         tr0 <- lift . lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl, MutVar vr)
+            (UVar vl, UVar vr)
                 | vl == vr  -> return tr0
                 | otherwise -> do
                     mtl <- lift . lift $ lookupVar vl
@@ -599,7 +599,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                             vl =: tr0
                             return tr0
             
-            (MutVar vl, MutTerm _) -> do
+            (UVar vl, UTerm _) -> do
                 t <- do
                     mtl <- lift . lift $ lookupVar vl
                     case mtl of
@@ -610,7 +610,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                 vl =: t
                 return tl0
             
-            (MutTerm _, MutVar vr) -> do
+            (UTerm _, UVar vr) -> do
                 t <- do
                     mtr <- lift . lift $ lookupVar vr
                     case mtr of
@@ -621,10 +621,10 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                 vr =: t
                 return tr0
             
-            (MutTerm tl, MutTerm tr) ->
+            (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> lift . throwError $ TermMismatch tl tr
-                Just tlr -> MutTerm <$> mapM (uncurry loop) tlr
+                Just tlr -> UTerm <$> mapM (uncurry loop) tlr
 
 ----------------------------------------------------------------
 -- TODO: can we find an efficient way to return the bindings directly instead of altering the monadic bindings? Maybe another StateT IntMap taking getVarID to the variable and its pseudo-bound term?
@@ -654,9 +654,9 @@ subsumes
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
         , MonadError (UnificationFailure t v) (e m)
         )
-    => MutTerm t v -- ^
-    -> MutTerm t v -- ^
-    -> e m Bool    -- ^
+    => UTerm t v -- ^
+    -> UTerm t v -- ^
+    -> e m Bool  -- ^
 subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}
@@ -667,7 +667,7 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
         tl0 <- lift . lift $ semiprune tl0
         tr0 <- lift . lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl, MutVar vr)
+            (UVar vl, UVar vr)
                 | vl == vr  -> return True
                 | otherwise -> do
                     mtl <- lift . lift $ lookupVar vl
@@ -682,7 +682,7 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                                 vr `seenAs` tr
                                 loop tl tr
             
-            (MutVar vl,  MutTerm _ ) -> do
+            (UVar vl,  UTerm _ ) -> do
                 mtl <- lift . lift $ lookupVar vl
                 case mtl of
                     Nothing  -> vl =: tr0
@@ -690,9 +690,9 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                         vl `seenAs` tl
                         loop tl tr0
             
-            (MutTerm _,  MutVar  _ ) -> return False
+            (UTerm _,  UVar  _ ) -> return False
             
-            (MutTerm tl, MutTerm tr) ->
+            (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> return False
                 Just tlr -> and <$> mapM (uncurry loop) tlr

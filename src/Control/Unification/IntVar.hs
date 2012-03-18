@@ -4,7 +4,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.11
+--                                                  ~ 2012.03.18
 -- |
 -- Module      :  Control.Unification.IntVar
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -81,11 +81,11 @@ instance Variable IntVar where
 -- | Binding state for 'IntVar'.
 data IntBindingState t = IntBindingState
     { nextFreeVar :: {-# UNPACK #-} !Int
-    , varBindings :: IM.IntMap (MutTerm t IntVar)
+    , varBindings :: IM.IntMap (UTerm t IntVar)
     }
 
 -- Can't derive this because it's an UndecidableInstance
-instance (Show (t (MutTerm t IntVar))) =>
+instance (Show (t (UTerm t IntVar))) =>
     Show (IntBindingState t)
     where
     show (IntBindingState nr bs) =

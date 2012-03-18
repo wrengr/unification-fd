@@ -4,7 +4,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.11
+--                                                  ~ 2012.03.18
 -- |
 -- Module      :  Control.Unification.Ranked.IntVar
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -44,7 +44,7 @@ data IntRBindingState t = IntRBindingState
     }
 
 -- Can't derive this because it's an UndecidableInstance
-instance (Show (t (MutTerm t IntVar))) =>
+instance (Show (t (UTerm t IntVar))) =>
     Show (IntRBindingState t)
     where
     show (IntRBindingState nr bs) =
