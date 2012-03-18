@@ -150,7 +150,7 @@ occursIn v0 t0 = do
         MutTerm t -> or <$> mapM (v0 `occursIn`) t
             -- TODO: benchmark the following for shortcircuiting
             -- > Traversable.foldlM (\b t' -> if b then return True else v0 `occursIn` t') t
-        MutVar  v -> return $! v0 `eqVar` v
+        MutVar  v -> return $! v0 == v
 
 
 -- TODO: use IM.insertWith or the like to do this in one pass
@@ -415,8 +415,8 @@ equals tl0 tr0 = do
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
             (MutVar vl, MutVar vr)
-                | vl `eqVar` vr -> return () -- success
-                | otherwise     -> do
+                | vl == vr  -> return () -- success
+                | otherwise -> do
                     mtl <- lift $ lookupVar vl
                     mtr <- lift $ lookupVar vr
                     case (mtl, mtr) of
@@ -503,8 +503,8 @@ unifyOccurs = loop
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
             (MutVar vl, MutVar vr)
-                | vl `eqVar` vr -> return tr0
-                | otherwise     -> do
+                | vl == vr  -> return tr0
+                | otherwise -> do
                     mtl <- lift $ lookupVar vl
                     mtr <- lift $ lookupVar vr
                     case (mtl, mtr) of
@@ -582,8 +582,8 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
         tr0 <- lift . lift $ semiprune tr0
         case (tl0, tr0) of
             (MutVar vl, MutVar vr)
-                | vl `eqVar` vr -> return tr0
-                | otherwise     -> do
+                | vl == vr  -> return tr0
+                | otherwise -> do
                     mtl <- lift . lift $ lookupVar vl
                     mtr <- lift . lift $ lookupVar vr
                     case (mtl, mtr) of
@@ -668,8 +668,8 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
         tr0 <- lift . lift $ semiprune tr0
         case (tl0, tr0) of
             (MutVar vl, MutVar vr)
-                | vl `eqVar` vr -> return True
-                | otherwise     -> do
+                | vl == vr  -> return True
+                | otherwise -> do
                     mtl <- lift . lift $ lookupVar vl
                     mtr <- lift . lift $ lookupVar vr
                     case (mtl, mtr) of

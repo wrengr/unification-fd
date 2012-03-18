@@ -195,19 +195,19 @@ class (Traversable t) => Unifiable t where
     zipMatch :: t a -> t b -> Maybe (t (a,b))
 
 
--- | An implementation of unification variables.
-class Variable v where
-    
-    -- | Determine whether two variables are equal /as variables/,
-    -- without considering what they are bound to. The default
-    -- implementation is:
-    --
-    -- > eqVar x y = getVarID x == getVarID y
-    eqVar :: v -> v -> Bool
-    eqVar x y = getVarID x == getVarID y
+-- | An implementation of unification variables. The 'Eq' requirement
+-- is to determine whether two variables are equal /as variables/,
+-- without considering what they are bound to. We use 'Eq' rather
+-- than having our own @eqVar@ method so that clients can make use
+-- of library functions which commonly assume 'Eq'.
+class (Eq v) => Variable v where
     
     -- | Return a unique identifier for this variable, in order to
     -- support the use of visited-sets instead of occurs-checks.
+    -- This function must satisfy the following coherence law with
+    -- respect to the 'Eq' instance:
+    --
+    -- @x == y@ if and only if @getVarID x == getVarID y@
     getVarID :: v -> Int
 
 

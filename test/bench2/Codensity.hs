@@ -50,8 +50,8 @@ equalsMaybeKT tl0 tr0 = do
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
             (MutVar vl, MutVar vr)
-                | vl `eqVar` vr -> return () -- success
-                | otherwise       -> do
+                | vl == vr  -> return () -- success
+                | otherwise -> do
                     mtl <- lift $ lookupVar vl
                     mtr <- lift $ lookupVar vr
                     case (mtl, mtr) of
@@ -77,8 +77,8 @@ equalsMaybeT tl0 tr0 = do
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
             (MutVar vl, MutVar vr)
-                | vl `eqVar` vr -> return () -- success
-                | otherwise       -> do
+                | vl == vr  -> return () -- success
+                | otherwise -> do
                     mtl <- lift $ lookupVar vl
                     mtr <- lift $ lookupVar vr
                     case (mtl, mtr) of
@@ -104,8 +104,8 @@ equalsMaybe tl0 tr0 = do
         tr0 <- semiprune tr0
         case (tl0, tr0) of
             (MutVar vl, MutVar vr)
-                | vl `eqVar` vr -> return (Just ()) -- success
-                | otherwise     -> do
+                | vl == vr  -> return (Just ()) -- success
+                | otherwise -> do
                     mtl <- lookupVar vl
                     mtr <- lookupVar vr
                     case (mtl, mtr) of
@@ -141,8 +141,8 @@ equalsBool tl0 tr0 = do
     tr0 <- semiprune tr0
     case (tl0, tr0) of
         (MutVar vl, MutVar vr)
-            | vl `eqVar` vr -> return True -- success
-            | otherwise     -> do
+            | vl == vr  -> return True -- success
+            | otherwise -> do
                 mtl <- lookupVar vl
                 mtr <- lookupVar vr
                 case (mtl, mtr) of

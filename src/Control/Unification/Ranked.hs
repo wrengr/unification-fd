@@ -114,8 +114,8 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
         tr0 <- lift . lift $ semiprune tr0
         case (tl0, tr0) of
             (MutVar vl, MutVar vr)
-                | vl `eqVar` vr -> return tr0
-                | otherwise     -> do
+                | vl == vr  -> return tr0
+                | otherwise -> do
                     Rank rl mtl <- lift . lift $ lookupRankVar vl
                     Rank rr mtr <- lift . lift $ lookupRankVar vr
                     let cmp = compare rl rr

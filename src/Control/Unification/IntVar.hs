@@ -57,7 +57,7 @@ import Control.Unification.Types
 -- N.B., because this implementation is pure, we can use it for
 -- both ranked and unranked monads.
 newtype IntVar = IntVar Int
-    deriving (Show)
+    deriving (Show, Eq)
 
 {-
 -- BUG: This part works, but we'd want to change Show IntBindingState too.
@@ -74,8 +74,6 @@ boundedInt2Word i
 -}
 
 instance Variable IntVar where
-    eqVar (IntVar i) (IntVar j) = i == j
-    
     getVarID (IntVar v) = v
 
 

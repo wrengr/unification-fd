@@ -48,10 +48,11 @@ data STRVar s t =
 instance Show (STRVar s t) where
     show (STRVar i _ _) = "STRVar " ++ show i
 
-instance Variable (STRVar s t) where
-    eqVar (STRVar i _ _) (STRVar j _ _) = i == j
+instance Eq (STRVar s t) where
+    (STRVar i _ _) == (STRVar j _ _) = (i == j)
     
-    getVarID  (STRVar i _ _) = i
+instance Variable (STRVar s t) where
+    getVarID (STRVar i _ _) = i
 
 
 ----------------------------------------------------------------
