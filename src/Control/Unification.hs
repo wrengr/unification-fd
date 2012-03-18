@@ -62,7 +62,7 @@ module Control.Unification
     
     -- * Operations on many terms
     , getFreeVarsAll
-    -- applyBindingsAll -- necessary to ensure sharing across multiple terms
+    , applyBindingsAll
     , freshenAll
     -- subsumesAll -- to ensure that there's a single coherent substitution allowing the schema to subsume all the terms in some collection. 
 
@@ -238,7 +238,23 @@ applyBindings
         )
     => UTerm t v       -- ^
     -> e m (UTerm t v) -- ^
-applyBindings t0 = evalStateT (loop t0) IM.empty
+applyBindings = fmap runIdentity . applyBindingsAll . Identity
+
+
+-- | Same as 'applyBindings', but works on several terms simultaneously.
+-- This function preserves sharing across the entire collection of
+-- terms, whereas applying the bindings to each term separately
+-- would only preserve sharing within each term.
+applyBindingsAll
+    ::  ( BindingMonad t v m
+        , MonadTrans e
+        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
+        , MonadError (UnificationFailure t v) (e m)
+        , Traversable s
+        )
+    => s (UTerm t v)       -- ^
+    -> e m (s (UTerm t v)) -- ^
+applyBindingsAll ts0 = evalStateT (mapM loop ts0) IM.empty
     where
     loop t0 = do
         t0 <- lift . lift $ semiprune t0

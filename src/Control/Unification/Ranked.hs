@@ -44,7 +44,7 @@ module Control.Unification.Ranked
     
     -- * Operations on many terms
     , getFreeVarsAll
-    -- applyBindingsAll
+    , applyBindingsAll
     , freshenAll
     -- subsumesAll
     ) where
