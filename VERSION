@@ -1,5 +1,5 @@
 0.7.0 (2012-03-11):
-    - Control.Unification: added freshenMany
+    - Control.Unification: added getFreeVarsAll, freshenAll
     - Swapped type argument order for MutTerm, so that it can be a functor etc. Also changed BindingMonad, UnificationFailure, Rank, and RankedBindingMonad for consistency.
 0.6.0 (2012-02-17):
     - Removed the phantom type argument for Variables.

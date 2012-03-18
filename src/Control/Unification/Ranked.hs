@@ -41,6 +41,12 @@ module Control.Unification.Ranked
     , unify
     -- unifyOccurs
     -- subsumes
+    
+    -- * Operations on many terms
+    , getFreeVarsAll
+    -- applyBindingsAll
+    , freshenAll
+    -- subsumesAll
     ) where
 
 import Prelude

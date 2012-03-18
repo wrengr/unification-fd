@@ -61,7 +61,9 @@ module Control.Unification
     , subsumes
     
     -- * Operations on many terms
-    , freshenMany
+    , getFreeVarsAll
+    -- applyBindingsAll -- necessary to ensure sharing across multiple terms
+    , freshenAll
     -- subsumesAll -- to ensure that there's a single coherent substitution allowing the schema to subsume all the terms in some collection. 
 
     -- * Helper functions
@@ -182,12 +184,26 @@ seenAs v0 t0 = do
 -- TODO: Figure out how to abstract the left-catamorphism from these.
 
 
--- | Walk a term and determine what variables are still free. N.B.,
+-- | Walk a term and determine which variables are still free. N.B.,
 -- this function does not detect cyclic terms (i.e., throw errors),
 -- but it will return the correct answer for them in finite time.
 getFreeVars :: (BindingMonad t v m) => MutTerm t v -> m [v]
-getFreeVars t0 = IM.elems <$> evalStateT (loop t0) IS.empty
+getFreeVars = getFreeVarsAll . Identity
+
+-- TODO: Should we return the IntMap instead?
+--
+-- | Walk a collection of terms and determine which variables are
+-- still free. This is the same as 'getFreeVars', but somewhat more
+-- efficient if you have multiple terms to traverse at once.
+getFreeVarsAll
+    :: (BindingMonad t v m, Foldable s)
+    => s (MutTerm t v) -> m [v]
+getFreeVarsAll ts0 =
+    IM.elems <$> evalStateT (loopAll ts0) IS.empty
     where
+    -- TODO: is that the most efficient way?
+    loopAll = foldrM (\t r -> IM.union r <$> loop t) IM.empty
+    
     loop t0 = do
         t0 <- lift $ semiprune t0
         case t0 of
@@ -260,22 +276,22 @@ freshen
         )
     => MutTerm t v       -- ^
     -> e m (MutTerm t v) -- ^
-freshen = fmap runIdentity . freshenMany . Identity
+freshen = fmap runIdentity . freshenAll . Identity
 
 
 -- | Same as 'freshen', but works on several terms simultaneously.
 -- This is different from 'freshen'ing each term separately, because
--- 'freshenMany' preserves the relationship between the terms. For
+-- 'freshenAll' preserves the relationship between the terms. For
 -- instance, the result of
 --
 -- > mapM freshen [Var 1, Var 1]
 --
 -- could be @[Var 2, Var 3]@, while the result of
 --
--- > freshenMany [Var 1, Var 1]
+-- > freshenAll [Var 1, Var 1]
 --
 -- must be @[Var 2, Var 2]@ or something alpha-equivalent.
-freshenMany
+freshenAll
     ::  ( BindingMonad t v m
         , MonadTrans e
         , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
@@ -284,7 +300,7 @@ freshenMany
         )
     => s (MutTerm t v)       -- ^
     -> e m (s (MutTerm t v)) -- ^
-freshenMany ts0 = evalStateT (mapM loop ts0) IM.empty
+freshenAll ts0 = evalStateT (mapM loop ts0) IM.empty
     where
     loop t0 = do
         t0 <- lift . lift $ semiprune t0
