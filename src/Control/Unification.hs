@@ -456,14 +456,19 @@ equals tl0 tr0 = do
                         (Nothing,         Just _ )         -> mzero
                         (Just _,          Nothing)         -> mzero
                         (Just (UTerm tl), Just (UTerm tr)) -> match tl tr
-                        _ -> error "equals: the impossible happened"
+                        _ -> error _impossible_equals
             (UVar  _,  UTerm _ ) -> mzero
             (UTerm _,  UVar  _ ) -> mzero
             (UTerm tl, UTerm tr) -> match tl tr
+    
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> mzero
         Just tlr -> mapM_ (uncurry loop) tlr
+
+_impossible_equals :: String
+{-# NOINLINE _impossible_equals #-}
+_impossible_equals = "equals: the impossible happened"
 
 
 -- TODO: is that the most helpful return type?
@@ -556,7 +561,7 @@ unifyOccurs = loop
                             vr =: t
                             vl =: tr0
                             return tr0
-                        _ -> error "unifyOccurs: the impossible happened"
+                        _ -> error _impossible_unifyOccurs
             
             (UVar vl, UTerm tr) -> do
                 mtl <- lift $ lookupVar vl
@@ -568,7 +573,7 @@ unifyOccurs = loop
                         t <- match tl tr
                         vl =: t
                         return tl0
-                    _ -> error "unifyOccurs: the impossible happened"
+                    _ -> error _impossible_unifyOccurs
             
             (UTerm tl, UVar vr) -> do
                 mtr <- lift $ lookupVar vr
@@ -580,13 +585,18 @@ unifyOccurs = loop
                         t <- match tl tr
                         vr =: t
                         return tr0
-                    _ -> error "unifyOccurs: the impossible happened"
+                    _ -> error _impossible_unifyOccurs
             
             (UTerm tl, UTerm tr) -> match tl tr
+    
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> throwError $ TermMismatch tl tr
         Just tlr -> UTerm <$> mapM (uncurry loop) tlr
+
+_impossible_unifyOccurs :: String
+{-# NOINLINE _impossible_unifyOccurs #-}
+_impossible_unifyOccurs = "unifyOccurs: the impossible happened"
 
 
 ----------------------------------------------------------------
@@ -636,7 +646,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                             vr =: t
                             vl =: tr0
                             return tr0
-                        _ -> error "unify: the impossible happened"
+                        _ -> error _impossible_unify
             
             (UVar vl, UTerm tr) -> do
                 t <- do
@@ -646,7 +656,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                         Just (UTerm tl) -> localState $ do
                             vl `seenAs` tl
                             match tl tr
-                        _ -> error "unify: the impossible happened"
+                        _ -> error _impossible_unify
                 vl =: t
                 return tl0
             
@@ -658,15 +668,20 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                         Just (UTerm tr) -> localState $ do
                             vr `seenAs` tr
                             match tl tr
-                        _ -> error "unify: the impossible happened"
+                        _ -> error _impossible_unify
                 vr =: t
                 return tr0
             
             (UTerm tl, UTerm tr) -> match tl tr
+    
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> lift . throwError $ TermMismatch tl tr
         Just tlr -> UTerm <$> mapM (uncurry loop) tlr
+
+_impossible_unify :: String
+{-# NOINLINE _impossible_unify #-}
+_impossible_unify = "unify: the impossible happened"
 
 ----------------------------------------------------------------
 -- TODO: can we find an efficient way to return the bindings directly instead of altering the monadic bindings? Maybe another StateT IntMap taking getVarID to the variable and its pseudo-bound term?
@@ -723,7 +738,7 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                                 vl `seenAs` tl
                                 vr `seenAs` tr
                                 match tl tr
-                        _ -> error "subsumes: the impossible happened"
+                        _ -> error _impossible_subsumes
             
             (UVar vl,  UTerm tr) -> do
                 mtl <- lift . lift $ lookupVar vl
@@ -732,16 +747,20 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                     Just (UTerm tl) -> localState $ do
                         vl `seenAs` tl
                         match tl tr
-                    _ -> error "subsumes: the impossible happened"
+                    _ -> error _impossible_subsumes
             
             (UTerm _,  UVar  _ ) -> return False
             
             (UTerm tl, UTerm tr) -> match tl tr
+    
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> return False
         Just tlr -> and <$> mapM (uncurry loop) tlr -- TODO: use foldlM?
-    
+
+_impossible_subsumes :: String
+{-# NOINLINE _impossible_subsumes #-}
+_impossible_subsumes = "subsumes: the impossible happened"
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.
