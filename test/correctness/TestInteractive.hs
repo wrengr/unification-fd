@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                    2011.07.11
+--                                                    2012.03.19
 -- |
 -- Module      :  TestInteractive
--- Copyright   :  Copyright (c) 2009--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2009--2012 wren ng thornton
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  test
@@ -35,10 +35,10 @@ instance Unifiable S where
         | a == b    = fmap (S a) (pair xs ys)
         | otherwise = Nothing
 
-type STerm = MutTerm IntVar S 
+type STerm = UTerm S IntVar
 
 s :: String -> [STerm] -> STerm
-s = (MutTerm .) . S
+s = (UTerm .) . S
 
 foo1 :: STerm -> STerm
 foo1 x = s "foo" [x]
@@ -61,14 +61,14 @@ fooN n
 fooNxl n
     | n <= 0    = return baz0
     | otherwise = do
-        x <- MutVar <$> freeVar
+        x <- UVar <$> freeVar
         t <- fooNxl $! n-1
         return (foo2 x t)
 
 fooNxr n
     | n <= 0    = return baz0
     | otherwise = do
-        x <- MutVar <$> freeVar
+        x <- UVar <$> freeVar
         t <- fooNxr $! n-1
         return (foo2 t x)
 
@@ -76,7 +76,7 @@ withNVars :: (Show a) => Int -> ([STerm] -> IntBindingT S Identity a) -> IO ()
 withNVars = \n io -> print . runIdentity . runIntBindingT $ go [] n io
     where
     go xs 0 io = io (reverse xs)
-    go xs n io = do x <- freeVar ; go (MutVar x : xs) (n-1) io
+    go xs n io = do x <- freeVar ; go (UVar x : xs) (n-1) io
 
 test1 = withNVars 2 $ \[x,y] -> runEitherKT $ do
     let t10  = bar1 baz0
