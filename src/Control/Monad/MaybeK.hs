@@ -2,7 +2,7 @@
 {-# LANGUAGE Rank2Types, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.16
+--                                                  ~ 2012.03.18
 -- |
 -- Module      :  Control.Monad.MaybeK
 -- License     :  BSD
@@ -129,14 +129,29 @@ toMaybeKT Nothing  = mzero
 toMaybeKT (Just a) = return a
 
 
--- TODO: isn't there a better implementation that doesn't lose shortcircuiting?
 -- | Lift an @MaybeK@ into an @MaybeKT@.
 liftMaybeK :: (Monad m) => MaybeK a -> MaybeKT m a
 {-# INLINE liftMaybeK #-}
 liftMaybeK = toMaybeKT . runMaybeK
+--
+-- With the above implementation, when @liftMaybeK x@ is forced it
+-- will force not only @x = MK m@, but will also force @m@. If we
+-- want to force only @x@ and to defer @m@, then we should use the
+-- following implementation instead:
+--
+-- > liftMaybeK (MK m) = MKT (\k -> maybe (return Nothing) k (m Just))
+--
+-- Or if we want to defer both @m@ and @x@, then we could use:
+--
+-- > liftMaybeK x = MKT (\k -> maybe (return Nothing) k (runMaybeK x))
+--
+-- However, all versions need to reify @m@ at some point, and
+-- therefore will lose short-circuiting. This is necessary since
+-- given some @k :: a -> m (Maybe r)@ we have no way of constructing
+-- the needed @k' :: a -> Maybe r@ from it without prematurely
+-- executing the side-effects.
 
 
--- TODO: is there a better implementation?
 -- | Lower an @MaybeKT@ into an @MaybeK@.
 lowerMaybeK :: (Monad m) => MaybeKT m a -> m (MaybeK a)
 {-# INLINE lowerMaybeK #-}

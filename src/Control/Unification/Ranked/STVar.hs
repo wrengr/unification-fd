@@ -56,7 +56,7 @@ instance Variable (STRVar s t) where
 
 
 ----------------------------------------------------------------
--- TODO: parameterize this so we can use BacktrackST too. Or course,
+-- TODO: parameterize this so we can use BacktrackST too. Of course,
 -- that means defining another class for STRef-like variables
 --
 -- TODO: parameterize this so we can share the implementation for STVar and STRVar

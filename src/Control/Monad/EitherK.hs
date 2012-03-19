@@ -3,7 +3,7 @@
 {-# LANGUAGE Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.16
+--                                                  ~ 2012.03.18
 -- |
 -- Module      :  Control.Monad.EitherK
 -- License     :  BSD
@@ -154,14 +154,29 @@ toEitherKT (Left  e) = throwEitherKT e
 toEitherKT (Right a) = return a
 
 
--- TODO: isn't there a better implementation that doesn't lose shortcircuiting?
 -- | Lift an @EitherK@ into an @EitherKT@.
 liftEitherK :: (Monad m) => EitherK e a -> EitherKT e m a
 {-# INLINE liftEitherK #-}
 liftEitherK = toEitherKT . runEitherK
+--
+-- With the above implementation, when @liftEitherK x@ is forced
+-- it will force not only @x = EK m@, but will also force @m@. If
+-- we want to force only @x@ and to defer @m@, then we should use
+-- the following implementation instead:
+--
+-- > liftEitherK (EK m) = EKT (\k -> either (return . Left) k (m Right))
+--
+-- Or if we want to defer both @m@ and @x@, then we could use:
+--
+-- > liftEitherK x = EKT (\k -> either (return . Left) k (runEitherK x))
+--
+-- However, all versions need to reify @m@ at some point, and
+-- therefore will lose short-circuiting. This is necessary since
+-- given some @k :: a -> m (Either e r)@ we have no way of constructing
+-- the needed @k' :: a -> Either e r@ from it without prematurely
+-- executing the side-effects.
 
 
--- TODO: is there a better implementation?
 -- | Lower an @EitherKT@ into an @EitherK@.
 lowerEitherK :: (Monad m) => EitherKT e m a -> m (EitherK e a)
 {-# INLINE lowerEitherK #-}
@@ -202,7 +217,8 @@ instance Monad (EitherKT e m) where
     return a    = EKT (\k -> k a)
     EKT m >>= f = EKT (\k -> m (\a -> case f a of EKT n -> n k))
 
--- TODO: is there any way to define catchEitherKT so it only requires Applicative m?
+-- I'm pretty sure it's impossible to define a @(<|>)@ which only
+-- requires @Applicative m@.
 instance (Monad m, Monoid e) => Alternative (EitherKT e m) where
     empty = mzero
     (<|>) = mplus

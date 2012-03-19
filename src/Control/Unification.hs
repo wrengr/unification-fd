@@ -154,6 +154,7 @@ occursIn v0 t0 = do
 
 
 -- TODO: use IM.insertWith or the like to do this in one pass
+--
 -- | Update the visited-set with a seclaration that a variable has
 -- been seen with a given binding, or throw 'OccursIn' if the
 -- variable has already been seen.
@@ -209,13 +210,15 @@ getFreeVarsAll
 getFreeVarsAll ts0 =
     IM.elems <$> evalStateT (loopAll ts0) IS.empty
     where
-    -- TODO: is that the most efficient way?
+    -- TODO: is that the most efficient direction/associativity?
     loopAll = foldrM (\t r -> IM.union r <$> loop t) IM.empty
     
     loop t0 = do
         t0 <- lift $ semiprune t0
         case t0 of
-            UTerm t -> fold <$> mapM loop t -- TODO: use foldlM instead?
+            UTerm t -> fold <$> mapM loop t
+                -- TODO: benchmark using the following instead:
+                -- > foldMapM f = foldlM (\a b -> mappend a <$> f b) mempty
             UVar  v -> do
                 seenVars <- get
                 let i = getVarID v
@@ -449,12 +452,12 @@ equals tl0 tr0 = do
                     mtl <- lift $ lookupVar vl
                     mtr <- lift $ lookupVar vr
                     case (mtl, mtr) of
-                        (Nothing, Nothing ) -> mzero
-                        (Nothing, Just _  ) -> mzero
-                        (Just _,  Nothing ) -> mzero
+                        (Nothing, Nothing) -> mzero
+                        (Nothing, Just _ ) -> mzero
+                        (Just _,  Nothing) -> mzero
                         (Just tl, Just tr) -> loop tl tr -- TODO: should just jump to match
-            (UVar  _,  UTerm _  ) -> mzero
-            (UTerm _,  UVar  _  ) -> mzero
+            (UVar  _,  UTerm _ ) -> mzero
+            (UTerm _,  UVar  _ ) -> mzero
             (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> mzero
@@ -537,13 +540,13 @@ unifyOccurs = loop
                     mtl <- lift $ lookupVar vl
                     mtr <- lift $ lookupVar vr
                     case (mtl, mtr) of
-                        (Nothing,  Nothing ) -> do
+                        (Nothing, Nothing) -> do
                             vl =: tr0
                             return tr0
-                        (Nothing,  Just _  ) -> do
+                        (Nothing, Just _ ) -> do
                             vl `acyclicBindVar` tr0
                             return tr0
-                        (Just _  , Nothing ) -> do
+                        (Just _ , Nothing) -> do
                             vr `acyclicBindVar` tl0
                             return tl0
                         (Just tl, Just tr) -> do

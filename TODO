@@ -12,3 +12,7 @@ Sooner than later:
     * Proper benchmarking. Especially for the union--find enhancement
 
 Eventually:
+    * Antiunification?
+    * Disunification?
+    * Higher-rank unification (in a way that generalizes over contravariance and im/predicativity issues)?
+    * Typed unification? (is there a clean way to do it without HList-style hackery?)
