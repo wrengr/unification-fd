@@ -173,10 +173,25 @@ data UnificationFailure t v
 instance (Show (t (UTerm t v)), Show v) =>
     Show (UnificationFailure t v)
     where
-    -- TODO: implement 'showsPrec' instead
-    show (OccursIn     v  t)  = "OccursIn ("++show v++") ("++show t++")"
-    show (TermMismatch tl tr) = "TermMismatch ("++show tl++") ("++show tr++")"
-    show (UnknownError msg)   = "UnknownError: "++msg
+    showsPrec p (OccursIn v t) =
+        showParen (p > 9)
+            ( showString "OccursIn "
+            . showsPrec 11 v
+            . showString " "
+            . showsPrec 11 t
+            )
+    showsPrec p (TermMismatch tl tr) =
+        showParen (p > 9)
+            ( showString "TermMismatch "
+            . showsPrec 11 tl
+            . showString " "
+            . showsPrec 11 tr
+            )
+    showsPrec p (UnknownError msg) =
+        showParen (p > 9)
+            ( showString "UnknownError: "
+            . showString msg
+            )
 
 instance Error (UnificationFailure t v) where
     noMsg  = UnknownError ""
