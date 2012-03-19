@@ -33,11 +33,41 @@ import Control.Unification.IntVar
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-equalsMaybeKT, equalsMaybeT, equalsMaybe, equalsBool
+equalsMaybeKT', equalsMaybeKT, equalsMaybeT, equalsMaybe, equalsBool
     :: (BindingMonad t v m)
-    => MutTerm t v  -- ^
-    -> MutTerm t v  -- ^
-    -> m Bool       -- ^
+    => UTerm t v -- ^
+    -> UTerm t v -- ^
+    -> m Bool    -- ^
+
+equalsMaybeKT' tl0 tr0 = do
+    mb <- runMaybeKT (loop tl0 tr0)
+    case mb of
+        Nothing -> return False
+        Just () -> return True
+    where
+    loop tl0 tr0 = do
+        tl0 <- lift $ semiprune tl0
+        tr0 <- lift $ semiprune tr0
+        case (tl0, tr0) of
+            (UVar vl, UVar vr)
+                | vl == vr  -> return () -- success
+                | otherwise -> do
+                    mtl <- lift $ lookupVar vl
+                    mtr <- lift $ lookupVar vr
+                    case (mtl, mtr) of
+                        (Nothing, Nothing) -> mzero
+                        (Nothing, Just _ ) -> mzero
+                        (Just _,  Nothing) -> mzero
+                        -- (Just tl, Just tr) -> loop tl tr
+                        (Just (UTerm tl), Just (UTerm tr)) -> match tl tr
+                        _ -> error "equals: the impossible happened"
+            (UVar  _,  UTerm _ ) -> mzero
+            (UTerm _,  UVar  _ ) -> mzero
+            (UTerm tl, UTerm tr) -> match tl tr
+    match tl tr =
+        case zipMatch tl tr of
+        Nothing  -> mzero
+        Just tlr -> mapM_ (uncurry loop) tlr
 
 equalsMaybeKT tl0 tr0 = do
     mb <- runMaybeKT (loop tl0 tr0)
@@ -49,7 +79,7 @@ equalsMaybeKT tl0 tr0 = do
         tl0 <- lift $ semiprune tl0
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl, MutVar vr)
+            (UVar vl, UVar vr)
                 | vl == vr  -> return () -- success
                 | otherwise -> do
                     mtl <- lift $ lookupVar vl
@@ -59,9 +89,9 @@ equalsMaybeKT tl0 tr0 = do
                         (Nothing, Just _ ) -> mzero
                         (Just _,  Nothing) -> mzero
                         (Just tl, Just tr) -> loop tl tr -- TODO: should just jump to match
-            (MutVar  _,  MutTerm _ ) -> mzero
-            (MutTerm _,  MutVar  _ ) -> mzero
-            (MutTerm tl, MutTerm tr) ->
+            (UVar  _,  UTerm _ ) -> mzero
+            (UTerm _,  UVar  _ ) -> mzero
+            (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> mzero
                 Just tlr -> mapM_ (uncurry loop) tlr
@@ -76,7 +106,7 @@ equalsMaybeT tl0 tr0 = do
         tl0 <- lift $ semiprune tl0
         tr0 <- lift $ semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl, MutVar vr)
+            (UVar vl, UVar vr)
                 | vl == vr  -> return () -- success
                 | otherwise -> do
                     mtl <- lift $ lookupVar vl
@@ -86,9 +116,9 @@ equalsMaybeT tl0 tr0 = do
                         (Nothing, Just _ ) -> mzero
                         (Just _,  Nothing) -> mzero
                         (Just tl, Just tr) -> loop tl tr -- TODO: should just jump to match
-            (MutVar  _,  MutTerm _ ) -> mzero
-            (MutTerm _,  MutVar  _ ) -> mzero
-            (MutTerm tl, MutTerm tr) ->
+            (UVar  _,  UTerm _ ) -> mzero
+            (UTerm _,  UVar  _ ) -> mzero
+            (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> mzero
                 Just tlr -> mapM_ (uncurry loop) tlr
@@ -103,7 +133,7 @@ equalsMaybe tl0 tr0 = do
         tl0 <- semiprune tl0
         tr0 <- semiprune tr0
         case (tl0, tr0) of
-            (MutVar vl, MutVar vr)
+            (UVar vl, UVar vr)
                 | vl == vr  -> return (Just ()) -- success
                 | otherwise -> do
                     mtl <- lookupVar vl
@@ -113,9 +143,9 @@ equalsMaybe tl0 tr0 = do
                         (Nothing, Just _ ) -> return Nothing
                         (Just _,  Nothing) -> return Nothing
                         (Just tl, Just tr) -> loop tl tr -- TODO: should just jump to match
-            (MutVar  _,  MutTerm _  ) -> return Nothing
-            (MutTerm _,  MutVar  _  ) -> return Nothing
-            (MutTerm tl, MutTerm tr) ->
+            (UVar  _,  UTerm _  ) -> return Nothing
+            (UTerm _,  UVar  _  ) -> return Nothing
+            (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> return Nothing
                 Just tlr ->
@@ -140,7 +170,7 @@ equalsBool tl0 tr0 = do
     tl0 <- semiprune tl0
     tr0 <- semiprune tr0
     case (tl0, tr0) of
-        (MutVar vl, MutVar vr)
+        (UVar vl, UVar vr)
             | vl == vr  -> return True -- success
             | otherwise -> do
                 mtl <- lookupVar vl
@@ -150,9 +180,9 @@ equalsBool tl0 tr0 = do
                     (Nothing, Just _ ) -> return False
                     (Just _,  Nothing) -> return False
                     (Just tl, Just tr) -> equalsBool tl tr -- TODO: should just jump to match
-        (MutVar  _,  MutTerm _  ) -> return False
-        (MutTerm _,  MutVar  _  ) -> return False
-        (MutTerm tl, MutTerm tr) ->
+        (UVar  _,  UTerm _  ) -> return False
+        (UTerm _,  UVar  _  ) -> return False
+        (UTerm tl, UTerm tr) ->
             case zipMatch tl tr of
             Nothing  -> return False
             Just tlr ->
@@ -187,10 +217,10 @@ instance Unifiable S where
         | a == b    = fmap (S a) (pair xs ys)
         | otherwise = Nothing
 
-type STerm = MutTerm S IntVar
+type STerm = UTerm S IntVar
 
 s :: Int -> [STerm] -> STerm
-s = (MutTerm .) . S
+s = (UTerm .) . S
 
 foo2 :: STerm -> STerm -> STerm
 foo2 x y = s 1 [x,y]
@@ -224,11 +254,12 @@ main =
         f4z = f f3z;  f4r = f f3r;  g4z = g g3z;  g4r = g g3r
         
         mkBGroup tl tr =
-            [ bench "equalsMaybeKT" $ nf (evalIB . equalsMaybeKT tl) tr
-            , bench "equalsMaybeT"  $ nf (evalIB . equalsMaybeT  tl) tr
-            , bench "equalsMaybe"   $ nf (evalIB . equalsMaybe   tl) tr
-            , bench "equalsBool"    $ nf (evalIB . equalsBool    tl) tr
-            , bench "equals (lib)"  $ nf (evalIB . equals        tl) tr
+            [ bench "equalsMaybeKT'" $ nf (evalIB . equalsMaybeKT' tl) tr
+            , bench "equalsMaybeKT"  $ nf (evalIB . equalsMaybeKT  tl) tr
+            , bench "equalsMaybeT"   $ nf (evalIB . equalsMaybeT   tl) tr
+            , bench "equalsMaybe"    $ nf (evalIB . equalsMaybe    tl) tr
+            , bench "equalsBool"     $ nf (evalIB . equalsBool     tl) tr
+            , bench "equals (lib)"   $ nf (evalIB . equals         tl) tr
             ]
         
         
