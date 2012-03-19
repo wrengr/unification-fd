@@ -164,13 +164,13 @@ seenAs
         , MonadError (UnificationFailure t v) (e m)
         )
     => v -- ^
-    -> UTerm t v -- ^
-    -> StateT (IM.IntMap (UTerm t v)) (e m) () -- ^
+    -> t (UTerm t v) -- ^
+    -> StateT (IM.IntMap (t (UTerm t v))) (e m) () -- ^
 {-# INLINE seenAs #-}
 seenAs v0 t0 = do
     seenVars <- get
     case IM.lookup (getVarID v0) seenVars of
-        Just t  -> lift . throwError $ OccursIn v0 t
+        Just t  -> lift . throwError $ OccursIn v0 (UTerm t)
         Nothing -> put $! IM.insert (getVarID v0) t0 seenVars
 
 ----------------------------------------------------------------
@@ -452,16 +452,18 @@ equals tl0 tr0 = do
                     mtl <- lift $ lookupVar vl
                     mtr <- lift $ lookupVar vr
                     case (mtl, mtr) of
-                        (Nothing, Nothing) -> mzero
-                        (Nothing, Just _ ) -> mzero
-                        (Just _,  Nothing) -> mzero
-                        (Just tl, Just tr) -> loop tl tr -- TODO: should just jump to match
+                        (Nothing,         Nothing)         -> mzero
+                        (Nothing,         Just _ )         -> mzero
+                        (Just _,          Nothing)         -> mzero
+                        (Just (UTerm tl), Just (UTerm tr)) -> match tl tr
+                        _ -> error "equals: the impossible happened"
             (UVar  _,  UTerm _ ) -> mzero
             (UTerm _,  UVar  _ ) -> mzero
-            (UTerm tl, UTerm tr) ->
-                case zipMatch tl tr of
-                Nothing  -> mzero
-                Just tlr -> mapM_ (uncurry loop) tlr
+            (UTerm tl, UTerm tr) -> match tl tr
+    match tl tr =
+        case zipMatch tl tr of
+        Nothing  -> mzero
+        Just tlr -> mapM_ (uncurry loop) tlr
 
 
 -- TODO: is that the most helpful return type?
@@ -549,38 +551,42 @@ unifyOccurs = loop
                         (Just _ , Nothing) -> do
                             vr `acyclicBindVar` tl0
                             return tl0
-                        (Just tl, Just tr) -> do
-                            t <- loop tl tr
+                        (Just (UTerm tl), Just (UTerm tr)) -> do
+                            t <- match tl tr
                             vr =: t
                             vl =: tr0
                             return tr0
+                        _ -> error "unifyOccurs: the impossible happened"
             
-            (UVar vl, UTerm _) -> do
+            (UVar vl, UTerm tr) -> do
                 mtl <- lift $ lookupVar vl
                 case mtl of
                     Nothing  -> do
                         vl `acyclicBindVar` tr0
                         return tl0
-                    Just tl -> do
-                        t <- loop tl tr0
+                    Just (UTerm tl) -> do
+                        t <- match tl tr
                         vl =: t
                         return tl0
+                    _ -> error "unifyOccurs: the impossible happened"
             
-            (UTerm _, UVar vr) -> do
+            (UTerm tl, UVar vr) -> do
                 mtr <- lift $ lookupVar vr
                 case mtr of
                     Nothing  -> do
                         vr `acyclicBindVar` tl0
                         return tr0
-                    Just tr -> do
-                        t <- loop tl0 tr
+                    Just (UTerm tr) -> do
+                        t <- match tl tr
                         vr =: t
                         return tr0
+                    _ -> error "unifyOccurs: the impossible happened"
             
-            (UTerm tl, UTerm tr) ->
-                case zipMatch tl tr of
-                Nothing  -> throwError $ TermMismatch tl tr
-                Just tlr -> UTerm <$> mapM (uncurry loop) tlr
+            (UTerm tl, UTerm tr) -> match tl tr
+    match tl tr =
+        case zipMatch tl tr of
+        Nothing  -> throwError $ TermMismatch tl tr
+        Just tlr -> UTerm <$> mapM (uncurry loop) tlr
 
 
 ----------------------------------------------------------------
@@ -622,41 +628,45 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                         (Nothing, Nothing) -> do vl =: tr0 ; return tr0
                         (Nothing, Just _ ) -> do vl =: tr0 ; return tr0
                         (Just _ , Nothing) -> do vr =: tl0 ; return tl0
-                        (Just tl, Just tr) -> do
+                        (Just (UTerm tl), Just (UTerm tr)) -> do
                             t <- localState $ do
                                 vl `seenAs` tl
                                 vr `seenAs` tr
-                                loop tl tr -- TODO: should just jump to match
+                                match tl tr
                             vr =: t
                             vl =: tr0
                             return tr0
+                        _ -> error "unify: the impossible happened"
             
-            (UVar vl, UTerm _) -> do
+            (UVar vl, UTerm tr) -> do
                 t <- do
                     mtl <- lift . lift $ lookupVar vl
                     case mtl of
-                        Nothing  -> return tr0
-                        Just tl -> localState $ do
+                        Nothing         -> return tr0
+                        Just (UTerm tl) -> localState $ do
                             vl `seenAs` tl
-                            loop tl tr0 -- TODO: should just jump to match
+                            match tl tr
+                        _ -> error "unify: the impossible happened"
                 vl =: t
                 return tl0
             
-            (UTerm _, UVar vr) -> do
+            (UTerm tl, UVar vr) -> do
                 t <- do
                     mtr <- lift . lift $ lookupVar vr
                     case mtr of
-                        Nothing  -> return tl0
-                        Just tr -> localState $ do
+                        Nothing         -> return tl0
+                        Just (UTerm tr) -> localState $ do
                             vr `seenAs` tr
-                            loop tl0 tr -- TODO: should just jump to match
+                            match tl tr
+                        _ -> error "unify: the impossible happened"
                 vr =: t
                 return tr0
             
-            (UTerm tl, UTerm tr) ->
-                case zipMatch tl tr of
-                Nothing  -> lift . throwError $ TermMismatch tl tr
-                Just tlr -> UTerm <$> mapM (uncurry loop) tlr
+            (UTerm tl, UTerm tr) -> match tl tr
+    match tl tr =
+        case zipMatch tl tr of
+        Nothing  -> lift . throwError $ TermMismatch tl tr
+        Just tlr -> UTerm <$> mapM (uncurry loop) tlr
 
 ----------------------------------------------------------------
 -- TODO: can we find an efficient way to return the bindings directly instead of altering the monadic bindings? Maybe another StateT IntMap taking getVarID to the variable and its pseudo-bound term?
@@ -705,30 +715,32 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                     mtl <- lift . lift $ lookupVar vl
                     mtr <- lift . lift $ lookupVar vr
                     case (mtl, mtr) of
-                        (Nothing, Nothing) -> vl =: tr0
-                        (Nothing, Just _ ) -> vl =: tr0
-                        (Just _ , Nothing) -> return False
-                        (Just tl, Just tr) ->
+                        (Nothing,         Nothing)         -> vl =: tr0
+                        (Nothing,         Just _ )         -> vl =: tr0
+                        (Just _ ,         Nothing)         -> return False
+                        (Just (UTerm tl), Just (UTerm tr)) ->
                             localState $ do
                                 vl `seenAs` tl
                                 vr `seenAs` tr
-                                loop tl tr
+                                match tl tr
+                        _ -> error "subsumes: the impossible happened"
             
-            (UVar vl,  UTerm _ ) -> do
+            (UVar vl,  UTerm tr) -> do
                 mtl <- lift . lift $ lookupVar vl
                 case mtl of
-                    Nothing  -> vl =: tr0
-                    Just tl -> localState $ do
+                    Nothing         -> vl =: tr0
+                    Just (UTerm tl) -> localState $ do
                         vl `seenAs` tl
-                        loop tl tr0
+                        match tl tr
+                    _ -> error "subsumes: the impossible happened"
             
             (UTerm _,  UVar  _ ) -> return False
             
-            (UTerm tl, UTerm tr) ->
-                case zipMatch tl tr of
-                Nothing  -> return False
-                Just tlr -> and <$> mapM (uncurry loop) tlr
-                    -- TODO: use foldlM?
+            (UTerm tl, UTerm tr) -> match tl tr
+    match tl tr =
+        case zipMatch tl tr of
+        Nothing  -> return False
+        Just tlr -> and <$> mapM (uncurry loop) tlr -- TODO: use foldlM?
     
 
 ----------------------------------------------------------------
