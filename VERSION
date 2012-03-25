@@ -1,5 +1,6 @@
+0.8.0 (2012-00-00):
+    - Control.Unification.Types: Changed the type of Unifiable.zipMatch
 0.7.0 (2012-03-19):
-    - Control.Unification: changed the type of seenAs to ensure that variables can only be seen as structure.
     - Renamed MutTerm to UTerm (and MutVar to UVar)
     - Replaced the Variable.eqVar method by plain old Eq.(==)
     - Control.Unification: added getFreeVarsAll, applyBindingsAll, freshenAll

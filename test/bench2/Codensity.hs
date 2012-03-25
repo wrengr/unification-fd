@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.16
+--                                                  ~ 2012.03.25
 -- |
 -- Module      :  Codensity
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -33,12 +33,42 @@ import Control.Unification.IntVar
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-equalsMaybeKT', equalsMaybeKT, equalsMaybeT, equalsMaybe, equalsBool
+equalsMaybeKT', equalsMaybeKT'_, equalsMaybeKT, equalsMaybeKT_, equalsMaybeT, equalsMaybeT_, equalsMaybe_, equalsBool_
     :: (BindingMonad t v m)
     => UTerm t v -- ^
     -> UTerm t v -- ^
     -> m Bool    -- ^
 
+equalsMaybeKT'_ tl0 tr0 = do
+    mb <- runMaybeKT (loop tl0 tr0)
+    case mb of
+        Nothing -> return False
+        Just () -> return True
+    where
+    loop tl0 tr0 = do
+        tl0 <- lift $ semiprune tl0
+        tr0 <- lift $ semiprune tr0
+        case (tl0, tr0) of
+            (UVar vl, UVar vr)
+                | vl == vr  -> return () -- success
+                | otherwise -> do
+                    mtl <- lift $ lookupVar vl
+                    mtr <- lift $ lookupVar vr
+                    case (mtl, mtr) of
+                        (Nothing, Nothing) -> mzero
+                        (Nothing, Just _ ) -> mzero
+                        (Just _,  Nothing) -> mzero
+                        -- (Just tl, Just tr) -> loop tl tr
+                        (Just (UTerm tl), Just (UTerm tr)) -> match tl tr
+                        _ -> error "equals: the impossible happened"
+            (UVar  _,  UTerm _ ) -> mzero
+            (UTerm _,  UVar  _ ) -> mzero
+            (UTerm tl, UTerm tr) -> match tl tr
+    match tl tr =
+        case zipMatch_ tl tr of
+        Nothing  -> mzero
+        Just tlr -> mapM_ (uncurry loop) tlr
+----------------------------------------------------------------
 equalsMaybeKT' tl0 tr0 = do
     mb <- runMaybeKT (loop tl0 tr0)
     case mb of
@@ -67,8 +97,37 @@ equalsMaybeKT' tl0 tr0 = do
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> mzero
-        Just tlr -> mapM_ (uncurry loop) tlr
-
+        Just tlr -> mapM_ loop_ tlr
+    loop_ (Left  _)       = return () -- success
+    loop_ (Right (tl,tr)) = loop tl tr
+----------------------------------------------------------------
+equalsMaybeKT_ tl0 tr0 = do
+    mb <- runMaybeKT (loop tl0 tr0)
+    case mb of
+        Nothing -> return False
+        Just () -> return True
+    where
+    loop tl0 tr0 = do
+        tl0 <- lift $ semiprune tl0
+        tr0 <- lift $ semiprune tr0
+        case (tl0, tr0) of
+            (UVar vl, UVar vr)
+                | vl == vr  -> return () -- success
+                | otherwise -> do
+                    mtl <- lift $ lookupVar vl
+                    mtr <- lift $ lookupVar vr
+                    case (mtl, mtr) of
+                        (Nothing, Nothing) -> mzero
+                        (Nothing, Just _ ) -> mzero
+                        (Just _,  Nothing) -> mzero
+                        (Just tl, Just tr) -> loop tl tr -- TODO: should just jump to match
+            (UVar  _,  UTerm _ ) -> mzero
+            (UTerm _,  UVar  _ ) -> mzero
+            (UTerm tl, UTerm tr) ->
+                case zipMatch_ tl tr of
+                Nothing  -> mzero
+                Just tlr -> mapM_ (uncurry loop) tlr
+----------------------------------------------------------------
 equalsMaybeKT tl0 tr0 = do
     mb <- runMaybeKT (loop tl0 tr0)
     case mb of
@@ -94,8 +153,37 @@ equalsMaybeKT tl0 tr0 = do
             (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> mzero
+                Just tlr -> mapM_ loop_ tlr
+    loop_ (Left  _)       = return () -- success
+    loop_ (Right (tl,tr)) = loop tl tr
+----------------------------------------------------------------
+equalsMaybeT_ tl0 tr0 = do
+    mb <- runMaybeT (loop tl0 tr0)
+    case mb of
+        Nothing -> return False
+        Just () -> return True
+    where
+    loop tl0 tr0 = do
+        tl0 <- lift $ semiprune tl0
+        tr0 <- lift $ semiprune tr0
+        case (tl0, tr0) of
+            (UVar vl, UVar vr)
+                | vl == vr  -> return () -- success
+                | otherwise -> do
+                    mtl <- lift $ lookupVar vl
+                    mtr <- lift $ lookupVar vr
+                    case (mtl, mtr) of
+                        (Nothing, Nothing) -> mzero
+                        (Nothing, Just _ ) -> mzero
+                        (Just _,  Nothing) -> mzero
+                        (Just tl, Just tr) -> loop tl tr -- TODO: should just jump to match
+            (UVar  _,  UTerm _ ) -> mzero
+            (UTerm _,  UVar  _ ) -> mzero
+            (UTerm tl, UTerm tr) ->
+                case zipMatch_ tl tr of
+                Nothing  -> mzero
                 Just tlr -> mapM_ (uncurry loop) tlr
-
+----------------------------------------------------------------
 equalsMaybeT tl0 tr0 = do
     mb <- runMaybeT (loop tl0 tr0)
     case mb of
@@ -121,9 +209,11 @@ equalsMaybeT tl0 tr0 = do
             (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> mzero
-                Just tlr -> mapM_ (uncurry loop) tlr
-
-equalsMaybe tl0 tr0 = do
+                Just tlr -> mapM_ loop_ tlr
+    loop_ (Left  _)       = return () -- success
+    loop_ (Right (tl,tr)) = loop tl tr
+----------------------------------------------------------------
+equalsMaybe_ tl0 tr0 = do
     mb <- loop tl0 tr0
     case mb of
         Nothing -> return False
@@ -146,7 +236,7 @@ equalsMaybe tl0 tr0 = do
             (UVar  _,  UTerm _  ) -> return Nothing
             (UTerm _,  UVar  _  ) -> return Nothing
             (UTerm tl, UTerm tr) ->
-                case zipMatch tl tr of
+                case zipMatch_ tl tr of
                 Nothing  -> return Nothing
                 Just tlr ->
                     foldr 
@@ -157,7 +247,7 @@ equalsMaybe tl0 tr0 = do
                         return
                         tlr
                         (Just ())
-
+----------------------------------------------------------------
 {-
 foldlM :: (Foldable t, Monad m) => (a -> b -> m a) -> a -> t b -> m a
 foldlM f z0 xs = foldr f' return xs z0 where f' x k z = f z x >>= k
@@ -166,7 +256,7 @@ mapM_ :: (Foldable t, Monad m) => (a -> m b) -> t a -> m ()
 mapM_ f = foldr ((>>) . f) (return ())
 -}
 
-equalsBool tl0 tr0 = do
+equalsBool_ tl0 tr0 = do
     tl0 <- semiprune tl0
     tr0 <- semiprune tr0
     case (tl0, tr0) of
@@ -179,19 +269,19 @@ equalsBool tl0 tr0 = do
                     (Nothing, Nothing) -> return False
                     (Nothing, Just _ ) -> return False
                     (Just _,  Nothing) -> return False
-                    (Just tl, Just tr) -> equalsBool tl tr -- TODO: should just jump to match
+                    (Just tl, Just tr) -> equalsBool_ tl tr -- TODO: should just jump to match
         (UVar  _,  UTerm _  ) -> return False
         (UTerm _,  UVar  _  ) -> return False
         (UTerm tl, UTerm tr) ->
-            case zipMatch tl tr of
+            case zipMatch_ tl tr of
             Nothing  -> return False
             Just tlr ->
-                -- and <$> mapM (uncurry equalsBool) tlr -- TODO: use foldlM
+                -- and <$> mapM (uncurry equalsBool_) tlr -- TODO: use foldlM
                 -- {-
                 foldlM
                     (\b (tl',tr') ->
                         if b
-                        then equalsBool tl' tr'
+                        then equalsBool_ tl' tr'
                         else return False)
                     True
                     tlr
@@ -200,7 +290,7 @@ equalsBool tl0 tr0 = do
                 foldr 
                     (\ (tl',tr') k b ->
                         if b
-                        then equalsBool tl' tr' >>= k
+                        then equalsBool_ tl' tr' >>= k
                         else return False)
                     return
                     tlr
@@ -213,8 +303,14 @@ data S a = S {-# UNPACK #-} !Int ![a]
     deriving (Read, Show, Eq, Ord, Functor, Foldable, Traversable)
 
 instance Unifiable S where
-    zipMatch (S a xs) (S b ys)
+    -- The old type. In order to run these benchmarks, you'll need to add it back to the class and reinstall the library.
+    zipMatch_ (S a xs) (S b ys)
         | a == b    = fmap (S a) (pair xs ys)
+        | otherwise = Nothing
+    
+    -- The new type
+    zipMatch (S a xs) (S b ys)
+        | a == b    = fmap (S a) (pairWith (\x y -> Right(x,y)) xs ys)
         | otherwise = Nothing
 
 type STerm = UTerm S IntVar
@@ -254,12 +350,15 @@ main =
         f4z = f f3z;  f4r = f f3r;  g4z = g g3z;  g4r = g g3r
         
         mkBGroup tl tr =
-            [ bench "equalsMaybeKT'" $ nf (evalIB . equalsMaybeKT' tl) tr
-            , bench "equalsMaybeKT"  $ nf (evalIB . equalsMaybeKT  tl) tr
-            , bench "equalsMaybeT"   $ nf (evalIB . equalsMaybeT   tl) tr
-            , bench "equalsMaybe"    $ nf (evalIB . equalsMaybe    tl) tr
-            , bench "equalsBool"     $ nf (evalIB . equalsBool     tl) tr
-            , bench "equals (lib)"   $ nf (evalIB . equals         tl) tr
+            [ bench "equalsMaybeKT'_" $ nf (evalIB . equalsMaybeKT'_ tl) tr
+            , bench "equalsMaybeKT'"  $ nf (evalIB . equalsMaybeKT'  tl) tr
+            , bench "equalsMaybeKT_"  $ nf (evalIB . equalsMaybeKT_  tl) tr
+            , bench "equalsMaybeKT"   $ nf (evalIB . equalsMaybeKT   tl) tr
+            , bench "equalsMaybeT_"   $ nf (evalIB . equalsMaybeT_   tl) tr
+            , bench "equalsMaybeT"    $ nf (evalIB . equalsMaybeT    tl) tr
+            , bench "equalsMaybe_"    $ nf (evalIB . equalsMaybe_    tl) tr
+            , bench "equalsBool_"     $ nf (evalIB . equalsBool_     tl) tr
+            , bench "equals (lib)"    $ nf (evalIB . equals          tl) tr
             ]
         
         

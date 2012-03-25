@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.18
+--                                                  ~ 2012.03.25
 -- |
 -- Module      :  Control.Unification.Ranked
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -57,7 +57,7 @@ import Data.Traversable
 import Control.Applicative
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Error (MonadError(..))
-import Control.Monad.State (MonadState(..), evalStateT)
+import Control.Monad.State (MonadState(..), StateT, evalStateT)
 import Control.Monad.State.UnificationExtras
 import Control.Unification.Types
 import Control.Unification hiding (unify, (=:=))
@@ -79,6 +79,28 @@ import Control.Unification hiding (unify, (=:=))
 infix 4 =:=, `unify`
 
 
+-- HACK: apparently this wasn't exported from Control.Unification; so c&p
+-- TODO: use IM.insertWith or the like to do this in one pass
+--
+-- | Update the visited-set with a seclaration that a variable has
+-- been seen with a given binding, or throw 'OccursIn' if the
+-- variable has already been seen.
+seenAs
+    ::  ( BindingMonad t v m
+        , MonadTrans e
+        , MonadError (UnificationFailure t v) (e m)
+        )
+    => v -- ^
+    -> t (UTerm t v) -- ^
+    -> StateT (IM.IntMap (t (UTerm t v))) (e m) () -- ^
+{-# INLINE seenAs #-}
+seenAs v0 t0 = do
+    seenVars <- get
+    case IM.lookup (getVarID v0) seenVars of
+        Just t  -> lift . throwError $ OccursIn v0 (UTerm t)
+        Nothing -> put $! IM.insert (getVarID v0) t0 seenVars
+
+
 -- TODO: keep in sync as we verify correctness.
 --
 -- | Unify two terms, or throw an error with an explanation of why
@@ -98,14 +120,6 @@ unify
     -> e m (UTerm t v) -- ^
 unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
-    -- TODO: use IM.insertWith or the like to do this in one pass
-    {-# INLINE seenAs #-}
-    v `seenAs` t = do
-        seenVars <- get
-        case IM.lookup (getVarID v) seenVars of
-            Just t' -> lift . throwError $ OccursIn v t'
-            Nothing -> put $ IM.insert (getVarID v) t seenVars
-    
     {-# INLINE (=:) #-}
     v =: t = bindVar v t >> return t
     
@@ -138,45 +152,57 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                             EQ -> do { incrementRank vl ; vr =: tl0 }
                             GT -> do {                    vr =: tl0 }
                         
-                        (Just tl, Just tr) -> do
+                        (Just (UTerm tl), Just (UTerm tr)) -> do
                             t <- localState $ do
                                 vl `seenAs` tl
                                 vr `seenAs` tr
-                                loop tl tr
+                                match tl tr
                             lift . lift $
                                 case cmp of
                                 LT -> do { vr `bindVar` t        ; vl =: tr0 }
                                 EQ -> do { incrementBindVar vl t ; vr =: tl0 }
                                 GT -> do { vl `bindVar` t        ; vr =: tl0 }
+                        _ -> error _impossible_unify
             
-            (UVar vl, UTerm _) -> do
+            (UVar vl, UTerm tr) -> do
                 t <- do
                     mtl <- lift . lift $ lookupVar vl
                     case mtl of
                         Nothing -> return tr0
-                        Just tl -> localState $ do
+                        Just (UTerm tl) -> localState $ do
                             vl `seenAs` tl
-                            loop tl tr0
+                            match tl tr
+                        _ -> error _impossible_unify
                 lift . lift $ do
                     vl `bindVar` t
                     return tl0
             
-            (UTerm _, UVar vr) -> do
+            (UTerm tl, UVar vr) -> do
                 t <- do
                     mtr <- lift . lift $ lookupVar vr
                     case mtr of
                         Nothing -> return tl0
-                        Just tr -> localState $ do
+                        Just (UTerm tr) -> localState $ do
                             vr `seenAs` tr
-                            loop tl0 tr
+                            match tl tr
+                        _ -> error _impossible_unify
                 lift . lift $ do
                     vr `bindVar` t
                     return tr0
             
-            (UTerm tl, UTerm tr) ->
-                case zipMatch tl tr of
-                Nothing  -> lift . throwError $ TermMismatch tl tr
-                Just tlr -> UTerm <$> mapM (uncurry loop) tlr
+            (UTerm tl, UTerm tr) -> match tl tr
+    
+    match tl tr =
+        case zipMatch tl tr of
+        Nothing  -> lift . throwError $ TermMismatch tl tr
+        Just tlr -> UTerm <$> mapM loop_ tlr
+    
+    loop_ (Left  t)       = return t
+    loop_ (Right (tl,tr)) = loop tl tr
+
+_impossible_unify :: String
+{-# NOINLINE _impossible_unify #-}
+_impossible_unify = "unify: the impossible happened"
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

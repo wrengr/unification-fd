@@ -5,7 +5,7 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.18
+--                                                  ~ 2012.03.25
 -- |
 -- Module      :  Control.Unification.Types
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -207,9 +207,10 @@ class (Traversable t) => Unifiable t where
     
     -- | Perform one level of equality testing for terms. If the
     -- term constructors are unequal then return @Nothing@; if they
-    -- are equal, then return the one-level spine filled with pairs
-    -- of subterms to be recursively checked.
-    zipMatch :: t a -> t b -> Maybe (t (a,b))
+    -- are equal, then return the one-level spine filled with
+    -- resolved subterms and\/or pairs of subterms to be recursively
+    -- checked.
+    zipMatch :: t a -> t a -> Maybe (t (Either a (a,a)))
 
 
 -- | An implementation of unification variables. The 'Eq' requirement

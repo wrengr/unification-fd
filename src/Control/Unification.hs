@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.18
+--                                                  ~ 2012.03.25
 -- |
 -- Module      :  Control.Unification
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -464,7 +464,10 @@ equals tl0 tr0 = do
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> mzero
-        Just tlr -> mapM_ (uncurry loop) tlr
+        Just tlr -> mapM_ loop_ tlr
+    
+    loop_ (Left  _)       = return () -- success
+    loop_ (Right (tl,tr)) = loop tl tr
 
 _impossible_equals :: String
 {-# NOINLINE _impossible_equals #-}
@@ -494,7 +497,7 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
                 xs <- get
                 case IM.lookup il xs of
                     Just x
-                        | x == ir   -> return ()
+                        | x == ir   -> return () -- success; no changes
                         | otherwise -> lift mzero
                     Nothing         -> put $! IM.insert il ir xs
             
@@ -503,7 +506,10 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
             (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> lift mzero
-                Just tlr -> mapM_ (uncurry loop) tlr
+                Just tlr -> mapM_ loop_ tlr
+    
+    loop_ (Left  _)       = return () -- success; no changes
+    loop_ (Right (tl,tr)) = loop tl tr
 
 
 ----------------------------------------------------------------
@@ -592,7 +598,10 @@ unifyOccurs = loop
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> throwError $ TermMismatch tl tr
-        Just tlr -> UTerm <$> mapM (uncurry loop) tlr
+        Just tlr -> UTerm <$> mapM loop_ tlr
+    
+    loop_ (Left  t)       = return t
+    loop_ (Right (tl,tr)) = loop tl tr
 
 _impossible_unifyOccurs :: String
 {-# NOINLINE _impossible_unifyOccurs #-}
@@ -677,7 +686,10 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> lift . throwError $ TermMismatch tl tr
-        Just tlr -> UTerm <$> mapM (uncurry loop) tlr
+        Just tlr -> UTerm <$> mapM loop_ tlr
+    
+    loop_ (Left  t)       = return t
+    loop_ (Right (tl,tr)) = loop tl tr
 
 _impossible_unify :: String
 {-# NOINLINE _impossible_unify #-}
@@ -756,7 +768,10 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> return False
-        Just tlr -> and <$> mapM (uncurry loop) tlr -- TODO: use foldlM?
+        Just tlr -> and <$> mapM loop_ tlr -- TODO: use foldlM?
+    
+    loop_ (Left  _)       = return True
+    loop_ (Right (tl,tr)) = loop tl tr
 
 _impossible_subsumes :: String
 {-# NOINLINE _impossible_subsumes #-}
