@@ -7,7 +7,7 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                    2011.07.11
+--                                                    2012.07.10
 -- |
 -- Module      :  Data.Functor.Fixedpoint
 -- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
@@ -75,7 +75,7 @@ newtype Fix f = Fix { unFix :: f (Fix f) }
 -- than the head and so GHC can't guarantee that the instance safely
 -- terminates. It is in fact safe, however.
 instance (Show (f (Fix f))) => Show (Fix f) where
-    show (Fix f) = show f
+    showsPrec p (Fix f) = showsPrec p f
 
 instance (Eq (f (Fix f))) => Eq (Fix f) where
     Fix x == Fix y  =  x == y
