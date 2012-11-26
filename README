@@ -17,10 +17,12 @@ be able to use one of the following standard methods to install it.
     $> runhaskell Setup.hs build
     $> runhaskell Setup.hs test
     $> runhaskell Setup.hs haddock --hyperlink-source
-    $> runhaskell Setup.hs install
+    $> runhaskell Setup.hs copy
+    $> runhaskell Setup.hs register
 
-The test step is optional and currently does nothing. If you see
-some stray lines that look like this:
+The test step is optional and currently does nothing. The Haddock
+step is also optional. If you see some stray lines that look like
+this:
 
     mkUsageInfo: internal name? t{tv a7XM}
 
