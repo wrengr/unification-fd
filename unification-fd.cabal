@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren ng thornton <wren@community.haskell.org>    ~ 2012.03.25
+-- wren ng thornton <wren@community.haskell.org>    ~ 2013.01.10
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -8,12 +8,12 @@ Cabal-Version:  >= 1.6
 Build-Type:     Simple
 
 Name:           unification-fd
-Version:        0.8.0
+Version:        0.8.0.1
 Stability:      experimental
 Homepage:       http://code.haskell.org/~wren/
 Author:         wren ng thornton
 Maintainer:     wren@community.haskell.org
-Copyright:      Copyright (c) 2007--2012 wren ng thornton
+Copyright:      Copyright (c) 2007--2013 wren ng thornton
 License:        BSD3
 License-File:   LICENSE
 
@@ -21,6 +21,8 @@ Category:       Algebra, Algorithms, Compilers/Interpreters, Language, Logic, Un
 Synopsis:       Simple generic unification algorithms.
 Description:    Simple generic unification algorithms.
 
+Tested-With:
+    GHC == 6.12.1, GHC == 7.6.1
 Extra-source-files:
     AUTHORS, README, VERSION
 Source-Repository head
