@@ -64,7 +64,7 @@ module Control.Unification
     , getFreeVarsAll
     , applyBindingsAll
     , freshenAll
-    -- subsumesAll -- to ensure that there's a single coherent substitution allowing the schema to subsume all the terms in some collection. 
+    -- subsumesAll -- to ensure that there's a single coherent substitution allowing the schema to subsume all the terms in some collection.
 
     -- * Helper functions
     -- | Client code should not need to use these functions, but
@@ -129,7 +129,7 @@ semiprune t0@(UVar  v0) = loop t0 v0
         mb <- lookupVar v0
         case mb of
             Nothing -> return t0
-            Just t  -> 
+            Just t  ->
                 case t  of
                 UTerm _  -> return t0
                 UVar  v  -> do
@@ -212,7 +212,7 @@ getFreeVarsAll ts0 =
     where
     -- TODO: is that the most efficient direction/associativity?
     loopAll = foldrM (\t r -> IM.union r <$> loop t) IM.empty
-    
+
     loop t0 = do
         t0 <- lift $ semiprune t0
         case t0 of
