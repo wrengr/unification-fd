@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren ng thornton <wren@community.haskell.org>    ~ 2013.01.10
+-- wren ng thornton <wren@community.haskell.org>    ~ 2014.03.30
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -21,6 +21,7 @@ Category:       Algebra, Algorithms, Compilers/Interpreters, Language, Logic, Un
 Synopsis:       Simple generic unification algorithms.
 Description:    Simple generic unification algorithms.
 
+-- BUG: does not work with GHC 7.8.0. Need to fix that
 Tested-With:
     GHC == 6.12.1, GHC == 7.6.1
 Extra-source-files:
