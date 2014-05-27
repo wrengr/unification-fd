@@ -12,7 +12,7 @@
 --                                                  ~ 2012.03.25
 -- |
 -- Module      :  PuttingHR
--- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2012 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental

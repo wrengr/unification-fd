@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren ng thornton <wren@community.haskell.org>    ~ 2014.03.30
+-- wren gayle romano <wren@community.haskell.org>    ~ 2014.05.27
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -8,12 +8,12 @@ Cabal-Version:  >= 1.6
 Build-Type:     Simple
 
 Name:           unification-fd
-Version:        0.8.0.1
+Version:        0.8.1
 Stability:      experimental
 Homepage:       http://code.haskell.org/~wren/
-Author:         wren ng thornton
+Author:         wren gayle romano
 Maintainer:     wren@community.haskell.org
-Copyright:      Copyright (c) 2007--2013 wren ng thornton
+Copyright:      Copyright (c) 2007--2014 wren gayle romano
 License:        BSD3
 License-File:   LICENSE
 

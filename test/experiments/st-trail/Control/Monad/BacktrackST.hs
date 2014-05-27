@@ -5,7 +5,7 @@
 --                                                  ~ 2011.06.28
 -- |
 -- Module      :  Control.Monad.BacktrackST
--- Copyright   :  Copyright (c) 2008--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2008--2011 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental

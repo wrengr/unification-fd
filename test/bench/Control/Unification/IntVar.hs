@@ -5,7 +5,7 @@
 --                                                  ~ 2011.07.05
 -- |
 -- Module      :  Control.Unification.IntVar
--- Copyright   :  Copyright (c) 2007--2011 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2011 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental

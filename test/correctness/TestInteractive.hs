@@ -4,7 +4,7 @@
 --                                                    2012.03.19
 -- |
 -- Module      :  TestInteractive
--- Copyright   :  Copyright (c) 2009--2012 wren ng thornton
+-- Copyright   :  Copyright (c) 2009--2014 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  test

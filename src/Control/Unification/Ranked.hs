@@ -4,7 +4,7 @@
 --                                                  ~ 2012.03.25
 -- |
 -- Module      :  Control.Unification.Ranked
--- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  highly experimental

@@ -5,10 +5,10 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.25
+--                                                  ~ 2014.05.27
 -- |
 -- Module      :  Control.Unification.Types
--- Copyright   :  Copyright (c) 2007--2012 wren ng thornton
+-- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -38,6 +38,7 @@ import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 
 import Data.Word               (Word8)
 import Data.Functor.Fixedpoint (Fix(..))
+import Data.Monoid             (Monoid(..), (<>))
 import Data.Foldable           (Foldable(..))
 import Data.Traversable        (Traversable(..))
 import Control.Applicative     (Applicative(..), (<$>), Alternative(..))
@@ -136,6 +137,8 @@ freeze (UTerm t) = Fix <$> mapM freeze t
 -- could be given more accurate types if we used ad-hoc combinations
 -- of these constructors (i.e., because they can only throw one of
 -- the errors), the extra complexity is not considered worth it.
+--
+-- /Updated: 0.8.1/ added 'Functor', 'Foldable', and 'Traversable' instances.
 data UnificationFailure t v
     
     = OccursIn v (UTerm t v)
@@ -196,6 +199,24 @@ instance (Show (t (UTerm t v)), Show v) =>
 instance Error (UnificationFailure t v) where
     noMsg  = UnknownError ""
     strMsg = UnknownError
+
+
+instance (Functor t) => Functor (UnificationFailure t) where
+    fmap f (OccursIn v t)       = OccursIn (f v) (fmap f t)
+    fmap f (TermMismatch tl tr) = TermMismatch (fmap f <$> tl) (fmap f <$> tr)
+    fmap _ (UnknownError msg)   = UnknownError msg
+
+instance (Foldable t) => Foldable (UnificationFailure t) where
+    foldMap f (OccursIn v t)       = f v <> foldMap f t
+    foldMap f (TermMismatch tl tr) = foldMap (foldMap f) tl
+                                  <> foldMap (foldMap f) tr
+    foldMap _ (UnknownError _)     = mempty
+
+instance (Traversable t) => Traversable (UnificationFailure t) where
+    traverse f (OccursIn v t)       = OccursIn <$> f v <*> traverse f t
+    traverse f (TermMismatch tl tr) = TermMismatch <$> traverse (traverse f) tl 
+                                                   <*> traverse (traverse f) tr
+    traverse _ (UnknownError msg)   = pure (UnknownError msg)
 
 ----------------------------------------------------------------
 

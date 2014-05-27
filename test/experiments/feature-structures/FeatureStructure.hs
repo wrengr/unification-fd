@@ -7,7 +7,7 @@
 --                                                  ~ 2012.03.24
 -- |
 -- Module      :  FeatureStructure
--- Copyright   :  Copyright (c) 2012 wren ng thornton
+-- Copyright   :  Copyright (c) 2012 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
