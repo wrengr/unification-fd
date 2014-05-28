@@ -5,7 +5,7 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2014.05.27
+--                                                  ~ 2014.05.28
 -- |
 -- Module      :  Control.Unification.Types
 -- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
@@ -263,7 +263,7 @@ class (Eq v) => Variable v where
 -- we make the same assumptions everywhere we use @BindingMonad@.
 
 class (Unifiable t, Variable v, Applicative m, Monad m) =>
-    BindingMonad t v m | m -> t v
+    BindingMonad t v m | m t -> v, v m -> t
     where
     
     -- | Given a variable pointing to @UTerm t v@, return the
@@ -321,7 +321,9 @@ instance Monoid (Rank t v) where
 -- compression is asymptotically optimal, the constant factors may
 -- make it worthwhile to stick with the unweighted path compression
 -- supported by 'BindingMonad'.
-class (BindingMonad t v m) => RankedBindingMonad t v m | m -> t v where
+class (BindingMonad t v m) =>
+    RankedBindingMonad t v m | m t -> v, v m -> t
+    where
     
     -- | Given a variable pointing to @UTerm t v@, return its
     -- rank and the term it's bound to.

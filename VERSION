@@ -1,3 +1,5 @@
+0.9.0 (2014-XX-XX):
+    - Control.Unification.Types: changed the fundeps on BindingMonad and RankedBindingMonad so that things compile under GHC 7.8.2
 0.8.1 (2014-05-27):
     - Control.Unification.Types: added Functor, Foldable, and Traversable instances for UnificationFailure. (h/t Graham Rogers)
 0.8.0 (2012-07-11):

@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@community.haskell.org>    ~ 2014.05.27
+-- wren gayle romano <wren@community.haskell.org>   ~ 2014.05.28
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -8,7 +8,7 @@ Cabal-Version:  >= 1.6
 Build-Type:     Simple
 
 Name:           unification-fd
-Version:        0.8.1
+Version:        0.9.0
 Stability:      experimental
 Homepage:       http://code.haskell.org/~wren/
 Author:         wren gayle romano
@@ -21,9 +21,9 @@ Category:       Algebra, Algorithms, Compilers/Interpreters, Language, Logic, Un
 Synopsis:       Simple generic unification algorithms.
 Description:    Simple generic unification algorithms.
 
--- BUG: does not work with GHC 7.8.0. Need to fix that
+-- No longer compiles with GHC-6.12.1 since Data.Monoid does not export (<>) in Control.Unification.Types. The backwards compatibility is not considered worth adding CPP noise...
 Tested-With:
-    GHC == 6.12.1, GHC == 7.6.1
+    GHC == 7.6.1, GHC == 7.6.3, GHC == 7.8.2
 Extra-source-files:
     AUTHORS, README, VERSION
 Source-Repository head
