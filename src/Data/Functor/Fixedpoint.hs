@@ -16,9 +16,13 @@
 -- http://www.mail-archive.com/glasgow-haskell-users@haskell.org/msg14313.html
 {-# OPTIONS_GHC -O2 -fenable-rewrite-rules #-}
 
+-- NOTE #1: on GHC >= 7.8 we need to eta expand rules to avoid a
+-- warning about the fact that the rule may never fire because (.)
+-- might inline first...
+
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                    2013.05.11
+--                                                    2014.05.28
 -- |
 -- Module      :  Data.Functor.Fixedpoint
 -- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
@@ -114,9 +118,10 @@ hmap eps = ana (eps . unFix)
 "hmap id"
         hmap id = id
 
+-- cf., NOTE #1
 "hmap-compose"
-    forall (eps :: forall a. g a -> h a) (eta :: forall a. f a -> g a).
-        hmap eps . hmap eta = hmap (eps . eta)
+    forall (eps :: forall a. g a -> h a) (eta :: forall a. f a -> g a) x.
+        hmap eps (hmap eta x) = hmap (eps . eta) x
     #-}
 
 
@@ -128,8 +133,12 @@ hmapM
 hmapM eps = anaM (eps . unFix)
 
 {-# RULES
-"hmapM return"                                  hmapM return = return
--- "hmapM-compose" forall eps eta. hmap eps <=< hmap eta = hmapM (eps <=< eta)
+"hmapM return"
+    hmapM return = return
+
+-- "hmapM-compose"
+--     forall eps eta.
+--         hmap eps <=< hmap eta = hmapM (eps <=< eta)
     #-}
 
 
@@ -141,20 +150,29 @@ ymap :: (Functor f) => (Fix f -> Fix f) -> Fix f -> Fix f
 ymap f = Fix . fmap f . unFix
 
 {-# RULES
-"ymap id"                          ymap id = id
-"ymap-compose" forall f g. ymap f . ymap g = ymap (f . g)
+"ymap id"
+        ymap id = id
+
+-- cf., NOTE #1
+"ymap-compose"
+    forall f g x.
+        ymap f (ymap g x) = ymap (f . g) x
     #-}
 
 
 -- | A monadic variant of 'ymap'.
 ymapM :: (Traversable f, Monad m)
       => (Fix f -> m (Fix f)) -> Fix f -> m (Fix f)
-{-# INLINE ymapM #-}
+{-# INLINE [0] ymapM #-}
 ymapM f = liftM Fix . mapM f . unFix
 
 {-# RULES
-"ymapM id"                          ymapM return = return
--- "ymapM-compose" forall f g. ymapM f <=< ymapM g = ymapM (f <=< g)
+"ymapM id"
+        ymapM return = return
+
+-- "ymapM-compose"
+--     forall f g.
+--         ymapM f <=< ymapM g = ymapM (f <=< g)
     #-}
 
 
@@ -190,10 +208,10 @@ cata phi = self
 "cata-refl"
         cata Fix = id
 
--- TODO: do we still need eta-expanded variants of rules?
+-- cf., NOTE #1
 "cata-compose"
-    forall (eps :: forall a. f a -> g a) phi.
-        cata phi . cata (Fix . eps) = cata (phi . eps)
+    forall (eps :: forall a. f a -> g a) phi x.
+        cata phi (cata (Fix . eps) x) = cata (phi . eps) x
     #-}
 
 -- We can't really use this one because of the implication constraint
@@ -210,7 +228,7 @@ cata phi = self
 --
 -- N.B., this orders the side effects from the bottom up.
 cataM :: (Traversable f, Monad m) => (f a -> m a) -> (Fix f -> m a)
-{-# INLINE cataM #-}
+{-# INLINE [0] cataM #-}
 cataM phiM = self
     where
     self = phiM <=< (mapM self . unFix)
@@ -258,9 +276,10 @@ ana psi = self
         ana unFix = id
 
 -- BUG: I think I dualized this right...
+-- cf., NOTE #1
 "ana-compose"
-    forall (eps :: forall a. f a -> g a) psi.
-        ana (eps . unFix) . ana psi = ana (eps . psi)
+    forall (eps :: forall a. f a -> g a) psi x.
+        ana (eps . unFix) (ana psi x) = ana (eps . psi) x
     #-}
 
 -- We can't really use this because of the implication constraint
