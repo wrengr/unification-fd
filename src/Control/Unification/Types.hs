@@ -3,9 +3,9 @@
 -- Required more generally
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 
-{-# OPTIONS_GHC -Wall -fwarn-tabs #-}
+{-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-deprecations #-}
 ----------------------------------------------------------------
---                                                  ~ 2014.05.28
+--                                                  ~ 2014.09.15
 -- |
 -- Module      :  Control.Unification.Types
 -- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
@@ -43,6 +43,9 @@ import Data.Foldable           (Foldable(..))
 import Data.Traversable        (Traversable(..))
 import Control.Applicative     (Applicative(..), (<$>), Alternative(..))
 import Control.Monad           (MonadPlus(..))
+-- BUG: deprecated, the message says to use Control.Monad.Trans.Except
+-- from transformers instead; but CMT.Except doesn't export Error!
+-- Only CMT.Error does, but that gives the same deprecation warning!
 import Control.Monad.Error     (Error(..))
 ----------------------------------------------------------------
 ----------------------------------------------------------------

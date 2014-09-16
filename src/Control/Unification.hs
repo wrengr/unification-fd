@@ -1,14 +1,14 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
+{-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.25
+--                                                  ~ 2014.09.15
 -- |
 -- Module      :  Control.Unification
 -- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
--- Portability :  semi-portable (MPTCs, FlexibleContexts)
+-- Portability :  semi-portable (CPP, MPTCs, FlexibleContexts)
 --
 -- This module provides first-order structural unification over
 -- general structure types. It also provides the standard suite of
@@ -84,10 +84,15 @@ import Data.Foldable
 import Data.Traversable
 import Control.Monad.Identity (Identity(..))
 import Control.Applicative
-import Control.Monad       (MonadPlus(..))
-import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.Error (MonadError(..))
-import Control.Monad.State (MonadState(..), StateT, evalStateT, execStateT)
+import Control.Monad        (MonadPlus(..))
+import Control.Monad.Trans  (MonadTrans(..))
+#if (MIN_VERSION_mtl(2,2,1))
+-- aka: transformers(0,4,1)
+import Control.Monad.Except (MonadError(..))
+#else
+import Control.Monad.Error  (MonadError(..))
+#endif
+import Control.Monad.State  (MonadState(..), StateT, evalStateT, execStateT)
 import Control.Monad.MaybeK
 import Control.Monad.State.UnificationExtras
 import Control.Unification.Types

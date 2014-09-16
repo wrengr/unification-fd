@@ -1,14 +1,14 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
+{-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.25
+--                                                  ~ 2014.09.15
 -- |
 -- Module      :  Control.Unification.Ranked
 -- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  highly experimental
--- Portability :  semi-portable (MPTCs, FlexibleContexts)
+-- Portability :  semi-portable (CPP, MPTCs, FlexibleContexts)
 --
 -- This module provides the API of "Control.Unification" except
 -- using 'RankedBindingMonad' where appropriate. This module (and
@@ -55,9 +55,14 @@ import Prelude
 import qualified Data.IntMap as IM
 import Data.Traversable
 import Control.Applicative
-import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.Error (MonadError(..))
-import Control.Monad.State (MonadState(..), StateT, evalStateT)
+import Control.Monad.Trans  (MonadTrans(..))
+#if (MIN_VERSION_mtl(2,2,1))
+-- aka: transformers(0,4,1)
+import Control.Monad.Except (MonadError(..))
+#else
+import Control.Monad.Error  (MonadError(..))
+#endif
+import Control.Monad.State  (MonadState(..), StateT, evalStateT)
 import Control.Monad.State.UnificationExtras
 import Control.Unification.Types
 import Control.Unification hiding (unify, (=:=))

@@ -1,6 +1,6 @@
 -- The MPTCs and FlexibleInstances are only for
--- mtl:Control.Monad.Error.MonadError
-{-# LANGUAGE Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}
+-- mtl:Control.Monad.{Error,Except}.MonadError
+{-# LANGUAGE CPP, Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
 --                                                  ~ 2014.09.15
@@ -9,7 +9,7 @@
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  provisional
--- Portability :  semi-portable (Rank2Types, MPTCs, FlexibleInstances)
+-- Portability :  semi-portable (CPP, Rank2Types, MPTCs, FlexibleInstances)
 --
 -- A continuation-passing variant of 'Either' for short-circuiting
 -- at failure. This code is based on "Control.Monad.MaybeK".
@@ -33,11 +33,16 @@ module Control.Monad.EitherK
     , catchEitherKT
     ) where
 
-import Data.Monoid         (Monoid(..))
-import Control.Applicative (Applicative(..), Alternative(..))
-import Control.Monad       (MonadPlus(..), liftM, ap)
-import Control.Monad.Trans (MonadTrans(..))
-import Control.Monad.Error (MonadError(..))
+import Data.Monoid          (Monoid(..))
+import Control.Applicative  (Applicative(..), Alternative(..))
+import Control.Monad        (MonadPlus(..), ap)
+import Control.Monad.Trans  (MonadTrans(..))
+#if (MIN_VERSION_mtl(2,2,1))
+-- aka: transformers(0,4,1)
+import Control.Monad.Except (MonadError(..))
+#else
+import Control.Monad.Error  (MonadError(..))
+#endif
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 

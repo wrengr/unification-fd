@@ -1,14 +1,14 @@
 -- The MPTCs is only for mtl:Control.Monad.Error.MonadError
-{-# LANGUAGE Rank2Types, MultiParamTypeClasses #-}
+{-# LANGUAGE CPP, Rank2Types, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.18
+--                                                  ~ 2014.09.15
 -- |
 -- Module      :  Control.Monad.MaybeK
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  provisional
--- Portability :  semi-portable (Rank2Types, MPTCs)
+-- Portability :  semi-portable (CPP, Rank2Types, MPTCs)
 --
 -- A continuation-passing variant of 'Maybe' for short-circuiting
 -- at failure. This is based largely on code from the Haskell Wiki
@@ -33,10 +33,15 @@ module Control.Monad.MaybeK
     , lowerMaybeK
     ) where
 
-import Control.Applicative (Applicative(..), Alternative(..))
-import Control.Monad       (MonadPlus(..), liftM, ap)
-import Control.Monad.Error (MonadError(..))
-import Control.Monad.Trans (MonadTrans(..))
+import Control.Applicative  (Applicative(..), Alternative(..))
+import Control.Monad        (MonadPlus(..), liftM, ap)
+import Control.Monad.Trans  (MonadTrans(..))
+#if (MIN_VERSION_mtl(2,2,1))
+-- aka: transformers(0,4,1)
+import Control.Monad.Except (MonadError(..))
+#else
+import Control.Monad.Error  (MonadError(..))
+#endif
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
