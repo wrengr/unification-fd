@@ -158,9 +158,10 @@ occursIn v0 t0 = do
         UVar  v -> return $! v0 == v
 
 
+-- TODO: what was the reason for the MonadTrans madness?
 -- TODO: use IM.insertWith or the like to do this in one pass
 --
--- | Update the visited-set with a seclaration that a variable has
+-- | Update the visited-set with a declaration that a variable has
 -- been seen with a given binding, or throw 'OccursIn' if the
 -- variable has already been seen.
 seenAs
@@ -237,6 +238,8 @@ getFreeVarsAll ts0 =
                             Nothing -> return $ IM.singleton i v
 
 
+-- TODO: what was the reason for the MonadTrans madness?
+--
 -- | Apply the current bindings from the monad so that any remaining
 -- variables in the result must, therefore, be free. N.B., this
 -- expensively clones term structure and should only be performed
@@ -257,6 +260,8 @@ applyBindings
 applyBindings = fmap runIdentity . applyBindingsAll . Identity
 
 
+-- TODO: what was the reason for the MonadTrans madness?
+--
 -- | Same as 'applyBindings', but works on several terms simultaneously.
 -- This function preserves sharing across the entire collection of
 -- terms, whereas applying the bindings to each term separately
@@ -295,6 +300,8 @@ applyBindingsAll ts0 = evalStateT (mapM loop ts0) IM.empty
                                 return t'
 
 
+-- TODO: what was the reason for the MonadTrans madness?
+--
 -- | Freshen all variables in a term, both bound and free. This
 -- ensures that the observability of sharing is maintained, while
 -- freshening the free variables. N.B., this expensively clones
@@ -313,6 +320,8 @@ freshen
 freshen = fmap runIdentity . freshenAll . Identity
 
 
+-- TODO: what was the reason for the MonadTrans madness?
+--
 -- | Same as 'freshen', but works on several terms simultaneously.
 -- This is different from freshening each term separately, because
 -- @freshenAll@ preserves the relationship between the terms. For
@@ -389,6 +398,7 @@ infix 4 ===, `equals`
 infix 4 =~=, `equiv`
 
 
+-- TODO: what was the reason for the MonadTrans madness?
 -- | 'unify'
 (=:=)
     ::  ( BindingMonad t v m
@@ -404,6 +414,7 @@ infix 4 =~=, `equiv`
 infix 4 =:=, `unify`
 
 
+-- TODO: what was the reason for the MonadTrans madness?
 -- | 'subsumes'
 (<:=)
     ::  ( BindingMonad t v m
@@ -519,6 +530,7 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
 
 ----------------------------------------------------------------
 -- Not quite unify2 from the benchmarks, since we do AOOS.
+-- TODO: what was the reason for the MonadTrans madness?
 --
 -- | A variant of 'unify' which uses 'occursIn' instead of visited-sets.
 -- This should only be used when eager throwing of 'OccursIn' errors
@@ -617,6 +629,7 @@ _impossible_unifyOccurs = "unifyOccurs: the impossible happened"
 -- TODO: verify correctness, especially for the visited-set stuff.
 -- TODO: return Maybe(UTerm t v) in the loop so we can avoid updating bindings trivially
 -- TODO: figure out why unifyOccurs is so much faster on pure ground terms!! The only difference there is in lifting over StateT...
+-- TODO: what was the reason for the MonadTrans madness?
 -- 
 -- | Unify two terms, or throw an error with an explanation of why
 -- unification failed. Since bindings are stored in the monad, the
@@ -706,6 +719,7 @@ _impossible_unify = "unify: the impossible happened"
 -- TODO: verify correctness
 -- TODO: redo with some codensity
 -- TODO: there should be some way to catch OccursIn errors and repair the bindings...
+-- TODO: what was the reason for the MonadTrans madness?
 
 -- | Determine whether the left term subsumes the right term. That
 -- is, whereas @(tl =:= tr)@ will compute the most general substitution
