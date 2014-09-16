@@ -176,8 +176,9 @@ instance Monad (MaybeKT m) where
     return a    = MKT (\k -> k a)
     MKT m >>= f = MKT (\k -> m (\a -> case f a of MKT n -> n k))
 
--- I'm pretty sure it's impossible to define a @(<|>)@ which only
--- requires @Applicative m@.
+-- In order to define a @(<|>)@ which only requires @Applicative
+-- m@ we'd need a law @m (Either e a) -> Either (m e) (m a)@; or
+-- equivalently, we'd need to use a 2-CPS style.
 instance (Applicative m, Monad m) => Alternative (MaybeKT m) where
     empty = mzero
     (<|>) = mplus

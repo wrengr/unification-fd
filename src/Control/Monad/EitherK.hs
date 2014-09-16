@@ -222,22 +222,12 @@ instance Monad (EitherKT e m) where
     return a    = EKT (\k -> k a)
     EKT m >>= f = EKT (\k -> m (\a -> case f a of EKT n -> n k))
 
--- I'm pretty sure it's impossible to define a @(<|>)@ which only
--- requires @Applicative m@.
+-- In order to define a @(<|>)@ which only requires @Applicative
+-- m@ we'd need a law @m (Either e a) -> Either (m e) (m a)@; or
+-- equivalently, we'd need to use a 2-CPS style.
 instance (Applicative m, Monad m, Monoid e) => Alternative (EitherKT e m) where
     empty = mzero
     (<|>) = mplus
-
-{-
-let run :: (e -> EitherKT f m a) -> Either e a -> EitherKT f m a
-    run handler (Left  e) = EKT $ \k -> case handler e of EKT m' -> m' k
-    run handler (Right a) = EKT $ \k -> k a
-in
-catchEitherKT m (catchEitherKT n . (throwEitherKT .) . mappend)
-run (catchEitherKT n . (throwEitherKT .) . mappend) =<< runEitherKT m
--}
-
-
 
 instance (Applicative m, Monad m, Monoid e) => MonadPlus (EitherKT e m) where
     mzero       = throwEitherKT mempty
