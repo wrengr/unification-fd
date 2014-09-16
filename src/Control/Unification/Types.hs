@@ -196,9 +196,9 @@ instance (Show (t (UTerm t v)), Show v) =>
             . showString msg
             )
 
--- TODO: transformers-0.4.1.0 deprecated this, use
--- Control.Monad.Trans.Except instead. (transformers-0.3.0.0 is
--- fine)
+-- TODO: transformers-0.4.1.0 deprecated Control.Monad.Trans.Error  (transformers-0.3.0.0 says it's fine).
+-- BUG: in order to use Control.Monad.Trans.Except, we need a monoid instance
+-- TODO: redefine UnificationFailure to deal with all that crap...
 instance Error (UnificationFailure t v) where
     noMsg  = UnknownError ""
     strMsg = UnknownError

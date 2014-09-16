@@ -1,3 +1,6 @@
+Bugs:
+    * fix the situation re UnificationFailure, monoids, and ErrorT vs ExceptT.
+
 Debugging:
     * Create a test suite to be sure of correctness & usability.
     * Combine the test suite into a single executable and then do:

@@ -1,4 +1,4 @@
-0.9.0 (2014-XX-XX):
+0.9.0 (2014-06-03):
     - Control.Unification.Types: changed the fundeps on BindingMonad
       and RankedBindingMonad so that things compile under GHC 7.8.2
     - Data.Functor.Fixedpoint: eta-expanded RULES to avoid GHC >=
