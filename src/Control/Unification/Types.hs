@@ -3,7 +3,7 @@
 -- Required more generally
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 
-{-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
 --                                                  ~ 2014.09.15
 -- |
@@ -38,15 +38,11 @@ import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 
 import Data.Word               (Word8)
 import Data.Functor.Fixedpoint (Fix(..))
-import Data.Monoid             (Monoid(..), (<>))
+import Data.Monoid             ((<>))
 import Data.Foldable           (Foldable(..))
 import Data.Traversable        (Traversable(..))
 import Control.Applicative     (Applicative(..), (<$>), Alternative(..))
 import Control.Monad           (MonadPlus(..))
--- BUG: deprecated, the message says to use Control.Monad.Trans.Except
--- from transformers instead; but CMT.Except doesn't export Error!
--- Only CMT.Error does, but that gives the same deprecation warning!
-import Control.Monad.Error     (Error(..))
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
@@ -141,6 +137,12 @@ freeze (UTerm t) = Fix <$> mapM freeze t
 -- of these constructors (i.e., because they can only throw one of
 -- the errors), the extra complexity is not considered worth it.
 --
+-- /Updated: 0.10.0/ Removed the @UnknownError@ constructor, and
+-- the @Control.Monad.Error.Error@ instance associated with it.
+-- Instead of using the @ErrorT@ monad, wrap @UnificationFailure@
+-- in a suitable monoid (e.g., 'First') and use the @ExceptT@ monad
+-- instead.
+--
 -- /Updated: 0.8.1/ added 'Functor', 'Foldable', and 'Traversable' instances.
 data UnificationFailure t v
     
@@ -168,11 +170,6 @@ data UnificationFailure t v
         -- be treated as unification failure; in type checking this
         -- should result in a \"could not match expected type @Foo@
         -- with inferred type @Bar@\" error.
-    
-    | UnknownError String
-        -- ^ Required for the 'Error' instance, which in turn is
-        -- required to appease @ErrorT@ in the MTL. We do not use
-        -- this anywhere.
 
 
 -- Can't derive this because it's an UndecidableInstance
@@ -193,36 +190,21 @@ instance (Show (t (UTerm t v)), Show v) =>
             . showString " "
             . showsPrec 11 tr
             )
-    showsPrec p (UnknownError msg) =
-        showParen (p > 9)
-            ( showString "UnknownError: "
-            . showString msg
-            )
-
--- TODO: transformers-0.4.1.0 deprecated Control.Monad.Trans.Error  (transformers-0.3.0.0 says it's fine).
--- BUG: in order to use Control.Monad.Trans.Except, we need a monoid instance
--- TODO: redefine UnificationFailure to deal with all that crap...
-instance Error (UnificationFailure t v) where
-    noMsg  = UnknownError ""
-    strMsg = UnknownError
 
 
 instance (Functor t) => Functor (UnificationFailure t) where
     fmap f (OccursIn v t)       = OccursIn (f v) (fmap f t)
     fmap f (TermMismatch tl tr) = TermMismatch (fmap f <$> tl) (fmap f <$> tr)
-    fmap _ (UnknownError msg)   = UnknownError msg
 
 instance (Foldable t) => Foldable (UnificationFailure t) where
     foldMap f (OccursIn v t)       = f v <> foldMap f t
     foldMap f (TermMismatch tl tr) = foldMap (foldMap f) tl
                                   <> foldMap (foldMap f) tr
-    foldMap _ (UnknownError _)     = mempty
 
 instance (Traversable t) => Traversable (UnificationFailure t) where
     traverse f (OccursIn v t)       = OccursIn <$> f v <*> traverse f t
     traverse f (TermMismatch tl tr) = TermMismatch <$> traverse (traverse f) tl 
                                                    <*> traverse (traverse f) tr
-    traverse _ (UnknownError msg)   = pure (UnknownError msg)
 
 ----------------------------------------------------------------
 

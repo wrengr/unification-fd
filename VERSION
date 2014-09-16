@@ -1,6 +1,10 @@
 0.10.0 (2014-XX-XX):
     - Cleaned up deprecation warnings re Control.Monad.Error
-    - Control.Monad.EitherK: liberalized Monad restriction to Applicative where possible.
+    - Control.Monad.EitherK: liberalized Monad restriction to
+      Applicative where possible.
+    - Control.Unification.Types: Removed the UnknownError constructor
+      from UnificationFailure, as well as the Error instance for the
+      type.
 0.9.0 (2014-06-03):
     - Control.Unification.Types: changed the fundeps on BindingMonad
       and RankedBindingMonad so that things compile under GHC 7.8.2
