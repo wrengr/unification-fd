@@ -34,7 +34,7 @@ module Control.Monad.MaybeK
     ) where
 
 import Control.Applicative  (Applicative(..), Alternative(..))
-import Control.Monad        (MonadPlus(..), liftM, ap)
+import Control.Monad        (MonadPlus(..), ap)
 import Control.Monad.Trans  (MonadTrans(..))
 #if (MIN_VERSION_mtl(2,2,1))
 -- aka: transformers(0,4,1)
@@ -122,20 +122,20 @@ newtype MaybeKT m a = MKT (forall r . (a -> m (Maybe r)) -> m (Maybe r))
 
 
 -- | Execute a @MaybeKT@ and return the concrete @Maybe@ encoding.
-runMaybeKT :: (Monad m) => MaybeKT m a -> m (Maybe a)
+runMaybeKT :: (Applicative m) => MaybeKT m a -> m (Maybe a)
 {-# INLINE runMaybeKT #-}
-runMaybeKT (MKT m) = m (return . Just)
+runMaybeKT (MKT m) = m (pure . Just)
 
 
 -- | Lift a @Maybe@ into an @MaybeKT@.
-toMaybeKT :: (Monad m) => Maybe a -> MaybeKT m a
+toMaybeKT :: (Applicative m) => Maybe a -> MaybeKT m a
 {-# INLINE toMaybeKT #-}
-toMaybeKT Nothing  = mzero
-toMaybeKT (Just a) = return a
+toMaybeKT Nothing  = MKT (\_ -> pure Nothing)
+toMaybeKT (Just a) = pure a
 
 
 -- | Lift an @MaybeK@ into an @MaybeKT@.
-liftMaybeK :: (Monad m) => MaybeK a -> MaybeKT m a
+liftMaybeK :: (Applicative m) => MaybeK a -> MaybeKT m a
 {-# INLINE liftMaybeK #-}
 liftMaybeK = toMaybeKT . runMaybeK
 --
@@ -158,9 +158,9 @@ liftMaybeK = toMaybeKT . runMaybeK
 
 
 -- | Lower an @MaybeKT@ into an @MaybeK@.
-lowerMaybeK :: (Monad m) => MaybeKT m a -> m (MaybeK a)
+lowerMaybeK :: (Applicative m) => MaybeKT m a -> m (MaybeK a)
 {-# INLINE lowerMaybeK #-}
-lowerMaybeK = liftM toMaybeK . runMaybeKT
+lowerMaybeK = fmap toMaybeK . runMaybeKT
 
 
 instance Functor (MaybeKT m) where
@@ -176,11 +176,13 @@ instance Monad (MaybeKT m) where
     return a    = MKT (\k -> k a)
     MKT m >>= f = MKT (\k -> m (\a -> case f a of MKT n -> n k))
 
-instance (Monad m) => Alternative (MaybeKT m) where
+-- I'm pretty sure it's impossible to define a @(<|>)@ which only
+-- requires @Applicative m@.
+instance (Applicative m, Monad m) => Alternative (MaybeKT m) where
     empty = mzero
     (<|>) = mplus
 
-instance (Monad m) => MonadPlus (MaybeKT m) where
+instance (Applicative m, Monad m) => MonadPlus (MaybeKT m) where
     mzero = MKT (\_ -> return Nothing)
     
     m `mplus` n = MKT $ \k -> do
@@ -189,7 +191,7 @@ instance (Monad m) => MonadPlus (MaybeKT m) where
             Nothing -> case n of MKT n' -> n' k
             Just a  -> k a
 
-instance (Monad m) => MonadError () (MaybeKT m) where
+instance (Applicative m, Monad m) => MonadError () (MaybeKT m) where
     throwError _   = mzero
     catchError m f = MKT $ \k -> do
         mb <- runMaybeKT m

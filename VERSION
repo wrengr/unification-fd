@@ -2,6 +2,8 @@
     - Cleaned up deprecation warnings re Control.Monad.Error
     - Control.Monad.EitherK: liberalized Monad restriction to
       Applicative where possible.
+    - Control.Monad.MaybeK: liberalized Monad restriction to
+      Applicative where possible.
     - Control.Unification.Types: Removed the UnknownError constructor
       from UnificationFailure, as well as the Error instance for the
       type.
