@@ -3,7 +3,7 @@
 {-# LANGUAGE Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.18
+--                                                  ~ 2014.09.15
 -- |
 -- Module      :  Control.Monad.EitherK
 -- License     :  BSD
@@ -142,20 +142,20 @@ newtype EitherKT e m a =
 
 
 -- | Execute an @EitherKT@ and return the concrete @Either@ encoding.
-runEitherKT :: (Monad m) => EitherKT e m a -> m (Either e a)
+runEitherKT :: (Applicative m) => EitherKT e m a -> m (Either e a)
 {-# INLINE runEitherKT #-}
-runEitherKT (EKT m) = m (return . Right)
+runEitherKT (EKT m) = m (pure . Right)
 
 
 -- | Lift an @Either@ into an @EitherKT@.
-toEitherKT :: (Monad m) => Either e a -> EitherKT e m a
+toEitherKT :: (Applicative m) => Either e a -> EitherKT e m a
 {-# INLINE toEitherKT #-}
 toEitherKT (Left  e) = throwEitherKT e
-toEitherKT (Right a) = return a
+toEitherKT (Right a) = pure a
 
 
 -- | Lift an @EitherK@ into an @EitherKT@.
-liftEitherK :: (Monad m) => EitherK e a -> EitherKT e m a
+liftEitherK :: (Applicative m) => EitherK e a -> EitherKT e m a
 {-# INLINE liftEitherK #-}
 liftEitherK = toEitherKT . runEitherK
 --
@@ -178,23 +178,23 @@ liftEitherK = toEitherKT . runEitherK
 
 
 -- | Lower an @EitherKT@ into an @EitherK@.
-lowerEitherK :: (Monad m) => EitherKT e m a -> m (EitherK e a)
+lowerEitherK :: (Applicative m) => EitherKT e m a -> m (EitherK e a)
 {-# INLINE lowerEitherK #-}
-lowerEitherK = liftM toEitherK . runEitherKT
+lowerEitherK = fmap toEitherK . runEitherKT
 
 
 -- | Throw an error in the @EitherKT@ monad. This is identical to
 -- 'throwError'.
-throwEitherKT :: (Monad m) => e -> EitherKT e m a
+throwEitherKT :: (Applicative m) => e -> EitherKT e m a
 {-# INLINE throwEitherKT #-}
-throwEitherKT e = EKT (\_ -> return (Left e))
+throwEitherKT e = EKT (\_ -> pure (Left e))
 
 
 -- | Handle errors in the @EitherKT@ monad. N.B., this type is more
 -- general than that of 'catchError', allowing the type of the
 -- errors to change.
 catchEitherKT
-    :: (Monad m)
+    :: (Applicative m, Monad m)
     => EitherKT e m a -> (e -> EitherKT f m a) -> EitherKT f m a
 {-# INLINE catchEitherKT #-}
 catchEitherKT m handler = EKT $ \k -> do
@@ -219,15 +219,26 @@ instance Monad (EitherKT e m) where
 
 -- I'm pretty sure it's impossible to define a @(<|>)@ which only
 -- requires @Applicative m@.
-instance (Monad m, Monoid e) => Alternative (EitherKT e m) where
+instance (Applicative m, Monad m, Monoid e) => Alternative (EitherKT e m) where
     empty = mzero
     (<|>) = mplus
 
-instance (Monad m, Monoid e) => MonadPlus (EitherKT e m) where
+{-
+let run :: (e -> EitherKT f m a) -> Either e a -> EitherKT f m a
+    run handler (Left  e) = EKT $ \k -> case handler e of EKT m' -> m' k
+    run handler (Right a) = EKT $ \k -> k a
+in
+catchEitherKT m (catchEitherKT n . (throwEitherKT .) . mappend)
+run (catchEitherKT n . (throwEitherKT .) . mappend) =<< runEitherKT m
+-}
+
+
+
+instance (Applicative m, Monad m, Monoid e) => MonadPlus (EitherKT e m) where
     mzero       = throwEitherKT mempty
     m `mplus` n = catchEitherKT m (catchEitherKT n . (throwEitherKT .) . mappend)
 
-instance (Monad m) => MonadError e (EitherKT e m) where
+instance (Applicative m, Monad m) => MonadError e (EitherKT e m) where
     throwError = throwEitherKT
     catchError = catchEitherKT
 
