@@ -278,7 +278,7 @@ applyBindingsAll
         , MonadError e (em m)
         , Traversable s
         )
-    => s (UTerm t v)       -- ^
+    => s (UTerm t v)        -- ^
     -> em m (s (UTerm t v)) -- ^
 applyBindingsAll ts0 = evalStateT (mapM loop ts0) IM.empty
     where

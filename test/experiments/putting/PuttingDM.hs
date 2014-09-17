@@ -31,17 +31,21 @@ import Prelude hiding
     , any, all, and, or, elem
     )
 import qualified Data.Map as M
+import qualified Data.Set as S
 import Data.List  ((\\))
 import Data.Maybe (fromMaybe)
 import Data.Foldable
 import Data.Traversable
 import Control.Applicative
-import Control.Monad          (liftM)
+import Control.Arrow          (first, second)
+import Control.Monad.Trans    (MonadTrans(..))
 import Control.Monad.Error    (Error(..), MonadError(..), ErrorT(..))
 import Control.Monad.Identity (Identity(..))
 import Control.Monad.Reader   (MonadReader(..), asks, ReaderT(..), runReaderT)
-import Control.Monad.Trans    (MonadTrans(..))
+import Control.Monad.State    (MonadState(..), State, execState)
+import Control.Monad.State.UnificationExtras (modify')
 import Control.Unification    hiding (unify, lookupVar)
+import qualified Control.Unification as U
 import Control.Unification.IntVar
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -71,7 +75,7 @@ type MetaTv = IntVar     -- N.B., invariant: metas can only be bound to Tau!
 data TyVar
     = BoundTv  Name      -- A type variable bound by a ForAll
     | SkolemTv Name Uniq -- A skolem constant; the Name is just to improve error messages
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 data TyCon
     = IntT
     | BoolT 
@@ -171,25 +175,25 @@ extendVarEnv x t m = local (M.insert x t) m
 
 -- | Get Gamma.
 getEnvTypes :: Tc [Sigma]
-getEnvTypes = liftM M.elems ask
+getEnvTypes = M.elems <$> ask
 
 
 unify :: Tau -> Tau -> Tc ()
-unify tl tr = TC $ lift (tl =:= tr >> return ())
+unify tl tr = TC . lift $ tl =:= tr >> return ()
 
 
 -- | Make (MetaTv tv), where tv is fresh
 newMetaTyVar :: Tc Tau
-newMetaTyVar = TC . liftM UVar . lift $ lift freeVar
+newMetaTyVar = TC . lift . lift $ UVar <$> freeVar
 
 
 -- | Make a fresh skolem TyVar for some given TyVar
 newSkolemTyVar :: TyVar -> Tc TyVar
-newSkolemTyVar tv = liftM (SkolemTv $ tyVarName tv) newUnique
+newSkolemTyVar tv = SkolemTv (tyVarName tv) <$> newUnique
     where
     -- HACK: this became ambiguous since 2012, thus requiring the inline signature on getVarID...
     newUnique :: Tc Uniq
-    newUnique = TC . lift . lift $ liftM (getVarID :: IntVar -> Int) freeVar
+    newUnique = TC . lift . lift $ (getVarID :: IntVar -> Int) <$> freeVar
     
     tyVarName :: TyVar -> Name
     tyVarName (BoundTv  name)   = name
@@ -198,17 +202,49 @@ newSkolemTyVar tv = liftM (SkolemTv $ tyVarName tv) newUnique
 
 -- | Return the free metavariables in the list of types.
 getMetaTyVars :: [Type] -> Tc [MetaTv]
-getMetaTyVars = TC . lift . lift . getFreeVarsAll
+getMetaTyVars = TC . lift . lift . U.getFreeVarsAll
 
 
 -- | Return all the free type-variables in the list of types. (The
 -- free ones must be Skolems.) This is monadic because it respects
 -- the metavariable bindings.
 getFreeTyVars :: [Type] -> Tc [TyVar]
-getFreeTyVars = undefined
-{-
-getFreeTyVars = liftM freeTyVars . mapM zonkType
--}
+getFreeTyVars = fmap freeTyVars . zonkTypeAll
+    where
+    -- The strange name ``zonkType'' comes from the paper. This
+    -- definition optimizes over doing @mapM zonkType@ with the
+    -- definition that shows up later on (using 'U.applyBindings')
+    zonkTypeAll :: [Type] -> Tc [Type]
+    zonkTypeAll = TC . lift . U.applyBindingsAll
+    
+    -- TODO: could optimize this to take advantage of sharing...
+    -- TODO: need to debug/check this
+    freeTyVars :: [Type] -> [TyVar]
+    freeTyVars ts0 =
+        S.toList . snd $ execState (mapM_ go ts0) (S.empty, S.empty)
+        where
+        go :: Type -> State (S.Set TyVar, S.Set TyVar) ()
+        go (UTerm(ForAll ns ty)) = do
+            bound_ns <- fst <$> get
+            modify' (first (S.union $ S.fromList ns))
+            go ty
+            modify' (first (const bound_ns))
+        go (UTerm(Fun arg res))  = go arg >> go res
+        go (UTerm(TyCon _tc))    = return ()
+        go (UTerm(TyVar n))      = do
+            bound_ns <- fst <$> get
+            if S.member n bound_ns
+                then return ()
+                else modify' (second (S.insert n))
+        go (UVar _tv) = undefined
+
+
+readTv :: MetaTv -> Tc (Maybe Type)
+readTv = TC . lift . lift . U.lookupVar
+
+
+writeTv :: MetaTv -> Type -> Tc ()
+writeTv tv = TC . lift . lift . bindVar tv
 
 ----------------------------------------------------------------
 
@@ -341,7 +377,7 @@ substTy tvs tys ty = go (tvs `zip` tys) ty
 quantify :: [MetaTv] -> Rho -> Tc Sigma
 quantify = undefined
 {-
--- Not in scope: zonkType, tyVarBndrs, allBinders
+-- Not in scope: tyVarBndrs, allBinders
 quantify tvs ty = do
     mapM_ bind (tvs `zip` new_bndrs) -- 'bind' is just a cunning way
     ty' <- zonkType ty               -- of doing the substitution
@@ -349,7 +385,12 @@ quantify tvs ty = do
     where
     used_bndrs = tyVarBndrs ty -- Avoid quantified type variables in use
     new_bndrs = take (length tvs) (allBinders \\ used_bndrs)
-    bind (tv, name) = TC . lift . lift $ bindVar tv (UTerm(TyVar name))
+    bind (tv, name) = writeTv tv (UTerm(TyVar name))
+    
+    where
+    -- The strange name ``zonkType'' comes from the paper.
+    zonkType :: Type -> Tc Type
+    zonkType = TC . lift . U.applyBindings
 -}
 
 ----------------------------------------------------------------
