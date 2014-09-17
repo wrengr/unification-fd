@@ -7,12 +7,12 @@
            , DeriveTraversable
            , TypeSynonymInstances
            #-}
-{-# OPTIONS_GHC -Wall -fwarn-tabs #-}
+{-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-deprecations #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.25
+--                                                  ~ 2014.09.17
 -- |
 -- Module      :  PuttingHR
--- Copyright   :  Copyright (c) 2007--2012 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -39,7 +39,7 @@ import Data.Foldable
 import Data.Traversable
 import Control.Applicative
 import Control.Monad          (liftM, zipWithM)
-import Control.Monad.Error    (MonadError(..), ErrorT(..))
+import Control.Monad.Error    (Error(..), MonadError(..), ErrorT(..))
 import Control.Monad.Reader   (MonadReader(..), asks, ReaderT(..), runReaderT)
 import Control.Monad.Trans    (MonadTrans(..))
 import Control.Unification    hiding (unify, lookupVar)
@@ -124,7 +124,8 @@ instance Unifiable Ty where
 
 ----------------------------------------------------------------
 
--- | Directionalities for rules which are polymorphic in checking vs inference.
+-- | Directionalities for rules which are polymorphic in checking
+-- vs inference.
 data Expected t
     = Check t
     | Infer (TcRef t)
@@ -144,14 +145,28 @@ readTcRef = TC . lift . lift . lift . readIORef
 ----------------------------------------------------------------
 
 type TCState = M.Map Name Type
-type TCError = UnificationFailure Ty IntVar
+
+data TCFailure
+    = OccursFailure    IntVar (UTerm Ty IntVar)
+    | MismatchFailure  (Ty (UTerm Ty IntVar)) (Ty (UTerm Ty IntVar))
+    | CheckFailure     String
+    | LookupVarFailure Name
+    deriving (Show)
+
+instance Fallible Ty IntVar TCFailure where
+    occursFailure   = OccursFailure
+    mismatchFailure = MismatchFailure
+
+instance Error TCFailure where
+    noMsg  = CheckFailure ""
+    strMsg = CheckFailure
 
 -- TODO: we also need a Uniq supply
 -- | The type-checker monad.
 newtype Tc a =
     TC { unTC ::
         ReaderT TCState         -- Gamma: types for term-variables
-            (ErrorT TCError     -- possibility for failure
+            (ErrorT TCFailure   -- possibility for failure
                 (IntBindingT Ty -- unification metavariables
                     IO))        -- TcRefs for the inference direction
             a }
@@ -160,11 +175,11 @@ newtype Tc a =
         , Applicative
         , Monad
         , MonadReader TCState
-        , MonadError  TCError
+        , MonadError  TCFailure
         )
 
 
-evalTC :: Tc a -> IO (Either TCError a)
+evalTC :: Tc a -> IO (Either TCFailure a)
 evalTC
     = evalIntBindingT
     . runErrorT
@@ -175,7 +190,7 @@ evalTC
 -- | Type inference can fail.
 check :: Bool -> String -> Tc ()
 check True  _   = return ()
-check False msg = throwError . UnknownError $ msg
+check False msg = throwError $ CheckFailure msg
 
 
 -- | Look up a 'Var' in Gamma to get its type.
@@ -184,7 +199,7 @@ lookupVar x = do
     mb <- asks (M.lookup x)
     case mb of
         Just t  -> return t
-        Nothing -> throwError . UnknownError $ "variable not found: " ++ show x
+        Nothing -> throwError $ LookupVarFailure x
             -- (PP.text "Not in scope:" <+> PP.quotes (pprName n))
 
 

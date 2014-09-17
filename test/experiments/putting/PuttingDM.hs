@@ -7,12 +7,12 @@
            , DeriveTraversable
            , TypeSynonymInstances
            #-}
-{-# OPTIONS_GHC -Wall -fwarn-tabs #-}
+{-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-deprecations #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.25
+--                                                  ~ 2014.09.17
 -- |
 -- Module      :  PuttingDM
--- Copyright   :  Copyright (c) 2007--2012 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -37,7 +37,7 @@ import Data.Foldable
 import Data.Traversable
 import Control.Applicative
 import Control.Monad          (liftM)
-import Control.Monad.Error    (MonadError(..), ErrorT(..))
+import Control.Monad.Error    (Error(..), MonadError(..), ErrorT(..))
 import Control.Monad.Identity (Identity(..))
 import Control.Monad.Reader   (MonadReader(..), asks, ReaderT(..), runReaderT)
 import Control.Monad.Trans    (MonadTrans(..))
@@ -107,13 +107,27 @@ instance Unifiable Ty where
 ----------------------------------------------------------------
 
 type TCState = M.Map Name Type
-type TCError = UnificationFailure Ty IntVar
+
+data TCFailure
+    = OccursFailure    IntVar (UTerm Ty IntVar)
+    | MismatchFailure  (Ty (UTerm Ty IntVar)) (Ty (UTerm Ty IntVar))
+    | CheckFailure     String
+    | LookupVarFailure Name
+    deriving (Show)
+
+instance Fallible Ty IntVar TCFailure where
+    occursFailure   = OccursFailure
+    mismatchFailure = MismatchFailure
+
+instance Error TCFailure where
+    noMsg  = CheckFailure ""
+    strMsg = CheckFailure
 
 -- | The type-checker monad.
 newtype Tc a =
     TC { unTC ::
         ReaderT TCState         -- Gamma: types for term-variables
-            (ErrorT TCError     -- possibility for failure
+            (ErrorT TCFailure   -- possibility for failure
                 (IntBindingT Ty -- unification metavariables
                     Identity))
             a }
@@ -122,11 +136,11 @@ newtype Tc a =
         , Applicative
         , Monad
         , MonadReader TCState
-        , MonadError  TCError
+        , MonadError  TCFailure
         )
 
 
-evalTC :: Tc a -> Either TCError a
+evalTC :: Tc a -> Either TCFailure a
 evalTC
     = runIdentity
     . evalIntBindingT
@@ -138,7 +152,7 @@ evalTC
 -- | Type inference can fail.
 check :: Bool -> String -> Tc ()
 check True  _   = return ()
-check False msg = throwError $ UnknownError msg
+check False msg = throwError $ CheckFailure msg
 
 
 -- | Look up a 'TyVar' in Gamma.
@@ -146,7 +160,7 @@ lookupVar :: Name -> Tc Sigma
 lookupVar x = do
     mb <- asks $ M.lookup x
     case mb of
-        Nothing -> throwError . UnknownError $ "variable not found: " ++ show x
+        Nothing -> throwError $ LookupVarFailure x
         Just t  -> return t
 
 
@@ -173,8 +187,9 @@ newMetaTyVar = TC . liftM UVar . lift $ lift freeVar
 newSkolemTyVar :: TyVar -> Tc TyVar
 newSkolemTyVar tv = liftM (SkolemTv $ tyVarName tv) newUnique
     where
+    -- HACK: this became ambiguous since 2012, thus requiring the inline signature on getVarID...
     newUnique :: Tc Uniq
-    newUnique = TC . lift . lift $ liftM getVarID freeVar
+    newUnique = TC . lift . lift $ liftM (getVarID :: IntVar -> Int) freeVar
     
     tyVarName :: TyVar -> Name
     tyVarName (BoundTv  name)   = name
@@ -326,7 +341,7 @@ substTy tvs tys ty = go (tvs `zip` tys) ty
 quantify :: [MetaTv] -> Rho -> Tc Sigma
 quantify = undefined
 {-
--- Not in scope: zonkType, tyVarBndrs, allBinders, writeTv
+-- Not in scope: zonkType, tyVarBndrs, allBinders
 quantify tvs ty = do
     mapM_ bind (tvs `zip` new_bndrs) -- 'bind' is just a cunning way
     ty' <- zonkType ty               -- of doing the substitution
@@ -334,7 +349,7 @@ quantify tvs ty = do
     where
     used_bndrs = tyVarBndrs ty -- Avoid quantified type variables in use
     new_bndrs = take (length tvs) (allBinders \\ used_bndrs)
-    bind (tv, name) = writeTv tv (TyVar name)
+    bind (tv, name) = TC . lift . lift $ bindVar tv (UTerm(TyVar name))
 -}
 
 ----------------------------------------------------------------
