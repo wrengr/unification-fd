@@ -244,9 +244,12 @@ getFreeVarsAll ts0 =
 -- | Apply the current bindings from the monad so that any remaining
 -- variables in the result must, therefore, be free. N.B., this
 -- expensively clones term structure and should only be performed
--- when a pure term is needed, or when 'occursFailure' exceptions must be forced. This function /does/ preserve sharing, however that sharing is no longer observed by the monad.
+-- when a pure term is needed, or when 'occursFailure' exceptions
+-- must be forced. This function /does/ preserve sharing, however
+-- that sharing is no longer observed by the monad.
 --
--- If any cyclic bindings are detected, then an 'occursFailure' exception will be thrown.
+-- If any cyclic bindings are detected, then an 'occursFailure'
+-- exception will be thrown.
 applyBindings
     ::  ( BindingMonad t v m
         , Fallible t v e
@@ -307,7 +310,8 @@ applyBindingsAll ts0 = evalStateT (mapM loop ts0) IM.empty
 -- freshening the free variables. N.B., this expensively clones
 -- term structure and should only be performed when necessary.
 --
--- If any cyclic bindings are detected, then an 'occursFailure' exception will be thrown.
+-- If any cyclic bindings are detected, then an 'occursFailure'
+-- exception will be thrown.
 freshen
     ::  ( BindingMonad t v m
         , Fallible t v e
@@ -536,7 +540,11 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
 -- TODO: what was the reason for the MonadTrans madness?
 --
 -- | A variant of 'unify' which uses 'occursIn' instead of visited-sets.
--- This should only be used when eager throwing of 'occursFailure' errors is absolutely essential (or for testing the correctness of @unify@). Performing the occurs-check is expensive. Not only is it slow, it's asymptotically slow since it can cause the same subterm to be traversed multiple times.
+-- This should only be used when eager throwing of 'occursFailure'
+-- errors is absolutely essential (or for testing the correctness
+-- of @unify@). Performing the occurs-check is expensive. Not only
+-- is it slow, it's asymptotically slow since it can cause the same
+-- subterm to be traversed multiple times.
 unifyOccurs
     ::  ( BindingMonad t v m
         , Fallible t v e
@@ -630,7 +638,7 @@ _impossible_unifyOccurs = "unifyOccurs: the impossible happened"
 -- TODO: return Maybe(UTerm t v) in the loop so we can avoid updating bindings trivially
 -- TODO: figure out why unifyOccurs is so much faster on pure ground terms!! The only difference there is in lifting over StateT...
 -- TODO: what was the reason for the MonadTrans madness?
--- 
+--
 -- | Unify two terms, or throw an error with an explanation of why
 -- unification failed. Since bindings are stored in the monad, the
 -- two input terms and the output term are all equivalent if
@@ -715,7 +723,9 @@ _impossible_unify :: String
 _impossible_unify = "unify: the impossible happened"
 
 ----------------------------------------------------------------
--- TODO: can we find an efficient way to return the bindings directly instead of altering the monadic bindings? Maybe another StateT IntMap taking getVarID to the variable and its pseudo-bound term?
+-- TODO: can we find an efficient way to return the bindings directly
+-- instead of altering the monadic bindings? Maybe another StateT
+-- IntMap taking getVarID to the variable and its pseudo-bound term?
 --
 -- TODO: verify correctness
 -- TODO: redo with some codensity

@@ -89,7 +89,8 @@ infix 4 =:=, `unify`
 -- TODO: use IM.insertWith or the like to do this in one pass
 --
 -- | Update the visited-set with a seclaration that a variable has
--- been seen with a given binding, or throw 'occursFailure' if the variable has already been seen.
+-- been seen with a given binding, or throw 'occursFailure' if the
+-- variable has already been seen.
 seenAs
     ::  ( BindingMonad t v m
         , Fallible t v e

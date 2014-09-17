@@ -140,39 +140,46 @@ freeze (UTerm t) = Fix <$> mapM freeze t
 -- of these constructors (i.e., because they can only throw one of
 -- the errors), the extra complexity is not considered worth it.
 --
--- This is a finally-tagless encoding of the 'UFailure' data type so that we can abstract over clients adding additional domain-specific failure modes, introducing monoid instances, etc.
+-- This is a finally-tagless encoding of the 'UFailure' data type
+-- so that we can abstract over clients adding additional domain-specific
+-- failure modes, introducing monoid instances, etc.
 --
 -- /Since: 0.10.0/
 class Fallible t v a where
-    -- | A cyclic term was encountered (i.e., the variable
-    -- occurs free in a term it would have to be bound to in
-    -- order to succeed). Infinite terms like this are not
-    -- generally acceptable, so we do not support them. In logic
-    -- programming this should simply be treated as unification
-    -- failure; in type checking this should result in a \"could
-    -- not construct infinite type @a = Foo a@\" error.
+    -- | A cyclic term was encountered (i.e., the variable occurs
+    -- free in a term it would have to be bound to in order to
+    -- succeed). Infinite terms like this are not generally acceptable,
+    -- so we do not support them. In logic programming this should
+    -- simply be treated as unification failure; in type checking
+    -- this should result in a \"could not construct infinite type
+    -- @a = Foo a@\" error.
     --
     -- Note that since, by default, the library uses visited-sets
-    -- instead of the occurs-check these errors will be thrown
-    -- at the point where the cycle is dereferenced\/unrolled
-    -- (e.g., when applying bindings), instead of at the time
-    -- when the cycle is created. However, the arguments to
-    -- this constructor should express the same context as if
-    -- we had performed the occurs-check, in order for error
-    -- messages to be intelligable.
+    -- instead of the occurs-check these errors will be thrown at
+    -- the point where the cycle is dereferenced\/unrolled (e.g.,
+    -- when applying bindings), instead of at the time when the
+    -- cycle is created. However, the arguments to this constructor
+    -- should express the same context as if we had performed the
+    -- occurs-check, in order for error messages to be intelligable.
     occursFailure :: v -> UTerm t v -> a
     
     -- | The top-most level of the terms do not match (according
-    -- to 'zipMatch'). In logic programming this should simply
-    -- be treated as unification failure; in type checking this
-    -- should result in a \"could not match expected type @Foo@
-    -- with inferred type @Bar@\" error.
+    -- to 'zipMatch'). In logic programming this should simply be
+    -- treated as unification failure; in type checking this should
+    -- result in a \"could not match expected type @Foo@ with
+    -- inferred type @Bar@\" error.
     mismatchFailure :: t (UTerm t v) -> t (UTerm t v) -> a
 
 
--- | A concrete representation for the 'Fallible' type class. Whenever possible, you should prefer to keep the concrete representation abstract by using the 'Fallible' class instead.
+-- | A concrete representation for the 'Fallible' type class.
+-- Whenever possible, you should prefer to keep the concrete
+-- representation abstract by using the 'Fallible' class instead.
 --
--- /Updated: 0.10.0/ Used to be called @UnificationFailure@. Removed the @UnknownError@ constructor, and the @Control.Monad.Error.Error@ instance associated with it. Renamed @OccursIn@ constructor to @OccursFailure@; and renamed @TermMismatch@ constructor to @MismatchFailure@.
+-- /Updated: 0.10.0/ Used to be called @UnificationFailure@. Removed
+-- the @UnknownError@ constructor, and the @Control.Monad.Error.Error@
+-- instance associated with it. Renamed @OccursIn@ constructor to
+-- @OccursFailure@; and renamed @TermMismatch@ constructor to
+-- @MismatchFailure@.
 --
 -- /Updated: 0.8.1/ added 'Functor', 'Foldable', and 'Traversable' instances.
 data UFailure t v
@@ -220,11 +227,11 @@ instance (Foldable t) => Foldable (UFailure t) where
         foldMap (foldMap f) tl <> foldMap (foldMap f) tr
 
 instance (Traversable t) => Traversable (UFailure t) where
-    traverse f (OccursFailure v t) = 
+    traverse f (OccursFailure v t) =
         OccursFailure <$> f v <*> traverse f t
     
     traverse f (MismatchFailure tl tr) =
-        MismatchFailure <$> traverse (traverse f) tl 
+        MismatchFailure <$> traverse (traverse f) tl
                         <*> traverse (traverse f) tr
 
 ----------------------------------------------------------------
@@ -315,7 +322,9 @@ data Rank t v =
 instance (Show v, Show (t (UTerm t v))) => Show (Rank t v) where
     show (Rank n mb) = "Rank "++show n++" "++show mb
 
--- TODO: flatten the Rank.Maybe.UTerm so that we can tell that if semiprune returns a bound variable then it's bound to a term (not another var)?
+-- TODO: flatten the Rank.Maybe.UTerm so that we can tell that if
+-- semiprune returns a bound variable then it's bound to a term
+-- (not another var)?
 
 {-
 instance Monoid (Rank t v) where
