@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2014.09.15
+--                                                  ~ 2014.09.17
 -- |
 -- Module      :  Control.Unification.Ranked
 -- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
@@ -72,13 +72,14 @@ import Control.Unification hiding (unify, (=:=))
 -- | 'unify'
 (=:=)
     ::  ( RankedBindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         )
-    => UTerm t v       -- ^
-    -> UTerm t v       -- ^
-    -> e m (UTerm t v) -- ^
+    => UTerm t v        -- ^
+    -> UTerm t v        -- ^
+    -> em m (UTerm t v) -- ^
 (=:=) = unify
 {-# INLINE (=:=) #-}
 infix 4 =:=, `unify`
@@ -88,21 +89,21 @@ infix 4 =:=, `unify`
 -- TODO: use IM.insertWith or the like to do this in one pass
 --
 -- | Update the visited-set with a seclaration that a variable has
--- been seen with a given binding, or throw 'OccursIn' if the
--- variable has already been seen.
+-- been seen with a given binding, or throw 'occursFailure' if the variable has already been seen.
 seenAs
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , MonadError e (em m)
         )
     => v -- ^
     -> t (UTerm t v) -- ^
-    -> StateT (IM.IntMap (t (UTerm t v))) (e m) () -- ^
+    -> StateT (IM.IntMap (t (UTerm t v))) (em m) () -- ^
 {-# INLINE seenAs #-}
 seenAs v0 t0 = do
     seenVars <- get
     case IM.lookup (getVarID v0) seenVars of
-        Just t  -> lift . throwError $ OccursIn v0 (UTerm t)
+        Just t  -> lift . throwError $ occursFailure v0 (UTerm t)
         Nothing -> put $! IM.insert (getVarID v0) t0 seenVars
 
 
@@ -116,13 +117,14 @@ seenAs v0 t0 = do
 -- efficient to use it in future calculations than either argument.
 unify
     ::  ( RankedBindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         )
-    => UTerm t v       -- ^
-    -> UTerm t v       -- ^
-    -> e m (UTerm t v) -- ^
+    => UTerm t v        -- ^
+    -> UTerm t v        -- ^
+    -> em m (UTerm t v) -- ^
 unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}
@@ -199,7 +201,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     
     match tl tr =
         case zipMatch tl tr of
-        Nothing  -> lift . throwError $ TermMismatch tl tr
+        Nothing  -> lift . throwError $ mismatchFailure tl tr
         Just tlr -> UTerm <$> mapM loop_ tlr
     
     loop_ (Left  t)       = return t

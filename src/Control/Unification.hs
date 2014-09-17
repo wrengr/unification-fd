@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2014.09.15
+--                                                  ~ 2014.09.17
 -- |
 -- Module      :  Control.Unification
 -- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
@@ -32,7 +32,7 @@ module Control.Unification
     , freeze
     , unfreeze
     -- ** Errors
-    , UnificationFailure(..)
+    , Fallible(..)
     -- ** Basic type classes
     , Unifiable(..)
     , Variable(..)
@@ -162,21 +162,22 @@ occursIn v0 t0 = do
 -- TODO: use IM.insertWith or the like to do this in one pass
 --
 -- | Update the visited-set with a declaration that a variable has
--- been seen with a given binding, or throw 'OccursIn' if the
+-- been seen with a given binding, or throw 'occursFailure' if the
 -- variable has already been seen.
 seenAs
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , MonadError e (em m)
         )
     => v -- ^
     -> t (UTerm t v) -- ^
-    -> StateT (IM.IntMap (t (UTerm t v))) (e m) () -- ^
+    -> StateT (IM.IntMap (t (UTerm t v))) (em m) () -- ^
 {-# INLINE seenAs #-}
 seenAs v0 t0 = do
     seenVars <- get
     case IM.lookup (getVarID v0) seenVars of
-        Just t  -> lift . throwError $ OccursIn v0 (UTerm t)
+        Just t  -> lift . throwError $ occursFailure v0 (UTerm t)
         Nothing -> put $! IM.insert (getVarID v0) t0 seenVars
 
 ----------------------------------------------------------------
@@ -243,20 +244,18 @@ getFreeVarsAll ts0 =
 -- | Apply the current bindings from the monad so that any remaining
 -- variables in the result must, therefore, be free. N.B., this
 -- expensively clones term structure and should only be performed
--- when a pure term is needed, or when 'OccursIn' exceptions must
--- be forced. This function /does/ preserve sharing, however that
--- sharing is no longer observed by the monad.
+-- when a pure term is needed, or when 'occursFailure' exceptions must be forced. This function /does/ preserve sharing, however that sharing is no longer observed by the monad.
 --
--- If any cyclic bindings are detected, then an 'OccursIn' exception
--- will be thrown.
+-- If any cyclic bindings are detected, then an 'occursFailure' exception will be thrown.
 applyBindings
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         )
     => UTerm t v       -- ^
-    -> e m (UTerm t v) -- ^
+    -> em m (UTerm t v) -- ^
 applyBindings = fmap runIdentity . applyBindingsAll . Identity
 
 
@@ -270,13 +269,14 @@ applyBindings = fmap runIdentity . applyBindingsAll . Identity
 -- /Since: 0.7.0/
 applyBindingsAll
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         , Traversable s
         )
     => s (UTerm t v)       -- ^
-    -> e m (s (UTerm t v)) -- ^
+    -> em m (s (UTerm t v)) -- ^
 applyBindingsAll ts0 = evalStateT (mapM loop ts0) IM.empty
     where
     loop t0 = do
@@ -288,7 +288,7 @@ applyBindingsAll ts0 = evalStateT (mapM loop ts0) IM.empty
                 mb <- IM.lookup i <$> get
                 case mb of
                     Just (Right t) -> return t
-                    Just (Left  t) -> lift . throwError $ OccursIn v t
+                    Just (Left  t) -> lift . throwError $ occursFailure v t
                     Nothing -> do
                         mb' <- lift . lift $ lookupVar v
                         case mb' of
@@ -307,16 +307,16 @@ applyBindingsAll ts0 = evalStateT (mapM loop ts0) IM.empty
 -- freshening the free variables. N.B., this expensively clones
 -- term structure and should only be performed when necessary.
 --
--- If any cyclic bindings are detected, then an 'OccursIn' exception
--- will be thrown.
+-- If any cyclic bindings are detected, then an 'occursFailure' exception will be thrown.
 freshen
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         )
     => UTerm t v       -- ^
-    -> e m (UTerm t v) -- ^
+    -> em m (UTerm t v) -- ^
 freshen = fmap runIdentity . freshenAll . Identity
 
 
@@ -339,13 +339,14 @@ freshen = fmap runIdentity . freshenAll . Identity
 -- /Since: 0.7.0/
 freshenAll
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         , Traversable s
         )
-    => s (UTerm t v)       -- ^
-    -> e m (s (UTerm t v)) -- ^
+    => s (UTerm t v)        -- ^
+    -> em m (s (UTerm t v)) -- ^
 freshenAll ts0 = evalStateT (mapM loop ts0) IM.empty
     where
     loop t0 = do
@@ -357,7 +358,7 @@ freshenAll ts0 = evalStateT (mapM loop ts0) IM.empty
                 seenVars <- get
                 case IM.lookup i seenVars of
                     Just (Right t) -> return t
-                    Just (Left  t) -> lift . throwError $ OccursIn v t
+                    Just (Left  t) -> lift . throwError $ occursFailure v t
                     Nothing -> do
                         mb <- lift . lift $ lookupVar v
                         case mb of
@@ -402,13 +403,14 @@ infix 4 =~=, `equiv`
 -- | 'unify'
 (=:=)
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         )
-    => UTerm t v       -- ^
-    -> UTerm t v       -- ^
-    -> e m (UTerm t v) -- ^
+    => UTerm t v        -- ^
+    -> UTerm t v        -- ^
+    -> em m (UTerm t v) -- ^
 (=:=) = unify
 {-# INLINE (=:=) #-}
 infix 4 =:=, `unify`
@@ -418,13 +420,14 @@ infix 4 =:=, `unify`
 -- | 'subsumes'
 (<:=)
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         )
     => UTerm t v -- ^
     -> UTerm t v -- ^
-    -> e m Bool  -- ^
+    -> em m Bool -- ^
 (<:=) = subsumes
 {-# INLINE (<:=) #-}
 infix 4 <:=, `subsumes`
@@ -533,20 +536,17 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
 -- TODO: what was the reason for the MonadTrans madness?
 --
 -- | A variant of 'unify' which uses 'occursIn' instead of visited-sets.
--- This should only be used when eager throwing of 'OccursIn' errors
--- is absolutely essential (or for testing the correctness of
--- @unify@). Performing the occurs-check is expensive. Not only is
--- it slow, it's asymptotically slow since it can cause the same
--- subterm to be traversed multiple times.
+-- This should only be used when eager throwing of 'occursFailure' errors is absolutely essential (or for testing the correctness of @unify@). Performing the occurs-check is expensive. Not only is it slow, it's asymptotically slow since it can cause the same subterm to be traversed multiple times.
 unifyOccurs
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         )
-    => UTerm t v       -- ^
-    -> UTerm t v       -- ^
-    -> e m (UTerm t v) -- ^
+    => UTerm t v        -- ^
+    -> UTerm t v        -- ^
+    -> em m (UTerm t v) -- ^
 unifyOccurs = loop
     where
     {-# INLINE (=:) #-}
@@ -556,7 +556,7 @@ unifyOccurs = loop
     acyclicBindVar v t = do
         b <- lift $ v `occursIn` t
         if b
-            then throwError $ OccursIn v t
+            then throwError $ occursFailure v t
             else v =: t
     
     -- TODO: cf todos in 'unify'
@@ -614,7 +614,7 @@ unifyOccurs = loop
     
     match tl tr =
         case zipMatch tl tr of
-        Nothing  -> throwError $ TermMismatch tl tr
+        Nothing  -> throwError $ mismatchFailure tl tr
         Just tlr -> UTerm <$> mapM loop_ tlr
     
     loop_ (Left  t)       = return t
@@ -639,13 +639,14 @@ _impossible_unifyOccurs = "unifyOccurs: the impossible happened"
 -- efficient to use it in future calculations than either argument.
 unify
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         )
-    => UTerm t v       -- ^
-    -> UTerm t v       -- ^
-    -> e m (UTerm t v) -- ^
+    => UTerm t v        -- ^
+    -> UTerm t v        -- ^
+    -> em m (UTerm t v) -- ^
 unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}
@@ -703,7 +704,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     
     match tl tr =
         case zipMatch tl tr of
-        Nothing  -> lift . throwError $ TermMismatch tl tr
+        Nothing  -> lift . throwError $ mismatchFailure tl tr
         Just tlr -> UTerm <$> mapM loop_ tlr
     
     loop_ (Left  t)       = return t
@@ -718,7 +719,7 @@ _impossible_unify = "unify: the impossible happened"
 --
 -- TODO: verify correctness
 -- TODO: redo with some codensity
--- TODO: there should be some way to catch OccursIn errors and repair the bindings...
+-- TODO: there should be some way to catch occursFailure errors and repair the bindings...
 -- TODO: what was the reason for the MonadTrans madness?
 
 -- | Determine whether the left term subsumes the right term. That
@@ -738,13 +739,14 @@ _impossible_unify = "unify: the impossible happened"
 -- of variables.
 subsumes
     ::  ( BindingMonad t v m
-        , MonadTrans e
-        , Functor (e m) -- Grr, Monad(e m) should imply Functor(e m)
-        , MonadError (UnificationFailure t v) (e m)
+        , Fallible t v e
+        , MonadTrans em
+        , Functor (em m) -- Grr, Monad(em m) should imply Functor(em m)
+        , MonadError e (em m)
         )
     => UTerm t v -- ^
     -> UTerm t v -- ^
-    -> e m Bool  -- ^
+    -> em m Bool -- ^
 subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}

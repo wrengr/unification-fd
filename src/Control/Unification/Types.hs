@@ -1,11 +1,13 @@
 -- Required for Show instances
 {-# LANGUAGE FlexibleContexts, UndecidableInstances #-}
 -- Required more generally
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
-
+{-# LANGUAGE MultiParamTypeClasses
+           , FunctionalDependencies
+           , FlexibleInstances
+           #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2014.09.15
+--                                                  ~ 2014.09.17
 -- |
 -- Module      :  Control.Unification.Types
 -- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
@@ -24,7 +26,8 @@ module Control.Unification.Types
     , freeze
     , unfreeze
     -- * Errors
-    , UnificationFailure(..)
+    , Fallible(..)
+    , UFailure(..)
     -- * Basic type classes
     , Unifiable(..)
     , Variable(..)
@@ -137,74 +140,92 @@ freeze (UTerm t) = Fix <$> mapM freeze t
 -- of these constructors (i.e., because they can only throw one of
 -- the errors), the extra complexity is not considered worth it.
 --
--- /Updated: 0.10.0/ Removed the @UnknownError@ constructor, and
--- the @Control.Monad.Error.Error@ instance associated with it.
--- Instead of using the @ErrorT@ monad, wrap @UnificationFailure@
--- in a suitable monoid (e.g., 'First') and use the @ExceptT@ monad
--- instead.
+-- This is a finally-tagless encoding of the 'UFailure' data type so that we can abstract over clients adding additional domain-specific failure modes, introducing monoid instances, etc.
+--
+-- /Since: 0.10.0/
+class Fallible t v a where
+    -- | A cyclic term was encountered (i.e., the variable
+    -- occurs free in a term it would have to be bound to in
+    -- order to succeed). Infinite terms like this are not
+    -- generally acceptable, so we do not support them. In logic
+    -- programming this should simply be treated as unification
+    -- failure; in type checking this should result in a \"could
+    -- not construct infinite type @a = Foo a@\" error.
+    --
+    -- Note that since, by default, the library uses visited-sets
+    -- instead of the occurs-check these errors will be thrown
+    -- at the point where the cycle is dereferenced\/unrolled
+    -- (e.g., when applying bindings), instead of at the time
+    -- when the cycle is created. However, the arguments to
+    -- this constructor should express the same context as if
+    -- we had performed the occurs-check, in order for error
+    -- messages to be intelligable.
+    occursFailure :: v -> UTerm t v -> a
+    
+    -- | The top-most level of the terms do not match (according
+    -- to 'zipMatch'). In logic programming this should simply
+    -- be treated as unification failure; in type checking this
+    -- should result in a \"could not match expected type @Foo@
+    -- with inferred type @Bar@\" error.
+    mismatchFailure :: t (UTerm t v) -> t (UTerm t v) -> a
+
+
+-- | A concrete representation for the 'Fallible' type class. Whenever possible, you should prefer to keep the concrete representation abstract by using the 'Fallible' class instead.
+--
+-- /Updated: 0.10.0/ Used to be called @UnificationFailure@. Removed the @UnknownError@ constructor, and the @Control.Monad.Error.Error@ instance associated with it. Renamed @OccursIn@ constructor to @OccursFailure@; and renamed @TermMismatch@ constructor to @MismatchFailure@.
 --
 -- /Updated: 0.8.1/ added 'Functor', 'Foldable', and 'Traversable' instances.
-data UnificationFailure t v
-    
-    = OccursIn v (UTerm t v)
-        -- ^ A cyclic term was encountered (i.e., the variable
-        -- occurs free in a term it would have to be bound to in
-        -- order to succeed). Infinite terms like this are not
-        -- generally acceptable, so we do not support them. In logic
-        -- programming this should simply be treated as unification
-        -- failure; in type checking this should result in a \"could
-        -- not construct infinite type @a = Foo a@\" error.
-        --
-        -- Note that since, by default, the library uses visited-sets
-        -- instead of the occurs-check these errors will be thrown
-        -- at the point where the cycle is dereferenced\/unrolled
-        -- (e.g., when applying bindings), instead of at the time
-        -- when the cycle is created. However, the arguments to
-        -- this constructor should express the same context as if
-        -- we had performed the occurs-check, in order for error
-        -- messages to be intelligable.
-    
-    | TermMismatch (t (UTerm t v)) (t (UTerm t v))
-        -- ^ The top-most level of the terms do not match (according
-        -- to 'zipMatch'). In logic programming this should simply
-        -- be treated as unification failure; in type checking this
-        -- should result in a \"could not match expected type @Foo@
-        -- with inferred type @Bar@\" error.
+data UFailure t v
+    = OccursFailure v (UTerm t v)
+    | MismatchFailure (t (UTerm t v)) (t (UTerm t v))
+
+
+instance Fallible t v (UFailure t v) where
+    occursFailure   = OccursFailure
+    mismatchFailure = MismatchFailure
 
 
 -- Can't derive this because it's an UndecidableInstance
 instance (Show (t (UTerm t v)), Show v) =>
-    Show (UnificationFailure t v)
+    Show (UFailure t v)
     where
-    showsPrec p (OccursIn v t) =
+    showsPrec p (OccursFailure v t) =
         showParen (p > 9)
-            ( showString "OccursIn "
+            ( showString "OccursFailure "
             . showsPrec 11 v
             . showString " "
             . showsPrec 11 t
             )
-    showsPrec p (TermMismatch tl tr) =
+    showsPrec p (MismatchFailure tl tr) =
         showParen (p > 9)
-            ( showString "TermMismatch "
+            ( showString "MismatchFailure "
             . showsPrec 11 tl
             . showString " "
             . showsPrec 11 tr
             )
 
 
-instance (Functor t) => Functor (UnificationFailure t) where
-    fmap f (OccursIn v t)       = OccursIn (f v) (fmap f t)
-    fmap f (TermMismatch tl tr) = TermMismatch (fmap f <$> tl) (fmap f <$> tr)
+instance (Functor t) => Functor (UFailure t) where
+    fmap f (OccursFailure v t) =
+        OccursFailure (f v) (fmap f t)
+    
+    fmap f (MismatchFailure tl tr) =
+        MismatchFailure (fmap f <$> tl) (fmap f <$> tr)
 
-instance (Foldable t) => Foldable (UnificationFailure t) where
-    foldMap f (OccursIn v t)       = f v <> foldMap f t
-    foldMap f (TermMismatch tl tr) = foldMap (foldMap f) tl
-                                  <> foldMap (foldMap f) tr
+instance (Foldable t) => Foldable (UFailure t) where
+    foldMap f (OccursFailure v t) =
+        f v <> foldMap f t
+    
+    foldMap f (MismatchFailure tl tr) =
+        foldMap (foldMap f) tl <> foldMap (foldMap f) tr
 
-instance (Traversable t) => Traversable (UnificationFailure t) where
-    traverse f (OccursIn v t)       = OccursIn <$> f v <*> traverse f t
-    traverse f (TermMismatch tl tr) = TermMismatch <$> traverse (traverse f) tl 
-                                                   <*> traverse (traverse f) tr
+instance (Traversable t) => Traversable (UFailure t) where
+    traverse f (OccursFailure v t) = 
+        OccursFailure <$> f v <*> traverse f t
+    
+    traverse f (MismatchFailure tl tr) =
+        MismatchFailure <$> traverse (traverse f) tl 
+                        <*> traverse (traverse f) tr
 
 ----------------------------------------------------------------
 
