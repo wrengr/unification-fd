@@ -1,0 +1,196 @@
+title: Unification-fd tutorial (part 1/n)
+tags: haskell, haskell planet, unification
+
+<p>A while back I released the <i>unification-fd</i> library, which gives a generic implementation of first-order unification of non-cyclic terms. I've given a few talks on how the library is implemented and what optimizations it performs, but that's not the topic for today. Today, I'm going to talk about how to <i>use</i> it.</p>
+
+<p>Unification is a widely useful operation and, consequently, comes in many different flavors. The version currently supported by the library is the sort used by logic programming languages like Prolog, Curry, Dyna, and MiniKanren; which is the same sort that's used for unification-based type inference algorithms like Hindley–Damas–Milner. Of these two examples, the logic programming example is the simpler one to discuss— at least for folks who've used a language like Prolog before. So let's start from there.</p>
+
+<p><i>Caveat Emptor:</i> This post is something of a stream of consciousness. I've gotten a few requests for tutorials on how to use the library, but the requests weren't terribly specific about what problems people've had or what's been difficult to figure out. So I'm shooting in the dark as far as what folks need and how much background they have. I'm going to assume you're familiar with Prolog and the basics of what unification is and does.</p>
+
+<p><i>Preemptive apology:</i> I started writing this post months and months (and months) ago, but unintentionally dropped it after running into a certain issue and then getting distracted and moving onto other things. Actually, this happened at least twice. I'm terribly sorry about that. So, apologies for not tackling the disjunction issue in this post. I'll come back to it later, but figured this post really needs to get out the door already.</p>
+
+<h3>Logic Terms</h3>
+
+<p>A <b><i>term</i></b>, in Prolog, is just a fancy name for a value of some algebraic data type. In most variants of Prolog there's no explicit definition of the ADT, no restriction on what the constructors are, and no type checking to ensure that subterms have a particular shape. That is, Prolog is what's called a single-sorted logic; in other words, Prolog is an untyped/unityped language. With <i>unification-fd</i> we can implement multi-sorted (aka typed) logics, but for this tutorial we're going to stick with Prolog's single-sorted approach.</p>
+
+<p>Opening up <code>Control.Unification</code> we'll see a handful of types and type classes, followed by a bunch of operators. The <code>UTerm</code> data type captures the recursive structure of logic terms. (<code>UTerm</code> is the free monad, if you're familiar with that terminology.) That is, given some functor <code>t</code> which describes the constructors of our logic terms, and some type <code>v</code> which describes our logic variables, the type <code>UTerm t v</code> is the type of logic terms: trees with multiple layers of <code>t</code> structure and leaves of type <code>v</code>. For our single-sorted logic, here's an implementation of <code>t</code>:</p>
+
+<blockquote><code><pre
+>data T a = T String [a]</pre></code></blockquote>
+
+<p>The <code>String</code> gives the name of the term constructor, and the list gives the ordered sequence of subterms. Thus, the Prolog term <code>foo(bar,baz(X))</code> would be implemented as <code>UTerm$T "foo" [UTerm$T "bar" [], UTerm$T "baz" [UVar x]]</code>. If we're going to be building these terms directly, then we probably want to define some smart constructors to reduce the syntactic noise:</p>
+
+<blockquote><code><pre
+>foo x y = UTerm$T "foo" [x,y]
+bar     = UTerm$T "bar" []
+baz x   = UTerm$T "baz" [x]</pre></code></blockquote>
+
+<p>Now, we can implement the Prolog term as <code>foo bar (baz x)</code>. If you prefer a more Prolog-like syntax, you can use uncurried definitions for smart constructors that take more than one argument.</p>
+
+<h3>Unifiable</h3>
+
+<p>In order to use our <code>T</code> data type with the rest of the API, we'll need to give a <code>Unifiable</code> instance for it. Before we do that we'll have to give <code>Functor</code>, <code>Foldable</code>, and <code>Traversable</code> instances. These are straightforward and can be automatically derived with the appropriate language pragmas.</p>
+
+<p>The <code>Unifiable</code> class gives one step of the unification process. Just as we only need to specify one level of the ADT (i.e., <code>T</code>) and then we can use the library's <code>UTerm</code> to generate the recursive ADT, so too we only need to specify one level of the unification (i.e., <code>zipMatch</code>) and then we can use the library's operators to perform the recursive unification, subsumption, etc.</p>
+
+<p>The <code>zipMatch</code> function takes two arguments of type <code>t a</code>. The abstract <code>t</code> will be our concrete <code>T</code> type. The abstract <code>a</code> is polymorphic, which ensures that we can't mess around with more than one level of the term at once. If we abandon that guarantee, then you can think of it as if <code>a</code> is <code>UTerm T v</code>. Thus,<code>t a</code> means <code>T (UTerm T v)</code>; and <code>T (UTerm T v)</code> is essentially the type <code>UTerm T v</code> with the added guarantee that the values aren't in fact variables. Thus, the arguments to <code>zipMatch</code> are non-variable terms.</p>
+
+<p>The <code>zipMatch</code> method has the rather complicated return type: <code>Maybe (t (Either a (a,a)))</code>. Let's unpack this a bit by thinking about how unification works. When we try to unify two terms, first we look at their head constructors. If the constructors are different, then the terms aren't unifiable, so we return <code>Nothing</code> to indicate that unification has failed. Otherwise, the constructors match, so we have to recursively unify their subterms. Since the <code>T</code> structures of the two terms match, we can return <code>Just t0</code> where <code>t0</code> has the same <code>T</code> structure as both input terms. Where we still have to recursively unify subterms, we fill <code>t0</code> with <code>Right(l,r)</code> values where <code>l</code> is a subterm of the left argument to <code>zipMatch</code> and <code>r</code> is the corresponding subterm of the right argument. Thus, <code>zipMatch</code> is a generalized zipping function for combining the shared structure and pairing up substructures. And now, the implementation:</p>
+
+<blockquote><code><pre
+>instance Unifiable T where
+    zipMatch (T m ls) (T n rs)
+        | m /= n    = Nothing
+        | otherwise =
+            T n &lt;$&gt; pairWith (\l r -&gt; Right(l,r)) ls rs</pre></code></blockquote>
+
+<p>Where <a href="http://hackage.haskell.org/package/list-extras-0.4.1.3/docs/Data-List-Extras-Pair.html"><code>list-extras:Data.List.Extras.Pair.pairWith</code></a> is a version of <code>zip</code> which returns <code>Nothing</code> if the lists have different lengths. So, if the names <code>m</code> and <code>n</code> match, and if the two arguments have the same number of subterms, then we pair those subterms off in order; otherwise, either the names or the lengths don't match, so we return <code>Nothing</code>.</p>
+
+<h3>Feature Structures</h3>
+
+<p>For the <code>T</code> example, we don't need to worry about the <code>Left</code> option. The reason it's there is to support feature structures and other sparse representations of terms. That is, consider the following type:</p>
+
+<blockquote><code><pre
+>newtype FS k a = FS (Map k a)</pre></code></blockquote>
+
+<p>Using this type, our logic terms are sets of key–subterm pairs. When unifying maps like these, what do we do if one argument has a binding for a particular key but the other argument does not? In the <code>T</code> example we assumed that subterms which couldn't be paired together (because the lists were different lengths) meant the unification must fail. But for <code>FS</code> it makes more sense to assume that terms which can't be paired up automatically succeed! That is, we'd like to assume that all the keys which are not explicitly present in the <code>Map k a</code> are implicitly present and each one is bound to a unique logic variable. Since the unique logic variables are implicit, there's no need to actually keep track of them, we'll just implicitly unify them with the subterm that can't be paired off.</p>
+
+<p>This may make more sense if you see the <code>Unifiable</code> instance:</p>
+
+<blockquote><code><pre
+>instance (Ord k) =&gt; Unifiable (FS k) where
+    zipMatch (FS ls) (FS rs) =
+        Just . FS $
+            unionWith (\(Left l) (Left r) -&gt; Right(l,r))
+                (fmap Left ls)
+                (fmap Left rs)</pre></code></blockquote>
+
+<p>We start off by mapping <code>Left</code> over both the <code>ls</code> and the <code>rs</code>. We then call <code>unionWith</code> to pair things up. For any given key, if both <code>ls</code> and <code>rs</code> specify a subterm, then these subterms will be paired up as <code>Right(l,r)</code>. If we have extra subterms from either <code>ls</code> or <code>rs</code>, however, then we keep them around as <code>Left l</code> or <code>Left r</code>. Thus, the <code>Unifiable</code> instance for <code>FS</code> performs a union of the <code>FS</code> structure, whereas the instance for <code>T</code> performs an intersection of <code>T</code> structure.</p>
+
+<p>The <code>Left</code> option can be used in any situation where you can immediately resolve the unification of subterms, whereas the <code>Right</code> option says you still have work to do.<sup id="100478:fnref1"><a href="#100478:fn1" name="100478:fnref1">1</a></sup></p>
+
+<h3>Logic Variables</h3>
+
+<p>The library ships with two implementations of logic variables. The <code>IntVar</code> implementation uses <code>Int</code> as the names of variables, and uses an <code>IntMap</code> to keep track of the environment. The <code>STVar</code> implementation uses <code>STRef</code>s, so we can use actual mutation for binding logic variables, rather than keeping an explicit environment around. Of course, mutation complicates things, so the two implementations have different pros and cons.</p>
+
+<p>Performing unification has the side effect of binding logic variables to terms. Thus, we'll want to use a monad in order to keep track of these effects. The <code>BindingMonad</code> type class provides the definition of what we need from our ambient monad. In particular, we need to be able to generate fresh logic variables, to bind logic variables, and to lookup what our logic variables are bound to. The library provides the necessary instances for both <code>IntVar</code> and <code>STVar</code>.</p>
+
+<p>You can, of course, provide your own implementations of <code>Variable</code> and <code>BindingMonad</code>. However, doing so is beyond the scope of the current tutorial. For simplicity, we'll use the <code>IntVar</code> implementation below.</p>
+
+<h3>Example Programs</h3>
+
+<p>When embedding Prolog programs into Haskell, the main operators we want to consider are those in the section titled "Operations on two terms". These are structural equality (i.e., equality modulo substitution), structural equivalence (i.e., structural equality modulo alpha-variance), unification, and subsumption.</p>
+
+<p>Consider the following Horn clause in Prolog:</p>
+
+<blockquote><code><pre
+>example1(X,Y,Z) :- X = Y, Y = Z.</pre></code></blockquote>
+
+<p>To implement this in Haskell we want a function which takes in three arguments, unifies the first two, and then unifies the second two. Thus,<sup id="100478:fnref2"><a href="#100478:fn2" name="100478:fnref2">2</a></sup></p>
+
+<blockquote><code><pre
+>example1 x y z = do
+    x =:= y
+    y =:= z</pre></code></blockquote>
+
+<p>To run this program we'd use one of the functions <code>runIntBindingT</code>, <code>evalIntBindingT</code>, or <code>execIntBindingT</code>, depending on whether we care about the binding state, the resulting logic term, or both. Of course, since the unifications may fail, we also need to run the underlying error monad, using something like <code>runErrorT</code><sup id="100478:fnref3"><a href="#100478:fn3" name="100478:fnref3">3</a>,</sup><sup id="100478:fnref4"><a href="#100478:fn4" name="100478:fnref4">4</a></sup>. And since these are both monad transformers, we'll need to use <code>runIdentity</code> or the like in order to run the base monad. Thus, the functions to execute the entire monad stack will look like:</p>
+
+<blockquote><code><pre
+>-- Aliases to simplify our type signatures. N.B., the
+-- signatures are not actually required to get things
+-- to typecheck.
+type PrologTerm           = UTerm T IntVar 
+type PrologFailure        = UnificationFailure T IntVar
+type PrologBindingState   = IntBindingState T
+
+-- N.B., the @FallibleBindingMonad@ isn't yet a monad
+-- for Prolog because it doesn't support backtracking.
+type FallibleBindingMonad =
+    ErrorT PrologFailure (IntBindingT T Identity)
+
+-- N.B., this definition runs into certain issues.
+type PrologMonad =
+    ErrorT PrologFailure (IntBindingT T Logic)
+
+runFBM
+    :: FallibleBindingMonad a
+    -&gt; (Either PrologFailure a, PrologBindingState)
+runFBM = runIdentity . runIntBindingT . runErrorT</pre></code></blockquote>
+
+<p>Here are some more examples:</p>
+
+<blockquote><code><pre
+>-- A helper function to reduce boilerplate. First we get
+-- a free variable, then we embed it into @PrologTerm@,
+-- and then we embed it into some error monad (for
+-- capturing unification failures).
+getFreeVar = lift (UVar &lt;$&gt; freeVar)
+
+-- example2(X,Z) :- X = Y, Y = Z.
+example2 x z = do
+    y &lt;- getFreeVar
+    x =:= y
+    y =:= z
+
+-- example3(X,Z) :- example1(X,Y,Z).
+example3 x z = do
+    y &lt;- getFreeVar
+    example1 x y z
+
+-- example4(X) :- X = bar; X = backtrack.
+example4 x = (x =:= bar) &lt;|&gt; (x =:= atom "backtrack")
+</pre></code></blockquote>
+
+<p>The complete code for this post can be found <a href="http://community.haskell.org/~wren/unification-fd/test/tutorial/tutorial1.hs">here online</a>, or at <code>./test/tutorial/tutorial1.hs</code> in the Darcs repo. Notably, there are some complications about the semantics of <code>example4</code>; it doesn't mean what you think it should mean. We'll tackle that problem and fix it later on in the tutorial series (in part 4 or thereabouts).</p>
+
+<h3>Term Factoring and Clause Resolution Automata (CRAs)</h3>
+
+<p>Note that for the above examples, the Haskell functions only execute the right-hand side of the Horn clause. In Prolog itself, there's also a process of searching through all the Horn clauses in a program and deciding which one to execute next. A naive way to implement that search process would be to have a list of all the Horn clauses and walk through it, trying to unify the goal with the left-hand side of each clause and executing the right-hand side if it matches. A more efficient way would be to compile all the right-hand sides into a single automaton, allowing us to match the goal against all the right-hand sides at once. (The idea here is similar to compiling a bunch of strings together into a trie or regex.)</p>
+
+<p>Constructing optimal CRAs is NP-complete in general, though it's feasible if we have an arbitrary ordering of clauses (e.g., Prolog's top–down order for trying each clause). The <i>unification-fd</i> library does not implement any support for CRAs at present, though it's something I'd like to add in the future. For more information on this topic, see <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.49.6932">Dawson et al. (1995) <i>Optimizing Clause Resolution: Beyond Unification Factoring</i></a> and <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.56.2895">Dawson et al. (1996) <i>Principles and Practice of Unification Factoring</i></a>.</p>
+
+<h3>Other operators</h3>
+
+<p>In addition to unification itself, it's often helpful to have various other operators on hand.</p>
+
+<p>One such operator is the subsumption operator. Whereas unification looks for a most-general substitution which when applied to both arguments yields terms which are structurally equal (i.e., <code>l =:= r</code> computes the most general <code>s</code> such that <code>s l === s r</code>), subsumption applies the substitution to only one side. That is, <code>l</code> subsumes <code>r</code> just in case <code>r</code> is a substitution instance of <code>l</code> (i.e., there exists a substitution <code>s</code> such that <code>s l === r</code>). The symbolic name <code>(&lt;:=)</code> comes from the fact that when <code>l</code> subsumes <code>r</code> we also say that <code>l</code> is less defined<sup id="100478:fnref5"><a href="#100478:fn5" name="100478:fnref5">5</a></sup> than <code>r</code>. Subsumption shows up in cases where we have to hold <code>r</code> fixed for some reason, such as when implementing polymorphism or subtyping.</p>
+
+<p>Other operators work on just one term, such as determining the free variables of a term, explicitly applying the ambient substitution to obtain a pure term, or cloning a term to make a copy where all the free variables have been renamed to fresh variables. These sorts of operators aren't used very often in logic programming itself, but are crucial for implementing logic programming languages.</p>
+
+<h3>Conclusion</h3>
+
+<p>Hopefully that gives a quick idea of how the library's API is set up. Next time I'll walk through an implementation of Hindley–Damas–Milner type inference, and then higher-ranked polymorphism à la <a href="http://research.microsoft.com/en-us/um/people/simonpj/papers/higher-rank/putting.pdf">Peyton Jones et al. (2011) <i>Practical type inference for arbitrary-rank types</i></a>. After that, I'll discuss the complications about backtracking choice I noticed when writing this post, and walk through how to fix them. If there's still interest after that, I can get into some of the guts of the library's implementation— like ranked path compression, maximal structure sharing, and so on.</p>
+
+<p>If you have any particular questions you'd like me to address, drop me a line.</p>
+
+<hr/>
+<p id="100478:fn1"><a name="100478:fn1">[1]</a> Older versions of the library used the type <code>zipMatch :: forall a b. t a -> t b -> Maybe (t (a,b))</code> in order to ensure that we did in fact properly pair up subterms from the two arguments. Unfortunately I had to relax that guarantee in order to add support for feature structures. <a href="#100478:fnref1">↩</a></p>
+
+<p id="100478:fn2"><a name="100478:fn2">[2]</a> N.B., a more efficient implementation is:</p>
+
+<blockquote><code><pre
+>example1' x y z = do
+    y' &lt;- x =:= y
+    y' =:= z</pre></code></blockquote>
+
+<p>The unification operator returns a new term which guarantees maximal structure sharing with both of its arguments. The implementation of unification makes use of observable structure sharing, so by capturing <code>y'</code> and using it in lieu of <code>y</code>, the subsequent unifications can avoid redundant work. <a href="#100478:fnref2">↩</a></p>
+
+<p id="100478:fn3"><a name="100478:fn3">[3]</a> The <code>ErrorT</code> transformer was deprecated by <i>transformers-0.4.1.0</i>, though it still works for this tutorial. Unfortunately, the preferred <code>ExceptT</code> does not work since <code>UnificationFailure</code> doesn't have a <code>Monoid</code> instance as of <i>unification-fd-0.9.0</i>. The definition of <code>UnificationFailure</code> already contains a hack to get it to work with <code>ErrorT</code>, but future versions of the library will remove that hack and will require users to specify their own monoid for combining errors. The <code>First</code> monoid captures the current behavior, though one may prefer to use other monoids such as a monoid that gives a trace of the full execution path, or witnesses for all the backtracks, etc. <a href="#100478:fnref3">↩</a></p>
+
+<p id="100478:fn4"><a name="100478:fn4">[4]</a> To be honest, I don't entirely recall why I had the error monad explicitly separated out as a monad transformer over the binding monad, rather than allowing these two layers to be combined. Since it's so awkward, I'm sure there was some reason behind it, I just failed to make note of why. If there turns out to be no decent reason for it, future versions of the library may remove this fine-grain distinction. <a href="#100478:fnref4">↩</a></p>
+
+<p id="100478:fn5"><a name="100478:fn5">[5]</a> The symbolic name for subsumption is chosen to reflect the meaning of more/less defined (rather than more/less grounded) so that the subsumption ordering coincides with the domain ordering (think of logic variables as being bottom). This is the standard direction for looking at subsumption; though, of course, we could always consider the dual ordering instead. <a href="#100478:fnref5">↩</a></p>
+
+
+<div class="btn-group">
+<a href="https://twitter.com/share?via=wrengr&url=http%3A%2F%2Fwinterkoninkje.dreamwidth.org%2F100478.html&text=Unification-fd%20tutorial%20(part%201%2Fn)"
+	class="btn" title="Share on Twitter" target="_blank">Twitter</a>
+<a href="https://www.facebook.com/sharer/sharer.php?u=http%3A%2F%2Fwinterkoninkje.dreamwidth.org%2F100478.html&t=Unification-fd%20tutorial%20(part%201%2Fn)"
+	class="btn" title="Share on Facebook" target="_blank">Facebook</a>
+<a href="https://plus.google.com/share?url=http%3A%2F%2Fwinterkoninkje.dreamwidth.org%2F100478.html"
+	class="btn" title="Share on Google+" target="_blank">Google+</a>
+<a href="http://www.tumblr.com/share/link?url=http%3A%2F%2Fwinterkoninkje.dreamwidth.org%2F100478.html&name=Unification-fd%20tutorial%20(part%201%2Fn)"
+	class="btn" title="Share on Tumblr" target="_blank">Tumblr</a>
+<a href="http://wordpress.com/press-this.php?u=http%3A%2F%2Fwinterkoninkje.dreamwidth.org%2F100478.html&t=Unification-fd%20tutorial%20(part%201%2Fn)&s="
+	class="btn" title="Share on WordPress" target="_blank">WordPress</a>
+</div>
