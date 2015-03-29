@@ -1,4 +1,4 @@
-0.10.0 (2015-XX-XX):
+0.10.0 (2015-03-29):
     - Cleaned up things to compile cleanly for GHC 7.10
     - Cleaned up deprecation warnings re Control.Monad.Error
     - Control.Monad.EitherK: liberalized Monad restriction to
