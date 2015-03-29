@@ -1,8 +1,16 @@
 -- The MPTCs is only for mtl:Control.Monad.Error.MonadError
 {-# LANGUAGE CPP, Rank2Types, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
+
+-- HACK: in GHC 7.10, Haddock complains about unused imports; but,
+-- if we use CPP to avoid including them under Haddock, then it
+-- will fail!
+#ifdef __HADDOCK__
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+#endif
+
 ----------------------------------------------------------------
---                                                  ~ 2014.09.15
+--                                                  ~ 2015.03.29
 -- |
 -- Module      :  Control.Monad.MaybeK
 -- License     :  BSD
@@ -33,7 +41,10 @@ module Control.Monad.MaybeK
     , lowerMaybeK
     ) where
 
-import Control.Applicative  (Applicative(..), Alternative(..))
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative  (Applicative(..))
+#endif
+import Control.Applicative  (Alternative(..))
 import Control.Monad        (MonadPlus(..), ap)
 import Control.Monad.Trans  (MonadTrans(..))
 #if (MIN_VERSION_mtl(2,2,1))

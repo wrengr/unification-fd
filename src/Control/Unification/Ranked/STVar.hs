@@ -1,14 +1,15 @@
-{-# LANGUAGE Rank2Types
+{-# LANGUAGE CPP
+           , Rank2Types
            , MultiParamTypeClasses
            , UndecidableInstances
            , FlexibleInstances
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.18
+--                                                  ~ 2015.03.29
 -- |
 -- Module      :  Control.Unification.Ranked.STVar
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  highly experimental
@@ -26,7 +27,9 @@ import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 
 import Data.STRef
 import Data.Word            (Word8)
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative  (Applicative(..))
+#endif
 import Control.Monad        (ap)
 import Control.Monad.Trans  (lift)
 import Control.Monad.ST

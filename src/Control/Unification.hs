@@ -1,10 +1,17 @@
 {-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
+
+-- HACK: in GHC 7.10, Haddock complains about unused imports; but,
+-- if we use CPP to avoid including them under Haddock, then it
+-- will fail!
+#ifdef __HADDOCK__
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+#endif
 ----------------------------------------------------------------
---                                                  ~ 2014.09.17
+--                                                  ~ 2015.03.29
 -- |
 -- Module      :  Control.Unification
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -83,7 +90,9 @@ import qualified Data.IntSet as IS
 import Data.Foldable
 import Data.Traversable
 import Control.Monad.Identity (Identity(..))
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
+#endif
 import Control.Monad        (MonadPlus(..))
 import Control.Monad.Trans  (MonadTrans(..))
 #if (MIN_VERSION_mtl(2,2,1))

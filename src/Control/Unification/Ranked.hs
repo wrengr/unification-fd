@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2014.09.17
+--                                                  ~ 2015.03.29
 -- |
 -- Module      :  Control.Unification.Ranked
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  highly experimental
@@ -54,7 +54,9 @@ import Prelude
 
 import qualified Data.IntMap as IM
 import Data.Traversable
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
+#endif
 import Control.Monad.Trans  (MonadTrans(..))
 #if (MIN_VERSION_mtl(2,2,1))
 -- aka: transformers(0,4,1)

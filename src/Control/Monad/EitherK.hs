@@ -2,8 +2,16 @@
 -- mtl:Control.Monad.{Error,Except}.MonadError
 {-# LANGUAGE CPP, Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
+
+-- HACK: in GHC 7.10, Haddock complains about unused imports; but,
+-- if we use CPP to avoid including them under Haddock, then it
+-- will fail!
+#ifdef __HADDOCK__
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+#endif
+
 ----------------------------------------------------------------
---                                                  ~ 2014.09.15
+--                                                  ~ 2015.03.29
 -- |
 -- Module      :  Control.Monad.EitherK
 -- License     :  BSD
@@ -33,8 +41,11 @@ module Control.Monad.EitherK
     , catchEitherKT
     ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid          (Monoid(..))
-import Control.Applicative  (Applicative(..), Alternative(..))
+import Control.Applicative  (Applicative(..))
+#endif
+import Control.Applicative  (Alternative(..))
 import Control.Monad        (MonadPlus(..), ap)
 import Control.Monad.Trans  (MonadTrans(..))
 #if (MIN_VERSION_mtl(2,2,1))

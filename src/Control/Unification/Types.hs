@@ -1,16 +1,26 @@
 -- Required for Show instances
 {-# LANGUAGE FlexibleContexts, UndecidableInstances #-}
+-- Required for cleaning up Haddock messages for GHC 7.10
+{-# LANGUAGE CPP #-}
 -- Required more generally
 {-# LANGUAGE MultiParamTypeClasses
            , FunctionalDependencies
            , FlexibleInstances
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
+
+-- HACK: in GHC 7.10, Haddock complains about unused imports; but,
+-- if we use CPP to avoid including them under Haddock, then it
+-- will fail!
+#ifdef __HADDOCK__
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+#endif
+
 ----------------------------------------------------------------
---                                                  ~ 2014.09.17
+--                                                  ~ 2015.03.29
 -- |
 -- Module      :  Control.Unification.Types
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -42,9 +52,14 @@ import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 import Data.Word               (Word8)
 import Data.Functor.Fixedpoint (Fix(..))
 import Data.Monoid             ((<>))
+#if __GLASGOW_HASKELL__ < 710
 import Data.Foldable           (Foldable(..))
+#endif
 import Data.Traversable        (Traversable(..))
-import Control.Applicative     (Applicative(..), (<$>), Alternative(..))
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative     (Applicative(..), (<$>))
+#endif
+import Control.Applicative     (Alternative(..))
 import Control.Monad           (MonadPlus(..))
 ----------------------------------------------------------------
 ----------------------------------------------------------------
