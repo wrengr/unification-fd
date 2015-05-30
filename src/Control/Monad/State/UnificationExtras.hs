@@ -4,7 +4,7 @@
 --                                                  ~ 2011.07.05
 -- |
 -- Module      :  Control.Monad.State.UnificationExtras
--- Copyright   :  Copyright (c) 2008--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2008--2015 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  perpetually unstable

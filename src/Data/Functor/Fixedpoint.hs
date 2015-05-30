@@ -25,7 +25,7 @@
 --                                                    2014.05.28
 -- |
 -- Module      :  Data.Functor.Fixedpoint
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  provisional

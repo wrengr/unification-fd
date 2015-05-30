@@ -1,3 +1,5 @@
+0.10.0.1 (2015-05-30):
+    - Moved VERSION to CHANGELOG
 0.10.0 (2015-03-29):
     - Cleaned up things to compile cleanly for GHC 7.10
     - Cleaned up deprecation warnings re Control.Monad.Error

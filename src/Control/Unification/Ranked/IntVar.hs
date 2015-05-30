@@ -7,7 +7,7 @@
 --                                                  ~ 2012.03.18
 -- |
 -- Module      :  Control.Unification.Ranked.IntVar
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  highly experimental
