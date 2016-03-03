@@ -1,0 +1,3 @@
+# Ignore all the Criterion-generated html
+test/bench2/* linguist-vendored=true
+test/tutorial/* linguist-vendored=false
