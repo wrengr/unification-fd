@@ -191,7 +191,7 @@ so I've bumped it up on my todo list.
 <dt
     ><a href="http://web.cecs.pdx.edu/~sheard/papers/generic.ps"
     >Tim Sheard (2001)</a></dt>
-<dd><i>Generic Unification via Two-Level Types and Paramterized Modules</i>,
+<dd><i>Generic Unification via Two-Level Types and Parameterized Modules</i>,
     Functional Pearl. ICFP.</dd>
 <dt
     ><a href="http://web.cecs.pdx.edu/~sheard/papers/JfpPearl.ps"
