@@ -16,6 +16,11 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 #endif
 
+#if MIN_VERSION_base(4,6,0)
+-- for the generic Unifiable instances
+{-# LANGUAGE TypeOperators, ScopedTypeVariables, DefaultSignatures #-}
+#endif
+
 ----------------------------------------------------------------
 --                                                  ~ 2015.03.29
 -- |
@@ -61,6 +66,13 @@ import Control.Applicative     (Applicative(..), (<$>))
 #endif
 import Control.Applicative     (Alternative(..))
 import Control.Monad           (MonadPlus(..))
+
+#if MIN_VERSION_base(4,6,0)
+-- for the generic Unifiable instances
+import GHC.Generics
+import Control.Monad           (guard, join)
+#endif
+
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
@@ -264,6 +276,13 @@ class (Traversable t) => Unifiable t where
     -- checked.
     zipMatch :: t a -> t a -> Maybe (t (Either a (a,a)))
 
+#if MIN_VERSION_base(4,6,0)
+    default zipMatch
+      :: (Generic1 t, Unifiable (Rep1 t))
+      => t a -> t a -> Maybe (t (Either a (a,a)))
+    zipMatch a b = to1 <$> zipMatch (from1 a) (from1 b)
+#endif
+
 
 -- | An implementation of unification variables. The 'Eq' requirement
 -- is to determine whether two variables are equal /as variables/,
@@ -373,4 +392,50 @@ class (BindingMonad t v m) =>
     incrementBindVar v t = do { incrementRank v ; bindVar v t }
 
 ----------------------------------------------------------------
+
+
+#if MIN_VERSION_base(4,6,0)
+-- for the generic Unifiable instances
+instance Unifiable V1 where
+  zipMatch a _ = Just $ Left <$> a
+
+instance Unifiable U1 where
+  zipMatch a _ = Just $ Left <$> a
+
+instance Unifiable Par1 where
+  zipMatch (Par1 a) (Par1 b) = Just . Par1 $ Right (a,b)
+
+instance Unifiable f => Unifiable (Rec1 f) where
+  zipMatch (Rec1 a) (Rec1 b) = Rec1 <$> zipMatch a b
+
+instance Eq c => Unifiable (K1 i c) where
+  zipMatch (K1 a) (K1 b) = do
+    guard (a == b)
+    return (K1 a)
+
+instance Unifiable f => Unifiable (M1 i c f) where
+  zipMatch (M1 a) (M1 b) = M1 <$> zipMatch a b
+
+instance (Unifiable f, Unifiable g) => Unifiable (f :+: g) where
+  zipMatch (L1 a) (L1 b) = L1 <$> zipMatch a b
+  zipMatch (R1 a) (R1 b) = R1 <$> zipMatch a b
+  zipMatch _ _ = Nothing
+
+instance (Unifiable f, Unifiable g) => Unifiable (f :*: g) where
+  zipMatch (a1 :*: a2) (b1 :*: b2) = (:*:) <$> zipMatch a1 b1 <*> zipMatch a2 b2
+
+instance (Unifiable f, Unifiable g) => Unifiable (f :.: g) where
+  zipMatch (Comp1 a) (Comp1 b) =
+    join
+    . traverse
+        ( fmap Comp1
+        . traverse
+            (either
+              (Just . fmap Left)
+              (uncurry zipMatch)
+            )
+        )
+    $ zipMatch a b
+#endif
+
 ----------------------------------------------------------- fin.
