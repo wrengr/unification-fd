@@ -213,7 +213,4 @@ so I've bumped it up on my todo list.
 * [Blog](http://winterkoninkje.dreamwidth.org/)
 * [Twitter](https://twitter.com/wrengr)
 * [Hackage](http://hackage.haskell.org/package/unification-fd)
-* [Darcs](http://code.haskell.org/~wren/unification-fd)
-* [GitHub (clone)](https://github.com/wrengr/unification-fd)
-* [Haddock (Darcs version)
-    ](http://code.haskell.org/~wren/unification-fd/dist/doc/html/unification-fd)
+* [GitHub](https://github.com/wrengr/unification-fd)
