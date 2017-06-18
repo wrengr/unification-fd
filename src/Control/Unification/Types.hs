@@ -2,8 +2,11 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances #-}
 -- Required for cleaning up Haddock messages for GHC 7.10
 {-# LANGUAGE CPP #-}
-#if MIN_VERSION_base(4,6,0)
--- for the generic Unifiable instances
+-- For the generic Unifiable instances. N.B., while the lower bound
+-- for 'Generic1' stuff is nominally base-4.6.0, those early versions
+-- lack a 'Traversable' instance, making them useless for us. Thus,
+-- the actual lower bound is GHC-8.0.2 aka base-4.9.1.0.
+#if MIN_VERSION_base(4,9,1)
 {-# LANGUAGE TypeOperators
            , ScopedTypeVariables
            , DefaultSignatures
@@ -67,7 +70,7 @@ import Control.Applicative     (Applicative(..), (<$>))
 import Control.Applicative     (Alternative(..))
 import Control.Monad           (MonadPlus(..))
 
-#if MIN_VERSION_base(4,6,0)
+#if MIN_VERSION_base(4,9,1)
 -- for the generic Unifiable instances
 import GHC.Generics
 #endif
@@ -278,7 +281,7 @@ class (Traversable t) => Unifiable t where
     -- checked.
     zipMatch :: t a -> t a -> Maybe (t (Either a (a,a)))
 
-#if MIN_VERSION_base(4,6,0)
+#if MIN_VERSION_base(4,9,1)
     default zipMatch
       :: (Generic1 t, Unifiable (Rep1 t))
       => t a -> t a -> Maybe (t (Either a (a,a)))
@@ -391,10 +394,9 @@ class (BindingMonad t v m) =>
     incrementBindVar v t = do { incrementRank v ; bindVar v t }
 
 ----------------------------------------------------------------
+-- Generic 'Unifiable' instances.
 
-
-#if MIN_VERSION_base(4,6,0)
--- for the generic Unifiable instances
+#if MIN_VERSION_base(4,9,1)
 instance Unifiable V1 where
     zipMatch a _ = Just $ Left <$> a
 

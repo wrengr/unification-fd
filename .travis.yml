@@ -37,6 +37,7 @@ matrix:
   - env: BUILD=cabal GHCVER=7.4.2 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.5.1.0
     compiler: ": #GHC 7.4.2"
     addons: {apt: {packages: [cabal-install-1.16,ghc-7.4.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  # N.B., the lower bound for Generic1 stuff is nominally base-4.6.0, but actually the traversable instances weren't added until GHC-8.0.2.
   - env: BUILD=cabal GHCVER=7.6.3 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.6.0.1
     compiler: ": #GHC 7.6.3"
     addons: {apt: {packages: [cabal-install-1.16,ghc-7.6.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
