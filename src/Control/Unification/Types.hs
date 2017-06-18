@@ -2,6 +2,13 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances #-}
 -- Required for cleaning up Haddock messages for GHC 7.10
 {-# LANGUAGE CPP #-}
+#if MIN_VERSION_base(4,6,0)
+-- for the generic Unifiable instances
+{-# LANGUAGE TypeOperators
+           , ScopedTypeVariables
+           , DefaultSignatures
+           #-}
+#endif
 -- Required more generally
 {-# LANGUAGE MultiParamTypeClasses
            , FunctionalDependencies
@@ -14,11 +21,6 @@
 -- will fail!
 #ifdef __HADDOCK__
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
-#endif
-
-#if MIN_VERSION_base(4,6,0)
--- for the generic Unifiable instances
-{-# LANGUAGE TypeOperators, ScopedTypeVariables, DefaultSignatures #-}
 #endif
 
 ----------------------------------------------------------------
@@ -426,6 +428,7 @@ instance (Unifiable f, Unifiable g) => Unifiable (f :.: g) where
     zipMatch (Comp1 fga) (Comp1 fgb) =
         Comp1 <$> (traverse step =<< zipMatch fga fgb)
         where
+        -- TODO: can we avoid mapping 'Left' all the way down?
         step (Left  gx)       = Just (Left <$> gx)
         step (Right (ga, gb)) = zipMatch ga gb
 #endif
