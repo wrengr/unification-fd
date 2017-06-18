@@ -24,8 +24,11 @@ Description:    Simple generic unification algorithms.
 -- No longer compiles with GHC-6.12.1 since Data.Monoid does not
 -- export (<>) in Control.Unification.Types. The backwards compatibility
 -- is not considered worth adding CPP noise...
+-- Last I checked, it also worked with 7.6.1 and 7.8.2; but I don't
+-- have TravisCI enforcing those.
 Tested-With:
-    GHC == 7.6.1, GHC == 7.6.3, GHC == 7.8.2
+    GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2
+
 Extra-source-files:
     AUTHORS, README, CHANGELOG
 Source-Repository head
