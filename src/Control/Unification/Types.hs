@@ -22,10 +22,10 @@
 #endif
 
 ----------------------------------------------------------------
---                                                  ~ 2015.03.29
+--                                                  ~ 2017.06.18
 -- |
 -- Module      :  Control.Unification.Types
--- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2017 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@community.haskell.org
 -- Stability   :  experimental
@@ -57,11 +57,9 @@ import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 import Data.Word               (Word8)
 import Data.Functor.Fixedpoint (Fix(..))
 import Data.Monoid             ((<>))
-#if __GLASGOW_HASKELL__ < 710
-import Data.Foldable           (Foldable(..))
-#endif
 import Data.Traversable        (Traversable(..))
 #if __GLASGOW_HASKELL__ < 710
+import Data.Foldable           (Foldable(..))
 import Control.Applicative     (Applicative(..), (<$>))
 #endif
 import Control.Applicative     (Alternative(..))
@@ -70,7 +68,6 @@ import Control.Monad           (MonadPlus(..))
 #if MIN_VERSION_base(4,6,0)
 -- for the generic Unifiable instances
 import GHC.Generics
-import Control.Monad           (guard, join)
 #endif
 
 ----------------------------------------------------------------
@@ -189,7 +186,7 @@ class Fallible t v a where
     -- should express the same context as if we had performed the
     -- occurs-check, in order for error messages to be intelligable.
     occursFailure :: v -> UTerm t v -> a
-    
+
     -- | The top-most level of the terms do not match (according
     -- to 'zipMatch'). In logic programming this should simply be
     -- treated as unification failure; in type checking this should
@@ -242,21 +239,21 @@ instance (Show (t (UTerm t v)), Show v) =>
 instance (Functor t) => Functor (UFailure t) where
     fmap f (OccursFailure v t) =
         OccursFailure (f v) (fmap f t)
-    
+
     fmap f (MismatchFailure tl tr) =
         MismatchFailure (fmap f <$> tl) (fmap f <$> tr)
 
 instance (Foldable t) => Foldable (UFailure t) where
     foldMap f (OccursFailure v t) =
         f v <> foldMap f t
-    
+
     foldMap f (MismatchFailure tl tr) =
         foldMap (foldMap f) tl <> foldMap (foldMap f) tr
 
 instance (Traversable t) => Traversable (UFailure t) where
     traverse f (OccursFailure v t) =
         OccursFailure <$> f v <*> traverse f t
-    
+
     traverse f (MismatchFailure tl tr) =
         MismatchFailure <$> traverse (traverse f) tl
                         <*> traverse (traverse f) tr
@@ -267,8 +264,11 @@ instance (Traversable t) => Traversable (UFailure t) where
 -- @Traversable@ constraint is there because we also require terms
 -- to be functors and require the distributivity of 'sequence' or
 -- 'mapM'.
+--
+-- /Updated: 0.11/ This class can now be derived so long as you
+-- have a 'Generic1' instance.
 class (Traversable t) => Unifiable t where
-    
+
     -- | Perform one level of equality testing for terms. If the
     -- term constructors are unequal then return @Nothing@; if they
     -- are equal, then return the one-level spine filled with
@@ -290,7 +290,7 @@ class (Traversable t) => Unifiable t where
 -- than having our own @eqVar@ method so that clients can make use
 -- of library functions which commonly assume 'Eq'.
 class (Eq v) => Variable v where
-    
+
     -- | Return a unique identifier for this variable, in order to
     -- support the use of visited-sets instead of occurs-checks.
     -- This function must satisfy the following coherence law with
@@ -315,25 +315,22 @@ class (Eq v) => Variable v where
 class (Unifiable t, Variable v, Applicative m, Monad m) =>
     BindingMonad t v m | m t -> v, v m -> t
     where
-    
+
     -- | Given a variable pointing to @UTerm t v@, return the
     -- term it's bound to, or @Nothing@ if the variable is unbound.
     lookupVar :: v -> m (Maybe (UTerm t v))
-    
-    
+
     -- | Generate a new free variable guaranteed to be fresh in
     -- @m@.
     freeVar :: m v
-    
-    
+
     -- | Generate a new variable (fresh in @m@) bound to the given
     -- term. The default implementation is:
     --
     -- > newVar t = do { v <- freeVar ; bindVar v t ; return v }
     newVar :: UTerm t v -> m v
     newVar t = do { v <- freeVar ; bindVar v t ; return v }
-    
-    
+
     -- | Bind a variable to a term, overriding any previous binding.
     bindVar :: v -> UTerm t v -> m ()
 
@@ -376,14 +373,14 @@ instance Monoid (Rank t v) where
 class (BindingMonad t v m) =>
     RankedBindingMonad t v m | m t -> v, v m -> t
     where
-    
+
     -- | Given a variable pointing to @UTerm t v@, return its
     -- rank and the term it's bound to.
     lookupRankVar :: v -> m (Rank t v)
-    
+
     -- | Increase the rank of a variable by one.
     incrementRank :: v -> m ()
-    
+
     -- | Bind a variable to a term and increment the rank at the
     -- same time. The default implementation is:
     --
@@ -397,45 +394,41 @@ class (BindingMonad t v m) =>
 #if MIN_VERSION_base(4,6,0)
 -- for the generic Unifiable instances
 instance Unifiable V1 where
-  zipMatch a _ = Just $ Left <$> a
+    zipMatch a _ = Just $ Left <$> a
 
 instance Unifiable U1 where
-  zipMatch a _ = Just $ Left <$> a
+    zipMatch a _ = Just $ Left <$> a
 
 instance Unifiable Par1 where
-  zipMatch (Par1 a) (Par1 b) = Just . Par1 $ Right (a,b)
+    zipMatch (Par1 a) (Par1 b) = Just . Par1 $ Right (a,b)
 
 instance Unifiable f => Unifiable (Rec1 f) where
-  zipMatch (Rec1 a) (Rec1 b) = Rec1 <$> zipMatch a b
+    zipMatch (Rec1 a) (Rec1 b) = Rec1 <$> zipMatch a b
 
 instance Eq c => Unifiable (K1 i c) where
-  zipMatch (K1 a) (K1 b) = do
-    guard (a == b)
-    return (K1 a)
+    zipMatch (K1 a) (K1 b)
+        | a == b    = Just (K1 a)
+        | otherwise = Nothing
 
 instance Unifiable f => Unifiable (M1 i c f) where
-  zipMatch (M1 a) (M1 b) = M1 <$> zipMatch a b
+    zipMatch (M1 a) (M1 b) = M1 <$> zipMatch a b
 
 instance (Unifiable f, Unifiable g) => Unifiable (f :+: g) where
-  zipMatch (L1 a) (L1 b) = L1 <$> zipMatch a b
-  zipMatch (R1 a) (R1 b) = R1 <$> zipMatch a b
-  zipMatch _ _ = Nothing
+    zipMatch (L1 a) (L1 b) = L1 <$> zipMatch a b
+    zipMatch (R1 a) (R1 b) = R1 <$> zipMatch a b
+    zipMatch _ _ = Nothing
 
 instance (Unifiable f, Unifiable g) => Unifiable (f :*: g) where
-  zipMatch (a1 :*: a2) (b1 :*: b2) = (:*:) <$> zipMatch a1 b1 <*> zipMatch a2 b2
+    zipMatch (a1 :*: a2) (b1 :*: b2) =
+        (:*:) <$> zipMatch a1 b1 <*> zipMatch a2 b2
 
 instance (Unifiable f, Unifiable g) => Unifiable (f :.: g) where
-  zipMatch (Comp1 a) (Comp1 b) =
-    join
-    . traverse
-        ( fmap Comp1
-        . traverse
-            (either
-              (Just . fmap Left)
-              (uncurry zipMatch)
-            )
-        )
-    $ zipMatch a b
+    zipMatch (Comp1 fga) (Comp1 fgb) =
+        Comp1 <$> (traverse step =<< zipMatch fga fgb)
+        where
+        step (Left  gx)       = Just (Left <$> gx)
+        step (Right (ga, gb)) = zipMatch ga gb
 #endif
 
+----------------------------------------------------------------
 ----------------------------------------------------------- fin.

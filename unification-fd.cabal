@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@community.haskell.org>   ~ 2015.05.30
+-- wren gayle romano <wren@community.haskell.org>   ~ 2017.06.18
 ----------------------------------------------------------------
 
 -- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
@@ -8,7 +8,7 @@ Cabal-Version:  >= 1.6
 Build-Type:     Simple
 
 Name:           unification-fd
-Version:        0.10.0.1
+Version:        0.11.0
 Stability:      experimental
 Homepage:       http://code.haskell.org/~wren/
 Author:         wren gayle romano
@@ -59,7 +59,7 @@ Library
                    , Control.Unification.Ranked
                    , Control.Unification.Ranked.STVar
                    , Control.Unification.Ranked.IntVar
-    
+
     Build-Depends:   logict       >= 0.4
                    -- Require a version of base with Applicative.
                    -- We refuse to do without it any longer.
@@ -69,12 +69,12 @@ Library
                    -- StateT. And we want stuff from monads-fd, so
                    -- we can't just fail over to the older mtl.
                    , mtl          >= 2.0
-    
+
     if flag(base4)
         Build-Depends: base >= 4 && < 5
     else
         Build-Depends: base < 4
-    
+
     if flag(splitBase)
         Build-depends: base >= 3.0, containers
     else
