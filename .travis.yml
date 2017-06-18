@@ -1,154 +1,201 @@
-# <http://docs.travis-ci.com/user/languages/haskell/>
-# <https://github.com/ZeusWPI/12Urenloop/blob/master/.travis.yml>
-# <http://docs.travis-ci.com/user/build-configuration/>
+# Use new container infrastructure to enable caching
+sudo: false
 
+# Do not choose a language; we provide our own build tools.
+language: generic
 
-# This language field gives us a "no language set" thing, but if
-# we leave it off then it goes through the trouble of installing
-# some default ruby environment. Having it here doesn't seem to
-# hurt; unlike what hvr/multi-ghc-travis suggests.
-language: haskell
+# Caching so the next build will be fast too.
+cache:
+  directories:
+  - $HOME/.ghc
+  - $HOME/.cabal
+  - $HOME/.stack
 
-# Alas, we need sudo to use hvr's PPA. So we can't use the
-# container-based infrastructure, and so we can't cache things :(
-# <http://docs.travis-ci.com/user/workers/container-based-infrastructure/>
-# <http://docs.travis-ci.com/user/caching/>
-#sudo: false
-#cache:
-#  directories:
-#    - $HOME/.cabal
-#    - $HOME/.ghc
-# We could consider signing up for Amazon S3 to do it...
-# <http://looprecur.com/blog/haskell-types-tests-and-fast-feedback/>
-
-
-# The only versions natively supported by TravisCI are (7.0, 7.4,
-# 7.6, 7.8). Other versions (6.8, 6.10, 6.12; 7.2; 7.10) are not
-# supported, and patchlevels cannot be secified.
-# <http://docs.travis-ci.com/user/ci-environment/#Haskell-VM-images>
+# The different configurations we want to test. We have BUILD=cabal which uses
+# cabal-install, and BUILD=stack which uses Stack. More documentation on each
+# of those below.
 #
-# So instead, we use <https://github.com/hvr/multi-ghc-travis>
-# However, note that these are only for Ubuntu Linux 12.04 LTS
-# 64-bit. Will have to come up with something fancy in order to
-# also test 32-bit, Windows, and OSX...
-env:
+# We set the compiler values here to tell Travis to use a different
+# cache file per set of arguments.
+#
+# If you need to have different apt packages for each combination in the
+# matrix, you can use a line such as:
+#     addons: {apt: {packages: [libfcgi-dev,libgmp-dev]}}
+matrix:
+  include:
+  # We grab the appropriate GHC and cabal-install versions from hvr's PPA. See:
+  #     <https://github.com/hvr/multi-ghc-travis>
   # The base/bytestring library versions are from:
-  # <https://ghc.haskell.org/trac/ghc/wiki/Commentary/Libraries/VersionHistory>
-  # This version doesn't recognize -XHaskell98, used by QuickCheck-2.8.1
-  #- CABALVER=1.16 GHCVER=6.12.3
-  # These versions don't recognize -XSafe, used by smallcheck-1.1.1
-  #- CABALVER=1.16 GHCVER=7.0.1 # base-4.3.0.0, bytestring-0.9.1.8
-  #- CABALVER=1.16 GHCVER=7.0.2 # base-4.3.1.0, bytestring-0.9.1.10
-  #- CABALVER=1.16 GHCVER=7.0.3 # --''--
-  #- CABALVER=1.16 GHCVER=7.0.4 # --''--
-  # These versions error on
-  # smallcheck-1.1.1:Test/SmallCheck/Series.hs:199:1:
-  #     The multi-parameter class `Serial' cannot have generic methods
-  #     In the class declaration for `Serial'
-  #- CABALVER=1.16 GHCVER=7.2.1 # base-4.4.0.0, bytestring-0.9.2.0
-  #- CABALVER=1.16 GHCVER=7.2.2 # base-4.4.1.0, --''--
-  #
-  # Coincidentally, base-4.5.0.0 is the lower bound for Tasty :)
-  - CABALVER=1.16 GHCVER=7.4.1  # base-4.5.0.0, bytestring-0.9.2.1
-  - CABALVER=1.16 GHCVER=7.4.2  # base-4.5.1.0, --''--
-  - CABALVER=1.16 GHCVER=7.6.1  # base-4.6.0.0, bytestring-0.10.0.0
-  - CABALVER=1.16 GHCVER=7.6.2  # base-4.6.0.1, bytestring-0.10.0.2
-  - CABALVER=1.18 GHCVER=7.6.3  # --''--
-  - CABALVER=1.18 GHCVER=7.8.1  # base-4.7.0.0, bytestring-0.10.4.0
-  - CABALVER=1.18 GHCVER=7.8.2  # --''--
-  - CABALVER=1.18 GHCVER=7.8.3  # base-4.7.0.1, --''--
-  - CABALVER=1.18 GHCVER=7.8.4  # base-4.7.0.2, --''--
-  - CABALVER=1.22 GHCVER=7.10.1 # base-4.8.0.0, bytestring-0.10.6.0
-  - CABALVER=1.22 GHCVER=7.10.2 # (pre-release snapshot)
+  #     <https://ghc.haskell.org/trac/ghc/wiki/Commentary/Libraries/VersionHistory>
+  #- env: BUILD=cabal GHCVER=7.0.4 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.3.1.0
+  #  compiler: ": #GHC 7.0.4"
+  #  addons: {apt: {packages: [cabal-install-1.16,ghc-7.0.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  #- env: BUILD=cabal GHCVER=7.2.2 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.4.1.0
+  #  compiler: ": #GHC 7.2.2"
+  #  addons: {apt: {packages: [cabal-install-1.16,ghc-7.2.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  # N.B., the lower bound for Tasty is base-4.5.0.0
+  - env: BUILD=cabal GHCVER=7.4.2 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.5.1.0
+    compiler: ": #GHC 7.4.2"
+    addons: {apt: {packages: [cabal-install-1.16,ghc-7.4.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=7.6.3 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.6.0.1
+    compiler: ": #GHC 7.6.3"
+    addons: {apt: {packages: [cabal-install-1.16,ghc-7.6.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=7.8.4 CABALVER=1.18 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.7.0.2
+    compiler: ": #GHC 7.8.4"
+    addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=7.10.3 CABALVER=1.22 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.8.2.0
+    compiler: ": #GHC 7.10.3"
+    addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.0.2 CABALVER=1.24 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.9.1.0
+    compiler: ": #GHC 8.0.2"
+    addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
 
+  # Build with the newest GHC and cabal-install. This is an accepted failure,
+  # see below.
+  - env: BUILD=cabal GHCVER=head  CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
+    compiler: ": #GHC HEAD"
+    addons: {apt: {packages: [cabal-install-head,ghc-head,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+
+  # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
+  # variable, such as using --stack-yaml to point to a different file.
+  - env: BUILD=stack ARGS=""
+    compiler: ": #stack default"
+    addons: {apt: {packages: [libgmp-dev]}}
+
+  - env: BUILD=stack ARGS="--resolver lts-2"
+    compiler: ": #stack 7.8.4"
+    addons: {apt: {packages: [libgmp-dev]}}
+
+  - env: BUILD=stack ARGS="--resolver lts-3"
+    compiler: ": #stack 7.10.2"
+    addons: {apt: {packages: [libgmp-dev]}}
+
+  - env: BUILD=stack ARGS="--resolver lts-6"
+    compiler: ": #stack 7.10.3"
+    addons: {apt: {packages: [libgmp-dev]}}
+
+  - env: BUILD=stack ARGS="--resolver lts-7"
+    compiler: ": #stack 8.0.1"
+    addons: {apt: {packages: [libgmp-dev]}}
+
+  - env: BUILD=stack ARGS="--resolver lts-8"
+    compiler: ": #stack 8.0.2"
+    addons: {apt: {packages: [libgmp-dev]}}
+
+  # Nightly builds are allowed to fail
+  - env: BUILD=stack ARGS="--resolver nightly"
+    compiler: ": #stack nightly"
+    addons: {apt: {packages: [libgmp-dev]}}
+
+  # Build on macOS in addition to Linux
+  - env: BUILD=stack ARGS=""
+    compiler: ": #stack default osx"
+    os: osx
+
+  # Travis includes an macOS which is incompatible with GHC 7.8.4
+  #- env: BUILD=stack ARGS="--resolver lts-2"
+  #  compiler: ": #stack 7.8.4 osx"
+  #  os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-3"
+    compiler: ": #stack 7.10.2 osx"
+    os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-6"
+    compiler: ": #stack 7.10.3 osx"
+    os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-7"
+    compiler: ": #stack 8.0.1 osx"
+    os: osx
+
+  - env: BUILD=stack ARGS="--resolver lts-8"
+    compiler: ": #stack 8.0.2 osx"
+    os: osx
+
+  - env: BUILD=stack ARGS="--resolver nightly"
+    compiler: ": #stack nightly osx"
+    os: osx
+
+  allow_failures:
+  - env: BUILD=cabal GHCVER=head  CABALVER=head HAPPYVER=1.19.5 ALEXVER=3.1.7
+  - env: BUILD=stack ARGS="--resolver nightly"
 
 before_install:
-  # If $GHCVER is the one travis has, don't bother reinstalling it.
-  # We can also have faster builds by installing some libraries with
-  # `apt`. If it isn't, install the GHC we want from hvr's PPA along
-  # with cabal-1.18. This trick was taken from lens
-  # cf., <https://github.com/ekmett/lens/blob/master/.travis.yml>
-  - |
-    if [ $GHCVER = `ghc --numeric-version` ]; then
-      # Try installing some of the build-deps with apt-get for speed.
-      travis/cabal-apt-install --enable-tests $MODE
-      export CABAL=cabal
-    else
-      # Install the GHC we want from hvr's PPA
-      travis_retry sudo add-apt-repository -y ppa:hvr/ghc
-      travis_retry sudo apt-get update
-      travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER
-      export CABAL=cabal-$CABALVER
-      export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
-    fi
+# Using compiler above sets CC to an invalid value, so unset it
+- unset CC
 
-  # The standard configuration for cabal-1.16 gives a horribly
-  # obscure error message because it cannot parse the "jobs: $ncpus"
-  # line that's there by default. So we're fixing that.
-  # cf., <https://ghc.haskell.org/trac/ghc/ticket/7324>
-  - |
-    if [ -e ~/.cabal/config ]; then
-        echo 'Fixing the ~/.cabal/config for Cabal-1.16'
-        mv ~/.cabal/config{,.bak} && grep -v '^[[:space:]]*jobs:' ~/.cabal/config.bak > ~/.cabal/config
-        # TODO: Try to remove these other warnings?
-        # Warning: /home/travis/.cabal/config: Unrecognized stanza on line 117
-        # /home/travis/.cabal/config: Unrecognized stanza on line 89
-        # /home/travis/.cabal/config: Unrecognized field extra-prog-path on line 37
-    fi
+# We want to always allow newer versions of packages when building on GHC HEAD
+- CABALARGS=""
+- if [ "x$GHCVER" = "xhead" ]; then CABALARGS=--allow-newer; fi
 
-  # Uncomment this line whenever hackage is down.
-  #- mkdir -p ~/.cabal && cp travis/config ~/.cabal/config && $CABAL update
-  - $CABAL update
+# Download and unpack the stack executable
+- export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin:/opt/alex/$ALEXVER/bin:/opt/happy/$HAPPYVER/bin:$HOME/.cabal/bin:$PATH
+- mkdir -p ~/.local/bin
+- |
+  if [ `uname` = "Darwin" ]
+  then
+    travis_retry curl --insecure -L https://www.stackage.org/stack/osx-x86_64 | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
+  else
+    travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+  fi
 
-  # TODO: for use with <https://github.com/guillaume-nargeot/hpc-coveralls>
-  # TODO: figure out how to do the appropriate version test...
-  #- |
-  #  if [ $CABALVER -ge 1.22 ]; then
-  #      export ENABLE_COVERAGE='--enable-coverage'
-  #  else
-  #      export ENABLE_COVERAGE='--enable-library-coverage'
-  #  fi
+  # Use the more reliable S3 mirror of Hackage
+  mkdir -p $HOME/.cabal
+  echo 'remote-repo: hackage.haskell.org:http://hackage.fpcomplete.com/' > $HOME/.cabal/config
+  echo 'remote-repo-cache: $HOME/.cabal/packages' >> $HOME/.cabal/config
 
+  if [ "$CABALVER" != "1.16" ]
+  then
+    echo 'jobs: $ncpus' >> $HOME/.cabal/config
+  fi
 
 install:
-  - $CABAL --version
-  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
-  - travis_retry $CABAL update
-  # TODO: make the --enable-benchmarks flag work
-  - $CABAL install --only-dependencies --enable-tests
-  # TODO: make the --enable-benchmarks flag work
-  - $CABAL configure -v2 --enable-tests
+- echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+- if [ -f configure.ac ]; then autoreconf -i; fi
+- |
+  set -ex
+  case "$BUILD" in
+    stack)
+      stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
+      ;;
+    cabal)
+      cabal --version
+      travis_retry cabal update
 
+      # Get the list of packages from the stack.yaml file
+      PACKAGES=$(stack --install-ghc query locals | grep '^ *path' | sed 's@^ *path:@@')
 
-# Here starts the actual work to be performed for the package under
-# test; any command which exits with a non-zero exit code causes
-# the build to fail.
+      cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+      ;;
+  esac
+  set +ex
+
 script:
-  - $CABAL build
-  - $CABAL test --show-details=always
-  # Not passing --hyperlink-source, unless we want to install hscolour>=1.8
-  # TODO: how to get this to throw an error if we don't have 100% coverage?
-  - $CABAL haddock
-  # We ignore the return result of check, because it will warn about
-  # us demanding -O2 and there's no way to tell it that yes we
-  # really do want that.
-  - $CABAL check || true
-  # tests that a source-distribution can be generated
-  - $CABAL sdist
-  # check that the generated source-distribution can be built & installed
-  - |
-    export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}')
-    cd dist/
-    if [ -f "$SRC_TGZ" ]; then
-       cabal install --force-reinstalls "$SRC_TGZ"
-    else
-       echo "expected '$SRC_TGZ' not found"
-       exit 1
-    fi
+- |
+  set -ex
+  case "$BUILD" in
+    stack)
+      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
+      ;;
+    cabal)
+      cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
 
-# TODO: additional checks:
-# * Check for code-smell via hlint
-# * Check for build-depends excluding latest package versions with packdeps
-# * Check for unused build-depends with packunused
-# * Check for 100% Haddock coverage
-# * Check for trailing whitespaces and/or tabs in source files
+      ORIGDIR=$(pwd)
+      for dir in $PACKAGES
+      do
+        cd $dir
+        cabal check || [ "$CABALVER" == "1.16" ]
+        cabal sdist
+        PKGVER=$(cabal info . | awk '{print $2;exit}')
+        SRC_TGZ=$PKGVER.tar.gz
+        cd dist
+        tar zxfv "$SRC_TGZ"
+        cd "$PKGVER"
+        cabal configure --enable-tests
+        cabal build
+        cd $ORIGDIR
+      done
+      ;;
+  esac
+  set +ex
