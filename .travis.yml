@@ -158,6 +158,7 @@ install:
   set -ex
   case "$BUILD" in
     stack)
+      stack init
       stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
       ;;
     cabal)
