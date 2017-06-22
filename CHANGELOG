@@ -3,6 +3,9 @@
       (h/t/ Roman Cheplyaka)
     - Removed the Alternative/MonadPlus instances for UTerm, because
       they're unlawful.
+    - Added NOINLINE for Fix's Eq and Ord instances, to avoid an
+      inliner bug affecting GHC 8.0.1 and 8.0.2 (fixed in 8.0.3)
+      <https://ghc.haskell.org/trac/ghc/ticket/13081>
 0.10.0.1 (2015-05-30):
     - Moved VERSION to CHANGELOG
 0.10.0 (2015-03-29):

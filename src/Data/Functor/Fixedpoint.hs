@@ -2,6 +2,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- For 'build' and 'hmap'
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE CPP #-}
 
 -- Unfortunately GHC < 6.10 needs -fglasgow-exts in order to actually
 -- parse RULES (see -ddump-rules); the -frewrite-rules flag only
@@ -95,6 +96,12 @@ instance (Show (f (Fix f))) => Show (Fix f) where
 instance (Eq (f (Fix f))) => Eq (Fix f) where
     Fix x == Fix y  =  x == y
     Fix x /= Fix y  =  x /= y
+-- BUGFIX: Inlining causes a code explosion on GHC 8.0.1 and 8.0.2, but
+-- will be fixed in 8.0.3. <https://ghc.haskell.org/trac/ghc/ticket/13081>
+#if __GLASGOW_HASKELL__ == 800
+    {-# NOINLINE (==) #-}
+    {-# NOINLINE (/=) #-}
+#endif
 
 instance (Ord (f (Fix f))) => Ord (Fix f) where
     Fix x `compare` Fix y  =  x `compare` y
@@ -104,6 +111,17 @@ instance (Ord (f (Fix f))) => Ord (Fix f) where
     Fix x <  Fix y         =  x <  y
     Fix x `max` Fix y      =  Fix (max x y)
     Fix x `min` Fix y      =  Fix (min x y)
+-- BUGFIX: Inlining causes a code explosion on GHC 8.0.1 and 8.0.2, but
+-- will be fixed in 8.0.3. <https://ghc.haskell.org/trac/ghc/ticket/13081>
+#if __GLASGOW_HASKELL__ == 800
+    {-# NOINLINE compare #-}
+    {-# NOINLINE (>) #-}
+    {-# NOINLINE (>=) #-}
+    {-# NOINLINE (<=) #-}
+    {-# NOINLINE (<) #-}
+    {-# NOINLINE max #-}
+    {-# NOINLINE min #-}
+#endif
 
 ----------------------------------------------------------------
 
