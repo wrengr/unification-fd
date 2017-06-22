@@ -19,7 +19,8 @@
 
 -- NOTE #1: on GHC >= 7.8 we need to eta expand rules to avoid a
 -- warning about the fact that the rule may never fire because (.)
--- might inline first...
+-- might inline first. On GHC >= 8.0 it's even more aggressive about
+-- these warnings.
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
@@ -53,7 +54,7 @@
 module Data.Functor.Fixedpoint
     (
     -- * Fixed point operator for functors
-      Fix(..)
+      Fix(..), unFix
     -- * Maps
     , hmap,  hmapM
     , ymap,  ymapM
@@ -85,7 +86,14 @@ import Data.Traversable
 -- and operations over them without the type checker complaining
 -- about infinite types. The 'Show' instance doesn't print the
 -- constructors, for legibility.
-newtype Fix f = Fix { unFix :: f (Fix f) }
+newtype Fix f = Fix (f (Fix f))
+
+-- Must not phrase this as a record field, or else we can't give
+-- it an inline pragma, which in turn means some of the rules will
+-- complain about it being inlined too soon.
+unFix :: Fix f -> f (Fix f)
+unFix (Fix f) = f
+{-# INLINE [0] unFix #-}
 
 -- This requires UndecidableInstances because the context is larger
 -- than the head and so GHC can't guarantee that the instance safely
@@ -133,8 +141,9 @@ hmap eps = ana (eps . unFix)
     -- == cata (Fix . eps) -- But the anamorphism is a better producer.
 
 {-# RULES
-"hmap id"
-        hmap id = id
+-- Alas, rule won't fire because 'id' may inline too early.
+-- "hmap id"
+--        hmap id = id
 
 -- cf., NOTE #1
 "hmap-compose"
@@ -151,8 +160,9 @@ hmapM
 hmapM eps = anaM (eps . unFix)
 
 {-# RULES
-"hmapM return"
-    hmapM return = return
+-- Alas, rule won't fire because 'return' may inline too early.
+-- "hmapM return"
+--     hmapM return = return
 
 -- "hmapM-compose"
 --     forall eps eta.
@@ -168,8 +178,9 @@ ymap :: (Functor f) => (Fix f -> Fix f) -> Fix f -> Fix f
 ymap f = Fix . fmap f . unFix
 
 {-# RULES
-"ymap id"
-        ymap id = id
+-- Alas, rule won't fire because 'id' may inline too early.
+-- "ymap id"
+--         ymap id = id
 
 -- cf., NOTE #1
 "ymap-compose"
@@ -185,8 +196,9 @@ ymapM :: (Traversable f, Monad m)
 ymapM f = liftM Fix . mapM f . unFix
 
 {-# RULES
-"ymapM id"
-        ymapM return = return
+-- Alas, rule won't fire because 'return' may inline too early.
+-- "ymapM id"
+--         ymapM return = return
 
 -- "ymapM-compose"
 --     forall f g.
@@ -229,7 +241,7 @@ cata phi = self
 -- cf., NOTE #1
 "cata-compose"
     forall (eps :: forall a. f a -> g a) phi x.
-        cata phi (cata (Fix . eps) x) = cata (phi . eps) x
+        cata phi (cata (\y -> Fix (eps y)) x) = cata (phi . eps) x
     #-}
 
 -- We can't really use this one because of the implication constraint
@@ -253,8 +265,9 @@ cataM phiM = self
 
 -- TODO: other rules for cataM
 {-# RULES
-"cataM-refl"
-        cataM (return . Fix) = return
+-- Alas, rule won't fire because 'return' may inline too early.
+-- "cataM-refl"
+--         cataM (return . Fix) = return
     #-}
 
 
@@ -297,7 +310,7 @@ ana psi = self
 -- cf., NOTE #1
 "ana-compose"
     forall (eps :: forall a. f a -> g a) psi x.
-        ana (eps . unFix) (ana psi x) = ana (eps . psi) x
+        ana (\y -> eps (unFix y)) (ana psi x) = ana (eps . psi) x
     #-}
 
 -- We can't really use this because of the implication constraint
