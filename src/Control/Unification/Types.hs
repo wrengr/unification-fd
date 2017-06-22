@@ -27,7 +27,7 @@
 #endif
 
 ----------------------------------------------------------------
---                                                  ~ 2017.06.18
+--                                                  ~ 2017.06.21
 -- |
 -- Module      :  Control.Unification.Types
 -- Copyright   :  Copyright (c) 2007--2017 wren gayle romano
@@ -67,9 +67,6 @@ import Data.Traversable        (Traversable(..))
 import Data.Foldable           (Foldable(..))
 import Control.Applicative     (Applicative(..), (<$>))
 #endif
-import Control.Applicative     (Alternative(..))
-import Control.Monad           (MonadPlus(..))
-
 #if MIN_VERSION_base(4,9,1)
 -- for the generic Unifiable instances
 import GHC.Generics
@@ -115,8 +112,10 @@ instance (Traversable t) => Traversable (UTerm t) where
     traverse f (UVar  v) = UVar  <$> f v
     traverse f (UTerm t) = UTerm <$> traverse (traverse f) t
 
--- Does this even make sense for UTerm? It'd mean (a->b) is a
--- variable type...
+-- Does this even make sense for UTerm? Having variables of function
+-- type for @(<*>)@ is very strange; but even if we rephrase things
+-- with 'liftA2', we'd still be forming new variables as a function
+-- of two old variables, which is still odd...
 instance (Functor t) => Applicative (UTerm t) where
     pure                  = UVar
     UVar  a  <*> UVar  b  = UVar  (a b)
@@ -131,15 +130,24 @@ instance (Functor t) => Monad (UTerm t) where
     UVar  v >>= f = f v
     UTerm t >>= f = UTerm ((>>= f) <$> t)
 
--- This really doesn't make sense for UTerm...
+{-
+-- TODO: how to fill in the missing cases to make these work? In
+-- full generality we'd need @Monoid v@ and for it to be a two-sided
+-- action over @Alternative t@.
 instance (Alternative t) => Alternative (UTerm t) where
-    empty   = UTerm empty
-    a <|> b = UTerm (pure a <|> pure b)
+    empty               = UTerm empty
+    UVar  x <|> UVar  y =
+    UVar  x <|> UTerm b =
+    UTerm a <|> UVar  y =
+    UTerm a <|> UTerm b = UTerm (a <|> b)
 
--- This really doesn't make sense for UTerm...
 instance (Functor t, MonadPlus t) => MonadPlus (UTerm t) where
-    mzero       = UTerm mzero
-    a `mplus` b = UTerm (return a `mplus` return b)
+    mzero                   = UTerm mzero
+    UVar  x `mplus` UVar  y =
+    UVar  x `mplus` UTerm b =
+    UTerm a `mplus` UVar  y =
+    UTerm a `mplus` UTerm b = UTerm (a `mplus` b)
+-}
 
 -- There's also MonadTrans, MonadWriter, MonadReader, MonadState,
 -- MonadError, MonadCont; which make even less sense for us. See
