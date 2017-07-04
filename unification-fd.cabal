@@ -30,7 +30,7 @@ Tested-With:
     GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2
 
 Extra-source-files:
-    AUTHORS, README, CHANGELOG
+    AUTHORS, README.md, CHANGELOG
 Source-Repository head
     Type:     darcs
     Location: http://community.haskell.org/~wren/unification-fd
