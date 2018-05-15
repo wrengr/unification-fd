@@ -71,6 +71,7 @@ module Control.Unification
     , getFreeVarsAll
     , applyBindingsAll
     , freshenAll
+    , freshenAndFree
     -- subsumesAll -- to ensure that there's a single coherent substitution allowing the schema to subsume all the terms in some collection.
 
     -- * Helper functions
@@ -385,6 +386,48 @@ freshenAll ts0 = evalStateT (mapM loop ts0) IM.empty
                                 v' <- lift . lift $ UVar <$> newVar t'
                                 modify' $ IM.insert i (Right v')
                                 return v'
+
+-- | Like 'freshenAll', but also ignore any existing bindings affecting the
+-- terms.
+--
+-- This is useful when the terms come from a different binding environment
+-- and have had their bindings applied.
+--
+-- Then 'freshenAndFree' ensures that no free variables are or will be
+-- accidentally captured in the current environment.
+--
+-- For instance, let's say you inferred the type of @id = λx.x@ as @UVar 1 -> UVar 1@.
+-- You may store this type in an interface file of some kind.
+-- Next time your program is run, it is asked to typecheck another term,
+-- which involves @id@. From the interface file you find that @id@ has type
+-- @UVar 1 -> UVar 1@, but what does @UVar 1@ refer to? It is supposed to
+-- be free (because the type of @id@ had its bindings applied before
+-- exporting, see 'applyBindings'). But in the current binding environment,
+-- @UVar 1@ may be already used to refer to something else, resulting in
+-- a variable capture. Applying 'freshenAndFree' returns an
+-- alpha-equivalent term, say, @UVar 17 -> UVar 17@, such that 17 is
+-- a fresh free variable in the current environment.
+freshenAndFree
+    ::  ( BindingMonad t v m
+        , Traversable s
+        )
+    => s (UTerm t v)        -- ^
+    -> m (s (UTerm t v)) -- ^
+freshenAndFree ts0 = evalStateT (mapM loop ts0) IM.empty
+    where
+    loop t0 = do
+        t0 <- lift $ semiprune t0
+        case t0 of
+            UTerm t -> UTerm <$> mapM loop t
+            UVar  v -> do
+                let i = getVarID v
+                seenVars <- get
+                case IM.lookup i seenVars of
+                    Just t -> return t
+                    Nothing -> do
+                        v' <- lift $ UVar <$> freeVar
+                        put $! IM.insert i v' seenVars
+                        return v'
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
