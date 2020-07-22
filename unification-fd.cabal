@@ -72,6 +72,7 @@ Library
                    -- StateT. And we want stuff from monads-fd, so
                    -- we can't just fail over to the older mtl.
                    , mtl          >= 2.0
+                   , data-fix     >= 0.3 && < 0.4
 
     if flag(base4)
         Build-Depends: base >= 4 && < 5

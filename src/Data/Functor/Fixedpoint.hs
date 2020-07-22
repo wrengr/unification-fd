@@ -72,64 +72,10 @@ module Data.Functor.Fixedpoint
 import Prelude          hiding (mapM, sequence)
 import Control.Monad    hiding (mapM, sequence)
 import Data.Traversable
+import Data.Fix         (Fix (..))
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
-
--- | @Fix f@ is a fix point of the 'Functor' @f@. Note that in
--- Haskell the least and greatest fixed points coincide, so we don't
--- need to distinguish between @Mu f@ and @Nu f@. This type used
--- to be called @Y@, hence the naming convention for all the @yfoo@
--- functions.
---
--- This type lets us invoke category theory to get recursive types
--- and operations over them without the type checker complaining
--- about infinite types. The 'Show' instance doesn't print the
--- constructors, for legibility.
-newtype Fix f = Fix (f (Fix f))
-
--- Must not phrase this as a record field, or else we can't give
--- it an inline pragma, which in turn means some of the rules will
--- complain about it being inlined too soon.
-unFix :: Fix f -> f (Fix f)
-unFix (Fix f) = f
-{-# INLINE [0] unFix #-}
-
--- This requires UndecidableInstances because the context is larger
--- than the head and so GHC can't guarantee that the instance safely
--- terminates. It is in fact safe, however.
-instance (Show (f (Fix f))) => Show (Fix f) where
-    showsPrec p (Fix f) = showsPrec p f
-
-instance (Eq (f (Fix f))) => Eq (Fix f) where
-    Fix x == Fix y  =  x == y
-    Fix x /= Fix y  =  x /= y
--- BUGFIX: Inlining causes a code explosion on GHC 8.0.1 and 8.0.2, but
--- will be fixed in 8.0.3. <https://ghc.haskell.org/trac/ghc/ticket/13081>
-#if __GLASGOW_HASKELL__ == 800
-    {-# NOINLINE (==) #-}
-    {-# NOINLINE (/=) #-}
-#endif
-
-instance (Ord (f (Fix f))) => Ord (Fix f) where
-    Fix x `compare` Fix y  =  x `compare` y
-    Fix x >  Fix y         =  x >  y
-    Fix x >= Fix y         =  x >= y
-    Fix x <= Fix y         =  x <= y
-    Fix x <  Fix y         =  x <  y
-    Fix x `max` Fix y      =  Fix (max x y)
-    Fix x `min` Fix y      =  Fix (min x y)
--- BUGFIX: Inlining causes a code explosion on GHC 8.0.1 and 8.0.2, but
--- will be fixed in 8.0.3. <https://ghc.haskell.org/trac/ghc/ticket/13081>
-#if __GLASGOW_HASKELL__ == 800
-    {-# NOINLINE compare #-}
-    {-# NOINLINE (>) #-}
-    {-# NOINLINE (>=) #-}
-    {-# NOINLINE (<=) #-}
-    {-# NOINLINE (<) #-}
-    {-# NOINLINE max #-}
-    {-# NOINLINE min #-}
-#endif
 
 ----------------------------------------------------------------
 
