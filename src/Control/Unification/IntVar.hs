@@ -140,7 +140,7 @@ instance (Monad m) => MonadState (IntBindingState t) (IntBindingT t m) where
 -- provided that logict is compiled against the same mtl/monads-fd
 -- we're getting StateT from. Otherwise we'll get a bunch of warnings
 -- here.
-instance (MonadLogic m) => MonadLogic (IntBindingT t m) where
+instance (MonadLogic m, MonadPlus m) => MonadLogic (IntBindingT t m) where
     msplit (IBT m) = IBT (coerce `liftM` msplit m)
         where
         coerce Nothing        = Nothing
