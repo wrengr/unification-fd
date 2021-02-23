@@ -1,3 +1,9 @@
+##### Warning:
+# Travis-CI has changed its pricing model and will soon be infeasible
+# for OSS projects. This project needs to migrate to GitHub-Actions
+# instead; cf., <https://github.com/ekmett/lens/pull/954>
+#####
+
 # Use new container infrastructure to enable caching
 sudo: false
 
@@ -27,12 +33,6 @@ matrix:
   #     <https://github.com/hvr/multi-ghc-travis>
   # The base/bytestring library versions are from:
   #     <https://ghc.haskell.org/trac/ghc/wiki/Commentary/Libraries/VersionHistory>
-  #- env: BUILD=cabal GHCVER=7.0.4 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.3.1.0
-  #  compiler: ": #GHC 7.0.4"
-  #  addons: {apt: {packages: [cabal-install-1.16,ghc-7.0.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
-  #- env: BUILD=cabal GHCVER=7.2.2 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.4.1.0
-  #  compiler: ": #GHC 7.2.2"
-  #  addons: {apt: {packages: [cabal-install-1.16,ghc-7.2.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
   # N.B., the lower bound for Tasty is base-4.5.0.0
   - env: BUILD=cabal GHCVER=7.4.2 CABALVER=1.16 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.5.1.0
     compiler: ": #GHC 7.4.2"
@@ -50,6 +50,67 @@ matrix:
   - env: BUILD=cabal GHCVER=8.0.2 CABALVER=1.24 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.9.1.0
     compiler: ": #GHC 8.0.2"
     addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  #
+  # BUG: Not sure about the appropriate versions of Happy and Alex from here on...
+  - env: BUILD=cabal GHCVER=8.2.1 CABALVER=2.0.0.2 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.10.0.0
+    compiler: ": #GHC 8.2.1"
+    addons: {apt: {packages: [cabal-install-2.0.0.2,ghc-8.2.1,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.2.2 CABALVER=2.0.1.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.10.1.0
+    compiler: ": #GHC 8.2.2"
+    addons: {apt: {packages: [cabal-install-2.0.1.0,ghc-8.2.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  #
+  - env: BUILD=cabal GHCVER=8.4.1 CABALVER=2.2.0.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.11.0.0
+    compiler: ": #GHC 8.4.1"
+    addons: {apt: {packages: [cabal-install-2.2.0.0,ghc-8.4.1,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.4.2 CABALVER=2.2.0.1 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.11.1.0
+    compiler: ": #GHC 8.4.2"
+    addons: {apt: {packages: [cabal-install-2.2.0.1,ghc-8.4.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.4.3 CABALVER=2.2.0.1 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.11.1.0
+    compiler: ": #GHC 8.4.3"
+    addons: {apt: {packages: [cabal-install-2.2.0.1,ghc-8.4.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.4.4 CABALVER=2.2.0.1 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.11.1.0
+    compiler: ": #GHC 8.4.4"
+    addons: {apt: {packages: [cabal-install-2.2.0.1,ghc-8.4.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  #
+  - env: BUILD=cabal GHCVER=8.6.1 CABALVER=2.4.0.1 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.12.0.0
+    compiler: ": #GHC 8.6.1"
+    addons: {apt: {packages: [cabal-install-2.4.0.1,ghc-8.6.1,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.6.2 CABALVER=2.4.0.1 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.12.0.0
+    compiler: ": #GHC 8.6.2"
+    addons: {apt: {packages: [cabal-install-2.4.0.1,ghc-8.6.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.6.3 CABALVER=2.4.0.1 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.12.0.0
+    compiler: ": #GHC 8.6.3"
+    addons: {apt: {packages: [cabal-install-2.4.0.1,ghc-8.6.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.6.4 CABALVER=2.4.0.1 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.12.0.0
+    compiler: ": #GHC 8.6.4"
+    addons: {apt: {packages: [cabal-install-2.4.0.1,ghc-8.6.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.6.5 CABALVER=2.4.0.1 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.12.0.0
+    compiler: ": #GHC 8.6.5"
+    addons: {apt: {packages: [cabal-install-2.4.0.1,ghc-8.6.5,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  #
+  - env: BUILD=cabal GHCVER=8.8.1 CABALVER=3.0.0.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.13.0.0
+    compiler: ": #GHC 8.8.1"
+    addons: {apt: {packages: [cabal-install-3.0.0.0,ghc-8.8.1,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.8.2 CABALVER=3.0.1.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.13.0.0
+    compiler: ": #GHC 8.8.2"
+    addons: {apt: {packages: [cabal-install-3.0.1.0,ghc-8.8.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.8.3 CABALVER=3.0.1.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.13.0.0
+    compiler: ": #GHC 8.8.3"
+    addons: {apt: {packages: [cabal-install-3.0.1.0,ghc-8.8.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.8.4 CABALVER=3.0.1.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.13.0.0
+    compiler: ": #GHC 8.8.4"
+    addons: {apt: {packages: [cabal-install-3.0.1.0,ghc-8.8.4,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  #
+  - env: BUILD=cabal GHCVER=8.10.1 CABALVER=3.2.0.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.14.0.0
+    compiler: ": #GHC 8.10.1"
+    addons: {apt: {packages: [cabal-install-3.2.0.0,ghc-8.10.1,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.10.2 CABALVER=3.2.0.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.14.1.0
+    compiler: ": #GHC 8.10.2"
+    addons: {apt: {packages: [cabal-install-3.2.0.0,ghc-8.10.2,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  - env: BUILD=cabal GHCVER=8.10.3 CABALVER=3.2.1.0 HAPPYVER=1.19.5 ALEXVER=3.1.7 # base-4.14.1.0
+    compiler: ": #GHC 8.10.3"
+    addons: {apt: {packages: [cabal-install-3.2.1.0,ghc-8.10.3,happy-1.19.5,alex-3.1.7], sources: [hvr-ghc]}}
+  # apparently hvr/multi-ghc-travis doesn't support 8.10.4 nor 9.0.1
 
   # Build with the newest GHC and cabal-install. This is an accepted failure,
   # see below.

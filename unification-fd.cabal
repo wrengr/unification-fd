@@ -30,7 +30,12 @@ Description:    Simple generic unification algorithms.
 -- Last I checked, it also worked with 7.6.1 and 7.8.2; but I don't
 -- have TravisCI enforcing those.
 Tested-With:
-    GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2
+    GHC == 7.4.2 && == 7.6.3 && == 7.8.4 && == 7.10.3 && == 8.0.2,
+    GHC == 8.2.1 && == 8.2.2,
+    GHC == 8.4.1 && == 8.4.2 && == 8.4.3 && == 8.4.4,
+    GHC == 8.6.1 && == 8.6.2 && == 8.6.3 && == 8.6.4 && == 8.6.5,
+    GHC == 8.8.1 && == 8.8.2 && == 8.8.3 && == 8.8.4,
+    GHC == 8.10.1 && == 8.10.2 && == 8.10.3
 
 Extra-source-files:
     AUTHORS, README, CHANGELOG
