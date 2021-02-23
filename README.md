@@ -209,7 +209,7 @@ so I've bumped it up on my todo list.
 
 ## Links
 
-* [Website](http://cl.indiana.edu/~wren/)
+* [Website](https://wrengr.org/)
 * [Blog](http://winterkoninkje.dreamwidth.org/)
 * [Twitter](https://twitter.com/wrengr)
 * [Hackage](http://hackage.haskell.org/package/unification-fd)
