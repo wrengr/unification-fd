@@ -1,4 +1,4 @@
-0.11.0 (2017-06-XX):
+0.11.0 (2021-02-23):
     - Made Unifiable derivable whenever we have a Generic1 instance.
       (h/t/ Roman Cheplyaka)
     - Removed the Alternative/MonadPlus instances for UTerm, because
@@ -6,6 +6,9 @@
     - Added NOINLINE for Fix's Eq and Ord instances, to avoid an
       inliner bug affecting GHC 8.0.1 and 8.0.2 (fixed in 8.0.3)
       <https://ghc.haskell.org/trac/ghc/ticket/13081>
+    - HOTFIX: added logict < 0.7.1 upper bound to avoid breakage.
+      Will add a proper fix in the future. For more details see,
+      <https://github.com/Bodigrim/logict/issues/20#issuecomment-774528439>
 0.10.0.1 (2015-05-30):
     - Moved VERSION to CHANGELOG
 0.10.0 (2015-03-29):
@@ -18,7 +21,6 @@
     - Control.Unification.Types: Completely revamped the old
       UnificationFailure data type as the new UFailure data type
       and Fallible type class.
-
 0.9.0 (2014-06-03):
     - Control.Unification.Types: changed the fundeps on BindingMonad
       and RankedBindingMonad so that things compile under GHC 7.8.2

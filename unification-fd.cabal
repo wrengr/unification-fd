@@ -1,19 +1,22 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@community.haskell.org>   ~ 2017.06.18
+-- wren gayle romano <wren@community.haskell.org>   ~ 2021.02.23
 ----------------------------------------------------------------
 
--- By and large Cabal >=1.2 is fine; but >= 1.6 gives tested-with:
--- and source-repository:.
-Cabal-Version:  >= 1.6
+-- Newer versions of Cabal (e.g., 3.4) give warnings about using
+-- version operators for some reason, indicating we need to raise
+-- the lower bound on Cabal to >=1.8.  Other than that, version
+-- >=1.2 is mostly fine but >=1.6 gives the tested-with and
+-- source-repository fields.
+Cabal-Version:  >= 1.8
 Build-Type:     Simple
 
 Name:           unification-fd
 Version:        0.11.0
 Stability:      experimental
-Homepage:       http://code.haskell.org/~wren/
+Homepage:       https://wrengr.org/software/hackage.html
 Author:         wren gayle romano
-Maintainer:     wren@community.haskell.org
-Copyright:      Copyright (c) 2007--2017 wren gayle romano
+Maintainer:     winterkoninkje@gmail.com
+Copyright:      Copyright (c) 2007--2021 wren gayle romano
 License:        BSD3
 License-File:   LICENSE
 
@@ -63,7 +66,9 @@ Library
                    , Control.Unification.Ranked.STVar
                    , Control.Unification.Ranked.IntVar
 
-    Build-Depends:   logict       >= 0.4
+                   -- logict 0.7.1 breaks the build (for now); cf.,
+                   -- <https://github.com/Bodigrim/logict/issues/20#issuecomment-774528439>
+    Build-Depends:   logict       >= 0.4 && < 0.7.1
                    -- Require a version of base with Applicative.
                    -- We refuse to do without it any longer.
                    , base         >= 2.0
