@@ -120,6 +120,12 @@ matrix:
 
   # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
   # variable, such as using --stack-yaml to point to a different file.
+  #
+  # BUG: the ghc-7.8.4, ghc-head, and --resolver-nightly builds fail because:
+  # """Stack no longer supports Cabal versions below 1.19.2, but
+  # version 1.18.1.5 was found. To fix this, either use an older
+  # version of Stack or a newer resolver
+  # Acceptable resolvers: lts-3.0/nightly-2015-05-05 or later"""
   - env: BUILD=stack ARGS=""
     compiler: ": #stack default"
     addons: {apt: {packages: [libgmp-dev]}}
