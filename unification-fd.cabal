@@ -38,10 +38,10 @@ Tested-With:
     GHC == 8.10.1 && == 8.10.2 && == 8.10.3
 
 Extra-source-files:
-    AUTHORS, README, CHANGELOG
+    AUTHORS, README.md, CHANGELOG
 Source-Repository head
-    Type:     darcs
-    Location: http://community.haskell.org/~wren/unification-fd
+    Type:     git
+    Location: https://github.com/wrengr/unification-fd
 
 ----------------------------------------------------------------
 Flag base4
