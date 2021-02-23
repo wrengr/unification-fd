@@ -2,12 +2,11 @@
 -- wren gayle romano <wren@community.haskell.org>   ~ 2021.02.23
 ----------------------------------------------------------------
 
--- Newer versions of Cabal (e.g., 3.4) give warnings about using
--- version operators for some reason, indicating we need to raise
--- the lower bound on Cabal to >=1.8.  Other than that, version
--- >=1.2 is mostly fine but >=1.6 gives the tested-with and
--- source-repository fields.
-Cabal-Version:  >= 1.8
+-- Hackage requires us to require Cabal-Version >=1.10; otherwise
+-- things should be backwards compatible to >=1.2 (with the exception
+-- of the tested-with and source-repository fields which were added
+-- in >=1.6).
+Cabal-Version:  >= 1.10
 Build-Type:     Simple
 
 Name:           unification-fd
@@ -30,12 +29,12 @@ Description:    Simple generic unification algorithms.
 -- Last I checked, it also worked with 7.6.1 and 7.8.2; but I don't
 -- have TravisCI enforcing those.
 Tested-With:
-    GHC == 7.4.2 && == 7.6.3 && == 7.8.4 && == 7.10.3 && == 8.0.2,
-    GHC == 8.2.1 && == 8.2.2,
-    GHC == 8.4.1 && == 8.4.2 && == 8.4.3 && == 8.4.4,
-    GHC == 8.6.1 && == 8.6.2 && == 8.6.3 && == 8.6.4 && == 8.6.5,
-    GHC == 8.8.1 && == 8.8.2 && == 8.8.3 && == 8.8.4,
-    GHC == 8.10.1 && == 8.10.2 && == 8.10.3
+    GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2,
+    GHC == 8.2.1, GHC == 8.2.2,
+    GHC == 8.4.1, GHC == 8.4.2, GHC == 8.4.3, GHC == 8.4.4,
+    GHC == 8.6.1, GHC == 8.6.2, GHC == 8.6.3, GHC == 8.6.4, GHC == 8.6.5,
+    GHC == 8.8.1, GHC == 8.8.2, GHC == 8.8.3, GHC == 8.8.4,
+    GHC == 8.10.1, GHC == 8.10.2, GHC == 8.10.3
 
 Extra-source-files:
     AUTHORS, README.md, CHANGELOG
@@ -58,6 +57,8 @@ Flag splitBase
 
 ----------------------------------------------------------------
 Library
+    -- With Cabal-Version: >= 1.10, the Default-Language field is now required.
+    Default-Language: Haskell98
     Hs-Source-Dirs:  src
     Exposed-Modules: Data.Functor.Fixedpoint
                    , Control.Monad.State.UnificationExtras
