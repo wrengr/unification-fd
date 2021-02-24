@@ -26,8 +26,9 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
+        # BUG: versions 7.x are no longer available on GitHub (or at least not on ubuntu-latest).
         # FIXME(2021.02.24): version 9.0.1 is not currently cached on GitHub
-        ghc: ['7.4.2', '7.6.3', '7.8.4', '7.10.3', '8.0.2', '8.2.2', '8.4.4', '8.6.5', '8.8.4', '8.10.3']
+        ghc: ['8.0.2', '8.2.2', '8.4.4', '8.6.5', '8.8.4', '8.10.3']
         include:
         - os: windows-latest
           ghc: 'latest' # Lacking Win-specific bits, latest should suffice.
