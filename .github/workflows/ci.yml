@@ -47,17 +47,19 @@ jobs:
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
         key: ${{ runner.os }}-${{ matrix.ghc }}
-    - name: Test
-      run: |
-        cabal sdist -z -o .
-        cabal get unification-fd-*.tar.gz
-        cd unification-fd-*/
-        cp ../cabal.project .
-        cabal test --test-show-details=direct
-    - name: Bench
-      run: |
-        cd unification-fd-*/
-        cabal bench --benchmark-option=-l
+    ## BUG: our Tasty tests aren't hooked into cabal yet...
+    #- name: Test
+    #  run: |
+    #    cabal sdist -z -o .
+    #    cabal get unification-fd-*.tar.gz
+    #    cd unification-fd-*/
+    #    cp ../cabal.project .
+    #    cabal test --test-show-details=direct
+    ## We have no benchmarks yet
+    #- name: Bench
+    #  run: |
+    #    cd unification-fd-*/
+    #    cabal bench --benchmark-option=-l
     - name: Haddock
       run: cabal haddock
 
