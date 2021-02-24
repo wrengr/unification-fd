@@ -12,8 +12,11 @@ cabal-dev/
 *.prof
 *.tix
 cabal.config
+cabal.project.freeze
+cabal.project.local
 dist-sandbox
 dist/
+dist-newstyle/
 .hsenv/
 
 # Ignore editor cruft
