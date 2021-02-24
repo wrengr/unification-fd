@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@community.haskell.org>   ~ 2021.02.23
+-- wren gayle romano <wren@community.haskell.org>   ~ 2021.02.24
 ----------------------------------------------------------------
 
 -- Hackage requires us to require Cabal-Version >=1.10; otherwise
@@ -21,7 +21,10 @@ License-File:   LICENSE
 
 Category:       Algebra, Algorithms, Compilers/Interpreters, Language, Logic, Unification
 Synopsis:       Simple generic unification algorithms.
-Description:    Simple generic unification algorithms.
+Description:
+    Generic functions for single-sorted first-order structural
+    unification (think of programming in Prolog, or of the metavariables
+    in type inference).
 
 -- No longer compiles with GHC-6.12.1 since Data.Monoid does not
 -- export (<>) in Control.Unification.Types. The backwards compatibility
@@ -43,19 +46,6 @@ Source-Repository head
     Location: https://github.com/wrengr/unification-fd
 
 ----------------------------------------------------------------
-Flag base4
-    Default:     True
-    Description: base-4.0 emits "Prelude deprecated" messages in
-                 order to get people to be explicit about which
-                 version of base they use.
-
-Flag splitBase
-    Default:     True
-    Description: base-3.0 (GHC 6.8) broke out the packages: array,
-                 bytestring, containers, directory, old-locale,
-                 old-time, packedstring, pretty, process, random.
-
-----------------------------------------------------------------
 Library
     -- With Cabal-Version: >= 1.10, the Default-Language field is now required.
     Default-Language: Haskell98
@@ -72,27 +62,23 @@ Library
                    , Control.Unification.Ranked.STVar
                    , Control.Unification.Ranked.IntVar
 
-                   -- logict 0.7.1 breaks the build (for now); cf.,
+                   -- N.B., logict 0.7.1 introduced breakage, but that
+                   -- should be resolved now. Cf.,
                    -- <https://github.com/Bodigrim/logict/issues/20#issuecomment-774528439>
+                   -- <https://github.com/wrengr/unification-fd/issues/14>
     Build-Depends:   logict       >= 0.4 && < 0.7.1
-                   -- Require a version of base with Applicative.
-                   -- We refuse to do without it any longer.
-                   , base         >= 2.0
+                   -- N.B., Tasty requires base>=4.5.0.0; which
+                   -- means we aren't CI testing anything older than
+                   -- that anymore, so we might as well just require
+                   -- that version so we can remove the ancient base4
+                   -- and splitBase build flags.
+                   , base         >= 4.5 && < 5
+                   , containers
                    -- Require mtl-2 instead of monads-fd; because
                    -- otherwise we get a clash mixing logict with
                    -- StateT. And we want stuff from monads-fd, so
                    -- we can't just fail over to the older mtl.
                    , mtl          >= 2.0
-
-    if flag(base4)
-        Build-Depends: base >= 4 && < 5
-    else
-        Build-Depends: base < 4
-
-    if flag(splitBase)
-        Build-depends: base >= 3.0, containers
-    else
-        Build-depends: base < 3.0
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.
