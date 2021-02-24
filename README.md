@@ -1,42 +1,24 @@
 unification-fd
 ==============
-[![Hackage version](https://img.shields.io/hackage/v/unification-fd.svg?style=flat)](https://hackage.haskell.org/package/unification-fd) 
-[![Hackage-Deps](https://img.shields.io/hackage-deps/v/unification-fd.svg?style=flat)](http://packdeps.haskellers.com/specific?package=unification-fd)
-[![GitHub CI](https://github.com/wrengr/unification-fd/workflows/CI/badge.svg)](https://github.com/wrengr/unification-fd/actions)
+[![Hackage version](https://img.shields.io/hackage/v/unification-fd.svg?style=flat)](https://hackage.haskell.org/package/unification-fd)
+[![Build Status](https://github.com/wrengr/unification-fd/workflows/CI/badge.svg)](https://github.com/wrengr/unification-fd/actions?query=workflow%3ACI)
+[![Upstream Dependencies](https://img.shields.io/hackage-deps/v/unification-fd.svg?style=flat)](http://packdeps.haskellers.com/specific?package=unification-fd)
+[![Downstream Dependants](https://img.shields.io/hackage-deps/v/unification-fd.svg?style=flat)](http://packdeps.haskellers.com/reverse/unification-fd)
 
 The unification-fd package offers generic functions for single-sorted
 first-order structural unification (think of programming in Prolog,
 or of the metavariables in type inference)[^1][^2]. The library
 *is* sufficient for implementing higher-rank type systems à la
-Peyton Jones, Vytiniotis, Weirich, Shields, but bear in mind that
+_Peyton Jones, Vytiniotis, Weirich, Shields_, but bear in mind that
 unification variables are the metavariables of type inference— not
 the type-variables.
 
 
-## Install
+## Build Warnings/Errors
 
-This is a simple package and should be easy to install. You should
-be able to use one of the following standard methods to install it.
-
-    -- With cabal-install and without the source:
-    $> cabal install unification-fd
-    
-    -- With cabal-install and with the source already:
-    $> cd unification-fd
-    $> cabal install
-    
-    -- Without cabal-install, but with the source already:
-    $> cd unification-fd
-    $> runhaskell Setup.hs configure --user
-    $> runhaskell Setup.hs build
-    $> runhaskell Setup.hs test
-    $> runhaskell Setup.hs haddock --hyperlink-source
-    $> runhaskell Setup.hs copy
-    $> runhaskell Setup.hs register
-
-The test step is optional and currently does nothing. The Haddock
-step is also optional. If you see some stray lines that look like
-this:
+This is a simple package and should be easy to install; however,
+on older setups you may encounter some of the following warnings/errors.
+If during building you see some stray lines that look like this:
 
     mkUsageInfo: internal name? t{tv a7XM}
 
@@ -61,10 +43,10 @@ extensions which should be well supported[^3]:
 
 * Rank2Types
 * MultiParamTypeClasses
-* FunctionalDependencies - Alas, necessary for type inference
-* FlexibleContexts - Necessary for practical use of MPTCs
-* FlexibleInstances - Necessary for practical use of MPTCs
-* UndecidableInstances - Needed for Show instances due to two-level types
+* FunctionalDependencies - Alas, necessary for type inference.
+* FlexibleContexts - Necessary for practical use of MPTCs.
+* FlexibleInstances - Necessary for practical use of MPTCs.
+* UndecidableInstances - Needed for `Show` instances due to two-level types.
 
 
 ## Description
