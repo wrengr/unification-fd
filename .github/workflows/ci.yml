@@ -1,0 +1,83 @@
+# This GitHub Actions script was modified from from:
+# <https://github.com/haskell/bytestring/blob/master/.github/workflows/ci.yml>
+# commit/784cdd7dc492f283f41c28bfee1ab62a20c4d353
+# For more guidance, see also <https://kodimensional.dev/github-actions>
+#
+# Once Haskell-CI fully supports generating GitHub Actions scripts,
+# we should switch over to useing that rather than maintaining this
+# file manually.
+name: ci
+on:
+  push:
+    branches:
+      - master
+      - GithubActions
+  pull_request: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: ${{ matrix.os }} / ghc ${{ matrix.ghc }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest]
+        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0']
+        include:
+        - os: windows-latest
+          ghc: 'latest' # Lacking Win-specific bits, latest should suffice.
+        - os: macOS-latest
+          ghc: 'latest' # Lacking Mac-specific bits, latest should suffice.
+    steps:
+    - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell-cabal
+      with:
+        ghc-version: ${{ matrix.ghc }}
+    - name: Update cabal package database
+      run: cabal update
+    - uses: actions/cache@v2.1.4
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+        key: ${{ runner.os }}-${{ matrix.ghc }}
+    - name: Test
+      run: |
+        cabal sdist -z -o .
+        cabal get unification-fd-*.tar.gz
+        cd unification-fd-*/
+        cp ../cabal.project .
+        cabal test --test-show-details=direct
+    - name: Bench
+      run: |
+        cd unification-fd-*/
+        cabal bench --benchmark-option=-l
+    - name: Haddock
+      run: cabal haddock
+
+  build-freebsd:
+    # This job intentionally is using macOS because at the time of
+    # the writing Linux and Windows environments don't have the
+    # necessary virtualization features.
+    # See <https://github.com/vmactions/freebsd-vm#under-the-hood>
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Test
+      id: build-freebsd
+      uses: vmactions/freebsd-vm@v0.1.2
+      with:
+        usesh: true
+        mem: 4096
+        prepare: pkg install -y ghc hs-cabal-install git
+        # Virtual machine does not allow to leverage cache
+        # and is quite slow, so only tests are run.
+        run: |
+          cabal update
+          cabal test --test-show-details=direct
