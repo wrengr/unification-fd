@@ -10,7 +10,7 @@ Cabal-Version:  >= 1.10
 Build-Type:     Simple
 
 Name:           unification-fd
-Version:        0.11.0
+Version:        0.11.0.1
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
 Author:         wren gayle romano
