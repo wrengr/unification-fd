@@ -29,6 +29,7 @@ Description:
 -- No longer compiles with GHC-6.12.1 since Data.Monoid does not
 -- export (<>) in Control.Unification.Types. The backwards compatibility
 -- is not considered worth adding CPP noise...
+-- FIXME(2021.02.24): version 9.0.1 is not currently cached on GitHub for CI.
 Tested-With:
     GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3,
     GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5,
