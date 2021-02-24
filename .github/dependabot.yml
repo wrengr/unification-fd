@@ -1,0 +1,8 @@
+# This pulled from <https://github.com/haskell/bytestring/blob/master/.github/dependabot.yml> commit/8af9778a439919a665ef3366804951eb7975c1ab
+# I'm not entirely sure what this is checking against; more research needed.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"

@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@community.haskell.org>   ~ 2021.02.23
+-- wren gayle romano <wren@community.haskell.org>   ~ 2021.02.24
 ----------------------------------------------------------------
 
 -- Hackage requires us to require Cabal-Version >=1.10; otherwise
@@ -10,7 +10,7 @@ Cabal-Version:  >= 1.10
 Build-Type:     Simple
 
 Name:           unification-fd
-Version:        0.11.0
+Version:        0.11.0.1
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
 Author:         wren gayle romano
@@ -21,39 +21,28 @@ License-File:   LICENSE
 
 Category:       Algebra, Algorithms, Compilers/Interpreters, Language, Logic, Unification
 Synopsis:       Simple generic unification algorithms.
-Description:    Simple generic unification algorithms.
+Description:
+    Generic functions for single-sorted first-order structural
+    unification (think of programming in Prolog, or of the metavariables
+    in type inference).
 
 -- No longer compiles with GHC-6.12.1 since Data.Monoid does not
 -- export (<>) in Control.Unification.Types. The backwards compatibility
 -- is not considered worth adding CPP noise...
--- Last I checked, it also worked with 7.6.1 and 7.8.2; but I don't
--- have TravisCI enforcing those.
+-- FIXME(2021.02.24): versions 7.x are no longer available on GitHub
+--   for CI (at least not on ubuntu-latest); so we should probably
+--   remove them from here
+-- FIXME(2021.02.24): version 9.0.1 is not yet cached on GitHub for CI either.
 Tested-With:
-    GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2,
-    GHC == 8.2.1, GHC == 8.2.2,
-    GHC == 8.4.1, GHC == 8.4.2, GHC == 8.4.3, GHC == 8.4.4,
-    GHC == 8.6.1, GHC == 8.6.2, GHC == 8.6.3, GHC == 8.6.4, GHC == 8.6.5,
-    GHC == 8.8.1, GHC == 8.8.2, GHC == 8.8.3, GHC == 8.8.4,
-    GHC == 8.10.1, GHC == 8.10.2, GHC == 8.10.3
+    GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3,
+    GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5,
+    GHC == 8.8.4, GHC == 8.10.3, GHC == 9.0.1
 
 Extra-source-files:
     AUTHORS, README.md, CHANGELOG
 Source-Repository head
     Type:     git
     Location: https://github.com/wrengr/unification-fd
-
-----------------------------------------------------------------
-Flag base4
-    Default:     True
-    Description: base-4.0 emits "Prelude deprecated" messages in
-                 order to get people to be explicit about which
-                 version of base they use.
-
-Flag splitBase
-    Default:     True
-    Description: base-3.0 (GHC 6.8) broke out the packages: array,
-                 bytestring, containers, directory, old-locale,
-                 old-time, packedstring, pretty, process, random.
 
 ----------------------------------------------------------------
 Library
@@ -72,27 +61,23 @@ Library
                    , Control.Unification.Ranked.STVar
                    , Control.Unification.Ranked.IntVar
 
-                   -- logict 0.7.1 breaks the build (for now); cf.,
+                   -- N.B., logict 0.7.1 introduced breakage, but that
+                   -- should be resolved now. Cf.,
                    -- <https://github.com/Bodigrim/logict/issues/20#issuecomment-774528439>
+                   -- <https://github.com/wrengr/unification-fd/issues/14>
     Build-Depends:   logict       >= 0.4 && < 0.7.1
-                   -- Require a version of base with Applicative.
-                   -- We refuse to do without it any longer.
-                   , base         >= 2.0
+                   -- N.B., Tasty requires base>=4.5.0.0; which
+                   -- means we aren't CI testing anything older than
+                   -- that anymore, so we might as well just require
+                   -- that version so we can remove the ancient base4
+                   -- and splitBase build flags.
+                   , base         >= 4.5 && < 5
+                   , containers
                    -- Require mtl-2 instead of monads-fd; because
                    -- otherwise we get a clash mixing logict with
                    -- StateT. And we want stuff from monads-fd, so
                    -- we can't just fail over to the older mtl.
                    , mtl          >= 2.0
-
-    if flag(base4)
-        Build-Depends: base >= 4 && < 5
-    else
-        Build-Depends: base < 4
-
-    if flag(splitBase)
-        Build-depends: base >= 3.0, containers
-    else
-        Build-depends: base < 3.0
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.
