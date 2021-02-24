@@ -41,7 +41,7 @@
 -- the utility of two-level recursive types, see:
 --
 --     * Tim Sheard (2001) /Generic Unification via Two-Level Types/
---         /and Paramterized Modules/, Functional Pearl, ICFP.
+--         /and Parameterized Modules/, Functional Pearl, ICFP.
 --
 --     * Tim Sheard & Emir Pasalic (2004) /Two-Level Types and/
 --         /Parameterized Modules/. JFP 14(5): 547--587. This is
