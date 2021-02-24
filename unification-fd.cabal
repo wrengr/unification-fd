@@ -29,15 +29,10 @@ Description:
 -- No longer compiles with GHC-6.12.1 since Data.Monoid does not
 -- export (<>) in Control.Unification.Types. The backwards compatibility
 -- is not considered worth adding CPP noise...
--- Last I checked, it also worked with 7.6.1 and 7.8.2; but I don't
--- have TravisCI enforcing those.
 Tested-With:
-    GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2,
-    GHC == 8.2.1, GHC == 8.2.2,
-    GHC == 8.4.1, GHC == 8.4.2, GHC == 8.4.3, GHC == 8.4.4,
-    GHC == 8.6.1, GHC == 8.6.2, GHC == 8.6.3, GHC == 8.6.4, GHC == 8.6.5,
-    GHC == 8.8.1, GHC == 8.8.2, GHC == 8.8.3, GHC == 8.8.4,
-    GHC == 8.10.1, GHC == 8.10.2, GHC == 8.10.3
+    GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3,
+    GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5,
+    GHC == 8.8.4, GHC == 8.10.3, GHC == 9.0.1
 
 Extra-source-files:
     AUTHORS, README.md, CHANGELOG
