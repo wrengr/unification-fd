@@ -3,7 +3,6 @@ unification-fd
 [![Hackage version](https://img.shields.io/hackage/v/unification-fd.svg)](https://hackage.haskell.org/package/unification-fd)
 [![Build Status](https://github.com/wrengr/unification-fd/workflows/ci/badge.svg)](https://github.com/wrengr/unification-fd/actions?query=workflow%3Aci)
 [![Dependencies](https://img.shields.io/hackage-deps/v/unification-fd.svg?style=flat)](http://packdeps.haskellers.com/specific?package=unification-fd)
-[![Coverage Status](https://coveralls.io/repos/github/haskell/unification-fd/badge.svg?branch=master)](https://coveralls.io/github/haskell/unification-fd?branch=master)
 
 The unification-fd package offers generic functions for single-sorted
 first-order structural unification (think of programming in Prolog,
