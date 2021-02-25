@@ -1,5 +1,7 @@
-# This pulled from <https://github.com/haskell/bytestring/blob/master/.github/dependabot.yml> commit/8af9778a439919a665ef3366804951eb7975c1ab
-# I'm not entirely sure what this is checking against; more research needed.
+# Use Dependabot to automatically generate PRs if the dependencies
+# of our GitHub Actions scripts get out of date.  For more info, see:
+# <https://github.blog/2020-06-01-keep-all-your-packages-up-to-date-with-dependabot/>
+# <https://docs.github.com/en/github/administering-a-repository/enabling-and-disabling-version-updates>
 version: 2
 updates:
   - package-ecosystem: "github-actions"
