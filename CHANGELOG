@@ -1,4 +1,4 @@
-0.11.XX (2021-02-XX):
+0.11.1 (2021-02-24):
     - Migrating from TravisCI to GithubActions
     - Properly fixed the logict-0.7.1 issue.
 0.11.0 (2021-02-23):
