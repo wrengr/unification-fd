@@ -33,8 +33,8 @@ jobs:
         - os: macOS-latest
           ghc: 'latest' # Lacking Mac-specific bits, latest should suffice.
     steps:
-    - uses: actions/checkout@v2.3.4
-    - uses: haskell/actions/setup@v1.2.1
+    - uses: actions/checkout@v2.3.5
+    - uses: haskell/actions/setup@v1.2.6
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
