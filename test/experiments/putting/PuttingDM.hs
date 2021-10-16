@@ -50,8 +50,8 @@ import Control.Unification.IntVar
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-type Name = String 
-type Uniq = Int 
+type Name = String
+type Uniq = Int
 data Term
     = Var Name             -- x
     | Lit Int              -- 3
@@ -61,7 +61,7 @@ data Term
     | Ann Term Sigma       -- x :: t
     deriving (Show)
 
-type Sigma = Type 
+type Sigma = Type
 type Rho   = Type -- No top-level ForAll
 type Tau   = Type -- No ForAlls anywhere
 type Type  = UTerm Ty MetaTv
@@ -78,7 +78,7 @@ data TyVar
     deriving (Show, Eq, Ord)
 data TyCon
     = IntT
-    | BoolT 
+    | BoolT
     deriving (Show, Eq)
 
 -- | Build a function type (abstractly).
@@ -96,16 +96,16 @@ boolType = UTerm (TyCon BoolT)
 instance Unifiable Ty where
     zipMatch (ForAll vls tl) (ForAll vrs tr)
         | and $ zipWith (==) vls vrs = Just $ ForAll vls (Right(tl,tr))
-    
+
     zipMatch (Fun tl1 tl2) (Fun tr1 tr2)
         = Just $ Fun (Right(tl1,tr1)) (Right(tl2,tr2))
-    
+
     zipMatch (TyCon cl) (TyCon cr)
         | cl == cr = Just $ TyCon cl
-    
+
     zipMatch (TyVar vl) (TyVar vr)
         | vl == vr = Just $ TyVar vl
-    
+
     zipMatch _ _ = Nothing
 
 ----------------------------------------------------------------
@@ -194,7 +194,7 @@ newSkolemTyVar tv = SkolemTv (tyVarName tv) <$> newUnique
     -- HACK: this became ambiguous since 2012, thus requiring the inline signature on getVarID...
     newUnique :: Tc Uniq
     newUnique = TC . lift . lift $ (getVarID :: IntVar -> Int) <$> freeVar
-    
+
     tyVarName :: TyVar -> Name
     tyVarName (BoundTv  name)   = name
     tyVarName (SkolemTv name _) = name
@@ -216,7 +216,7 @@ getFreeTyVars = fmap freeTyVars . zonkTypeAll
     -- definition that shows up later on (using 'U.applyBindings')
     zonkTypeAll :: [Type] -> Tc [Type]
     zonkTypeAll = TC . lift . U.applyBindingsAll
-    
+
     -- TODO: could optimize this to take advantage of sharing...
     -- TODO: need to debug/check this
     freeTyVars :: [Type] -> [TyVar]
@@ -355,7 +355,7 @@ skolemise (UTerm(ForAll tvs ty)) = do
 skolemise ty = return ([], ty)
 
 
-type Env = [(TyVar, Tau)] 
+type Env = [(TyVar, Tau)]
 
 -- Replace the specified quantified type variables by
 -- given meta type variables
@@ -386,7 +386,7 @@ quantify tvs ty = do
     used_bndrs = tyVarBndrs ty -- Avoid quantified type variables in use
     new_bndrs = take (length tvs) (allBinders \\ used_bndrs)
     bind (tv, name) = writeTv tv (UTerm(TyVar name))
-    
+
     where
     -- The strange name ``zonkType'' comes from the paper.
     zonkType :: Type -> Tc Type
