@@ -1,12 +1,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.05
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Monad.State.UnificationExtras
--- Copyright   :  Copyright (c) 2008--2015 wren gayle romano
+-- Copyright   :  Copyright (c) 2008--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  perpetually unstable
 -- Portability :  semi-portable (MPTCs)
 --

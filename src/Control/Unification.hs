@@ -8,12 +8,12 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 #endif
 ----------------------------------------------------------------
---                                                  ~ 2015.03.29
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification
--- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  semi-portable (CPP, MPTCs, FlexibleContexts)
 --
@@ -44,7 +44,7 @@ module Control.Unification
     , Unifiable(..)
     , Variable(..)
     , BindingMonad(..)
-    
+
     -- * Operations on one term
     , getFreeVars
     , applyBindings
@@ -53,7 +53,7 @@ module Control.Unification
     -- unskolemize -- convert Skolemized variables to free variables
     -- skolemize   -- convert free variables to Skolemized variables
     -- getSkolems  -- compute the skolem variables in a term; helpful?
-    
+
     -- * Operations on two terms
     -- ** Symbolic names
     , (===)
@@ -66,7 +66,7 @@ module Control.Unification
     , unify
     , unifyOccurs
     , subsumes
-    
+
     -- * Operations on many terms
     , getFreeVarsAll
     , applyBindingsAll
@@ -492,12 +492,12 @@ equals tl0 tr0 = do
             (UVar  _,  UTerm _ ) -> mzero
             (UTerm _,  UVar  _ ) -> mzero
             (UTerm tl, UTerm tr) -> match tl tr
-    
+
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> mzero
         Just tlr -> mapM_ loop_ tlr
-    
+
     loop_ (Left  _)       = return () -- success
     loop_ (Right (tl,tr)) = loop tl tr
 
@@ -532,14 +532,14 @@ equiv tl0 tr0 = runMaybeKT (execStateT (loop tl0 tr0) IM.empty)
                         | x == ir   -> return () -- success; no changes
                         | otherwise -> lift mzero
                     Nothing         -> put $! IM.insert il ir xs
-            
+
             (UVar  _,  UTerm _ ) -> lift mzero
             (UTerm _,  UVar  _ ) -> lift mzero
             (UTerm tl, UTerm tr) ->
                 case zipMatch tl tr of
                 Nothing  -> lift mzero
                 Just tlr -> mapM_ loop_ tlr
-    
+
     loop_ (Left  _)       = return () -- success; no changes
     loop_ (Right (tl,tr)) = loop tl tr
 
@@ -568,14 +568,14 @@ unifyOccurs = loop
     where
     {-# INLINE (=:) #-}
     v =: t = lift $ v `bindVar` t
-    
+
     {-# INLINE acyclicBindVar #-}
     acyclicBindVar v t = do
         b <- lift $ v `occursIn` t
         if b
             then throwError $ occursFailure v t
             else v =: t
-    
+
     -- TODO: cf todos in 'unify'
     loop tl0 tr0 = do
         tl0 <- lift $ semiprune tl0
@@ -602,7 +602,7 @@ unifyOccurs = loop
                             vl =: tr0
                             return tr0
                         _ -> error _impossible_unifyOccurs
-            
+
             (UVar vl, UTerm tr) -> do
                 mtl <- lift $ lookupVar vl
                 case mtl of
@@ -614,7 +614,7 @@ unifyOccurs = loop
                         vl =: t
                         return tl0
                     _ -> error _impossible_unifyOccurs
-            
+
             (UTerm tl, UVar vr) -> do
                 mtr <- lift $ lookupVar vr
                 case mtr of
@@ -626,14 +626,14 @@ unifyOccurs = loop
                         vr =: t
                         return tr0
                     _ -> error _impossible_unifyOccurs
-            
+
             (UTerm tl, UTerm tr) -> match tl tr
-    
+
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> throwError $ mismatchFailure tl tr
         Just tlr -> UTerm <$> mapM loop_ tlr
-    
+
     loop_ (Left  t)       = return t
     loop_ (Right (tl,tr)) = loop tl tr
 
@@ -668,7 +668,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}
     v =: t = lift . lift $ v `bindVar` t
-    
+
     -- TODO: would it be beneficial to manually fuse @x <- lift m; y <- lift n@ to @(x,y) <- lift (m;n)@ everywhere we can?
     loop tl0 tr0 = do
         tl0 <- lift . lift $ semiprune tl0
@@ -692,7 +692,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                             vl =: tr0
                             return tr0
                         _ -> error _impossible_unify
-            
+
             (UVar vl, UTerm tr) -> do
                 t <- do
                     mtl <- lift . lift $ lookupVar vl
@@ -704,7 +704,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                         _ -> error _impossible_unify
                 vl =: t
                 return tl0
-            
+
             (UTerm tl, UVar vr) -> do
                 t <- do
                     mtr <- lift . lift $ lookupVar vr
@@ -716,14 +716,14 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                         _ -> error _impossible_unify
                 vr =: t
                 return tr0
-            
+
             (UTerm tl, UTerm tr) -> match tl tr
-    
+
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> lift . throwError $ mismatchFailure tl tr
         Just tlr -> UTerm <$> mapM loop_ tlr
-    
+
     loop_ (Left  t)       = return t
     loop_ (Right (tl,tr)) = loop tl tr
 
@@ -770,7 +770,7 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}
     v =: t = lift . lift $ do v `bindVar` t ; return True
-    
+
     -- TODO: cf todos in 'unify'
     loop tl0 tr0 = do
         tl0 <- lift . lift $ semiprune tl0
@@ -791,7 +791,7 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                                 vr `seenAs` tr
                                 match tl tr
                         _ -> error _impossible_subsumes
-            
+
             (UVar vl,  UTerm tr) -> do
                 mtl <- lift . lift $ lookupVar vl
                 case mtl of
@@ -800,16 +800,16 @@ subsumes tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                         vl `seenAs` tl
                         match tl tr
                     _ -> error _impossible_subsumes
-            
+
             (UTerm _,  UVar  _ ) -> return False
-            
+
             (UTerm tl, UTerm tr) -> match tl tr
-    
+
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> return False
         Just tlr -> and <$> mapM loop_ tlr -- TODO: use foldlM?
-    
+
     loop_ (Left  _)       = return True
     loop_ (Right (tl,tr)) = loop tl tr
 

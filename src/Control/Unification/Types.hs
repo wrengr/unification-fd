@@ -27,12 +27,12 @@
 #endif
 
 ----------------------------------------------------------------
---                                                  ~ 2017.06.21
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification.Types
--- Copyright   :  Copyright (c) 2007--2017 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  semi-portable (MPTCs, fundeps,...)
 --

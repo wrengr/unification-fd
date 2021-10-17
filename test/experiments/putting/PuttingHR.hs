@@ -9,12 +9,12 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-deprecations #-}
 ----------------------------------------------------------------
---                                                  ~ 2014.09.17
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  PuttingHR
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
@@ -46,7 +46,7 @@ import Control.Unification.IntVar
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-type Name = String 
+type Name = String
 
 -- To add multi-branch constructs like case and conditionals, see "unification under a mixed prefix" for typing it <Miller 1992> etc. However, apparently that will type fewer programs than using the equivalence relation induced by two-way subsumption... It also looses the property that if $\Gamma' \vdash^{poly}_\Downarrow t : \sigma$ and $\vdash^{dsk} \Gamma \leq \Gamma'$ then $\Gamma \vdash^poly_\Downarrow t : \sigma$. (Though the checkingness can be regained by adding type annotations.)
 data Term
@@ -61,7 +61,7 @@ data Term
 
 ----------------------------------------------------------------
 
-type Sigma = Type 
+type Sigma = Type
 type Rho   = Type -- ^ No top-level @ForAll@
 type Tau   = Type -- ^ No @ForAll@s anywhere
 type Type  = UTerm Ty MetaTv
@@ -73,18 +73,18 @@ data Ty t
     deriving (Show, Functor, Foldable, Traversable)
 
 -- | Invariant: metas can only be bound to 'Tau'
-type MetaTv = IntVar 
+type MetaTv = IntVar
 
 data TyVar
     = BoundTv  Name      -- ^ A type variable bound by a @ForAll@
     | SkolemTv Name Uniq -- ^ A skolem constant; the Name is just to improve error messages
     deriving (Show, Eq)
 
-type Uniq = Int 
+type Uniq = Int
 
 data TyCon
     = IntT
-    | BoolT 
+    | BoolT
     deriving (Show, Eq)
 
 
@@ -219,7 +219,7 @@ newSkolemTyVar tv = liftM (SkolemTv $ tyVarName tv) newUnique
     -- HACK: this became ambiguous since 2012, thus requiring the inline signature on getVarID...
     newUnique :: Tc Uniq
     newUnique = TC . lift . lift $ liftM (getVarID :: IntVar -> Int) freeVar
-    
+
     tyVarName :: TyVar -> Name
     tyVarName (BoundTv  name)   = name
     tyVarName (SkolemTv name _) = name
@@ -353,7 +353,7 @@ inferSigma e = do
     where
     -- This all is no longer necessary. Just use (Data.List.\\)
     minus xs ys = filter (\x -> not $ elemBy eqVar x ys) xs
-    
+
     -- From "Data.List", though it's not exported for some reason...
     elemBy :: (a -> a -> Bool) -> a -> [a] -> Bool
     elemBy _  _ []         =  False
@@ -439,7 +439,7 @@ skolemise ty                         = do -- Rule PRMONO
     return ([], ty)
 
 
-type Env = [(TyVar, Tau)] 
+type Env = [(TyVar, Tau)]
 
 -- Replace the specified quantified type variables by
 -- given meta type variables

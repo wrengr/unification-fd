@@ -4,12 +4,12 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.24
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  FeatureStructure
--- Copyright   :  Copyright (c) 2012 wren gayle romano
+-- Copyright   :  Copyright (c) 2012--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --

@@ -7,12 +7,12 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 
 ----------------------------------------------------------------
---                                                  ~ 2011.07.05
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification.Classes
--- Copyright   :  Copyright (c) 2007--2011 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  semi-portable (Rank2Types, MPTCs, fundeps)
 --
@@ -55,7 +55,7 @@ class (Variable v, Applicative m, Monad m) =>
     -- | Given a variable pointing to @t@, return the @t@ it's bound
     -- to, or @Nothing@ if the variable is unbound.
     lookupVar :: v t -> m (Maybe t)
-    
+
     -- TODO: for weighted path compression. Should probably be rolled into 'lookupVar' no doubt...
     -- lookupVarRank :: v t -> m Int
 
@@ -75,7 +75,7 @@ class (Variable v, Applicative m, Monad m) =>
     -- | Generate a new free variable guaranteed to be fresh in
     -- @m@.
     freeVar :: m (v t)
-    
+
     -- | Generate a new variable (fresh in @m@) bound to the given
     -- term.
     newVar :: t -> m (v t)
@@ -89,15 +89,15 @@ class (Variable v, Applicative m, Monad m) =>
     -- | Bind a variable to a term, returning the old binding if
     -- any.
     bindVar :: v t -> t -> m (Maybe t)
-    
+
     -- | Bind a variable to a term.
     bindVar_ :: v t -> t -> m ()
     bindVar_ v t = bindVar v t >> return ()
-    
+
     -- | Remove a variable binding, returning the old binding if
     -- any.
     unbindVar :: v t -> m (Maybe t)
-    
+
     -- | Remove a variable binding.
     unbindVar_ :: v t -> m ()
     unbindVar_ v = unbindVar v >> return ()
@@ -133,7 +133,7 @@ class (Traversable t) => Unifiable t where
     -- (e.g., with 'more' to pair off the corresponding sub-terms,
     -- or 'success' if the constructors have no sub-terms).
     match :: t a -> t b -> More a b
-    
+
     -- Perhaps this would be enough for the aggressive obs.sharing? (in conjunction with traverse/mapM)
     zipMatch :: t a -> t b -> Maybe (t (a,b))
 
@@ -143,7 +143,7 @@ class Variable v where
     -- | Determine whether two variables are equal /as variables/,
     -- without considering what they are bound to.
     eqVar :: v a -> v a -> Bool
-    
+
     -- | Return a unique identifier for this variable, in order to
     -- support the use of visited-sets instead of occurs checks.
     getVarID :: v a -> Int

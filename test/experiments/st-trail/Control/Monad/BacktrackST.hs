@@ -2,12 +2,12 @@
 {-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.06.28
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Monad.BacktrackST
--- Copyright   :  Copyright (c) 2008--2011 wren gayle romano
+-- Copyright   :  Copyright (c) 2008--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  maybe semi-portable (RankNTypes)
 --
@@ -149,7 +149,7 @@ instance Alternative (BacktrackST s) where
 
 instance Monad (BacktrackST s) where
     return = BST . return . (,) nilSTL . Just
-    
+
     BST mx >>= f = BST $ do
         (qx,x) <- mx
         case x of
@@ -160,7 +160,7 @@ instance Monad (BacktrackST s) where
 
 instance MonadPlus (BacktrackST s) where
     mzero = BST $ return (nilSTL, Nothing)
-    
+
     BST ml `mplus` BST mr = BST $ do
         (ql,l) <- ml
         case l of

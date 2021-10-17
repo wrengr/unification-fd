@@ -6,12 +6,12 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2015.03.29
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification.Ranked.STVar
--- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  highly experimental
 -- Portability :  semi-portable (Rank2Types, MPTCs,...)
 --
@@ -53,7 +53,7 @@ instance Show (STRVar s t) where
 
 instance Eq (STRVar s t) where
     (STRVar i _ _) == (STRVar j _ _) = (i == j)
-    
+
 instance Variable (STRVar s t) where
     getVarID (STRVar i _ _) = i
 
@@ -119,27 +119,27 @@ _newSTRVar fun mb = STRB $ do
 
 instance (Unifiable t) => BindingMonad t (STRVar s t) (STRBinding s) where
     lookupVar (STRVar _ _ p) = STRB . lift $ readSTRef p
-    
+
     freeVar  = _newSTRVar "freeVar" Nothing
-    
+
     newVar t = _newSTRVar "newVar" (Just t)
-    
+
     bindVar (STRVar _ _ p) t = STRB . lift $ writeSTRef p (Just t)
 
 
 instance (Unifiable t) =>
     RankedBindingMonad t (STRVar s t) (STRBinding s)
     where
-    
+
     lookupRankVar (STRVar _ r p) = STRB . lift $ do
         n  <- readSTRef r
         mb <- readSTRef p
         return (Rank n mb)
-    
+
     incrementRank (STRVar _ r _) = STRB . lift $ do
         n <- readSTRef r
         writeSTRef r $! n+1
-    
+
     -- incrementBindVar = default
 
 ----------------------------------------------------------------

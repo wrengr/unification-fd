@@ -6,12 +6,12 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.05
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification
--- Copyright   :  Copyright (c) 2007--2011 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  semi-portable (MPTCs, UndecidableInstances, Flexible...)
 --
@@ -24,7 +24,7 @@ module Control.Unification
     , unfreeze
     , freeze
     , UnificationFailure(..)
-    
+
     -- * Operations on one term
     , getFreeVars
     , applyBindings
@@ -34,7 +34,7 @@ module Control.Unification
     -- unskolemize -- convert Skolemized variables to free variables
     -- skolemize   -- convert free variables to Skolemized variables
     -- getSkolems  -- compute the skolem variables in a term; helpful?
-    
+
     -- * Operations on two terms
     -- equals      -- (raw) equality under bindings
     -- equiv       -- structural (alpha) equivalence under bindings
@@ -190,7 +190,7 @@ semiprune =
         mb <- lookupVar v
         case mb of
             Nothing -> return t
-            Just t' -> 
+            Just t' ->
                 case t' of
                 MutTerm _  -> return t
                 MutVar  v' -> do
@@ -410,20 +410,20 @@ unify2 tl0 tr0 = do
                     (Just tl', Just tr') -> do
                         unify2 tl' tr' -- BUG: should just jump to match
                         lift $ vl' `bindVar_` tr
-        
+
         (MutVar vl', MutTerm _) -> do
             mtl <- lift $ lookupVar vl'
             case mtl of
                 Nothing  -> vl' `acyclicBindVar_` tr
                 Just tl' -> unify2 tl' tr -- BUG: should just jump to match
-        
+
         (MutTerm _, MutVar vr') -> do
             mtr <- lift $ lookupVar vr'
             case mtr of
                 Nothing  -> vr' `acyclicBindVar_` tl
                 Just tr' -> unify2 tl tr' -- BUG: should just jump to match
-        
-        (MutTerm tl', MutTerm tr') -> 
+
+        (MutTerm tl', MutTerm tr') ->
             case getMore $ match tl' tr' of
             Nothing    -> throwError $ NonUnifiable tl' tr'
             Just pairs -> mapM_ (uncurry unify2) pairs
@@ -445,17 +445,17 @@ unify3
 unify3 =
     \tl tr -> evalStateT (loop tl tr) IM.empty
     where
-    
+
     v =: t = lift . lift $ v `bindVar_` t
     {-# INLINE (=:) #-}
-    
+
     v `seenAs` t = do
         seenVars <- get
         case IM.lookup (getVarID v) seenVars of
             Just t' -> lift . throwError $ OccursIn v t'
             Nothing -> put $ IM.insert (getVarID v) t seenVars
     {-# INLINE seenAs #-}
-    
+
     loop tl0 tr0 = do
         tl <- lift . lift $ semiprune tl0
         tr <- lift . lift $ semiprune tr0
@@ -475,7 +475,7 @@ unify3 =
                                 vr' `seenAs` tr'
                                 loop tl' tr' -- BUG: should just jump to match
                             vl' =: tr
-            
+
             (MutVar vl', MutTerm _) -> do
                 mtl <- lift . lift $ lookupVar vl'
                 case mtl of
@@ -483,7 +483,7 @@ unify3 =
                     Just tl' -> localState $ do
                         vl' `seenAs` tl'
                         loop tl' tr -- BUG: should just jump to match
-            
+
             (MutTerm _, MutVar vr') -> do
                 mtr <- lift . lift $ lookupVar vr'
                 case mtr of
@@ -491,8 +491,8 @@ unify3 =
                     Just tr' -> localState $ do
                         vr' `seenAs` tr'
                         loop tl tr' -- BUG: should just jump to match
-            
-            (MutTerm tl', MutTerm tr') -> 
+
+            (MutTerm tl', MutTerm tr') ->
                 case getMore $ match tl' tr' of
                 Nothing    -> lift . throwError $ NonUnifiable tl' tr'
                 Just pairs -> mapM_ (uncurry loop) pairs
@@ -517,17 +517,17 @@ unify4
 unify4 =
     \tl tr -> evalStateT (loop tl tr) IM.empty
     where
-    
+
     v =: t = lift . lift $ v `bindVar_` t
     {-# INLINE (=:) #-}
-    
+
     v `seenAs` t = do
         seenVars <- get
         case IM.lookup (getVarID v) seenVars of
             Just t' -> lift . throwError $ OccursIn v t'
             Nothing -> put $ IM.insert (getVarID v) t seenVars
     {-# INLINE seenAs #-}
-    
+
     loop tl0 tr0 = do
         tl <- lift . lift $ semiprune tl0
         tr <- lift . lift $ semiprune tr0
@@ -549,7 +549,7 @@ unify4 =
                             vr' =: t
                             vl' =: tr
                             return tr
-            
+
             (MutVar vl', MutTerm _) -> do
                 t <- do
                     mtl <- lift . lift $ lookupVar vl'
@@ -560,7 +560,7 @@ unify4 =
                             loop tl' tr -- BUG: should just jump to match
                 vl' =: t
                 return tl
-            
+
             (MutTerm _, MutVar vr') -> do
                 t <- do
                     mtr <- lift . lift $ lookupVar vr'
@@ -571,8 +571,8 @@ unify4 =
                             loop tl tr' -- BUG: should just jump to match
                 vr' =: t
                 return tr
-            
-            (MutTerm tl', MutTerm tr') -> 
+
+            (MutTerm tl', MutTerm tr') ->
                 case zipMatch tl' tr' of
                 Nothing  -> lift . throwError $ NonUnifiable tl' tr'
                 Just tlr -> MutTerm <$> mapM (uncurry loop) tlr

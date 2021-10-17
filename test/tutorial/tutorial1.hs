@@ -37,7 +37,7 @@ instance Unifiable T where
 
 ----------------------------------------------------------------
 -- Some aliases for simplifying type signatures:
-type PrologTerm           = UTerm T IntVar 
+type PrologTerm           = UTerm T IntVar
 type PrologFailure        = UnificationFailure T IntVar
 type PrologBindingState   = IntBindingState T
 type FallibleBindingMonad = ErrorT PrologFailure (IntBindingT T Identity)
@@ -112,7 +112,7 @@ choiceWorks1 = do
     x <- getFreeVar
     x =:= atom "backtrack"
     example4 x
-    
+
 choiceWorks2 = do
     example4 (atom "backtrack")
 

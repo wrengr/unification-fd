@@ -6,12 +6,12 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2015.03.29
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification.STVar
--- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  semi-portable (Rank2Types, MPTCs,...)
 --
@@ -117,11 +117,11 @@ instance (Unifiable t) =>
     where
 
     lookupVar (STVar _ p) = STB . lift $ readSTRef p
-    
+
     freeVar  = _newSTVar "freeVar" Nothing
-    
+
     newVar t = _newSTVar "newVar" (Just t)
-    
+
     bindVar (STVar _ p) t = STB . lift $ writeSTRef p (Just t)
 
 ----------------------------------------------------------------

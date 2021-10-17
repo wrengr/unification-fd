@@ -10,11 +10,11 @@
 #endif
 
 ----------------------------------------------------------------
---                                                  ~ 2015.03.29
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Monad.MaybeK
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  provisional
 -- Portability :  semi-portable (CPP, Rank2Types, MPTCs)
 --
@@ -196,7 +196,7 @@ instance (Applicative m, Monad m) => Alternative (MaybeKT m) where
 
 instance (Applicative m, Monad m) => MonadPlus (MaybeKT m) where
     mzero = MKT (\_ -> return Nothing)
-    
+
     m `mplus` n = MKT $ \k -> do
         mb <- runMaybeKT m
         case mb of

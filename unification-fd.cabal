@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@community.haskell.org>   ~ 2021.02.24
+-- wren gayle romano <wren@cpan.org>                ~ 2021.10.17
 ----------------------------------------------------------------
 
 -- Hackage requires us to require Cabal-Version >=1.10; otherwise
@@ -13,9 +13,10 @@ Name:           unification-fd
 Version:        0.11.1
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
+Bug-Reports:    https://github.com/wrengr/unification-fd/issues
 Author:         wren gayle romano
-Maintainer:     winterkoninkje@gmail.com
-Copyright:      Copyright (c) 2007--2021 wren gayle romano
+Maintainer:     wren@cpan.org
+Copyright:      Copyright (c) 2007–2021 wren gayle romano
 License:        BSD3
 License-File:   LICENSE
 
@@ -42,7 +43,7 @@ Extra-source-files:
     AUTHORS, README.md, CHANGELOG
 Source-Repository head
     Type:     git
-    Location: https://github.com/wrengr/unification-fd
+    Location: https://github.com/wrengr/unification-fd.git
 
 ----------------------------------------------------------------
 Library

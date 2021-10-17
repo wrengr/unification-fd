@@ -2,12 +2,12 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.25
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Codensity
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
@@ -239,7 +239,7 @@ equalsMaybe_ tl0 tr0 = do
                 case zipMatch_ tl tr of
                 Nothing  -> return Nothing
                 Just tlr ->
-                    foldr 
+                    foldr
                         (\ (tl',tr') k mb ->
                             case mb of
                             Nothing -> return Nothing
@@ -287,7 +287,7 @@ equalsBool_ tl0 tr0 = do
                     tlr
                 {-
                 -- WTF: if we use this implementation instead, then the MaybeT implementation suddenly becomes faster than the Maybe version! (And this function becomes slightly faster too).
-                foldr 
+                foldr
                     (\ (tl',tr') k b ->
                         if b
                         then equalsBool_ tl' tr' >>= k
@@ -307,7 +307,7 @@ instance Unifiable S where
     zipMatch_ (S a xs) (S b ys)
         | a == b    = fmap (S a) (pair xs ys)
         | otherwise = Nothing
-    
+
     -- The new type
     zipMatch (S a xs) (S b ys)
         | a == b    = fmap (S a) (pairWith (\x y -> Right(x,y)) xs ys)
@@ -348,7 +348,7 @@ main =
         f2z = f f1z;  f2r = f f1r;  g2z = g g1z;  g2r = g g1r
         f3z = f f2z;  f3r = f f2r;  g3z = g g2z;  g3r = g g2r
         f4z = f f3z;  f4r = f f3r;  g4z = g g3z;  g4r = g g3r
-        
+
         mkBGroup tl tr =
             [ bench "equalsMaybeKT'_" $ nf (evalIB . equalsMaybeKT'_ tl) tr
             , bench "equalsMaybeKT'"  $ nf (evalIB . equalsMaybeKT'  tl) tr
@@ -360,8 +360,8 @@ main =
             , bench "equalsBool_"     $ nf (evalIB . equalsBool_     tl) tr
             , bench "equals (lib)"    $ nf (evalIB . equals          tl) tr
             ]
-        
-        
+
+
         xxx = fooN 10
         x0 = foo16 xxx  xxx  xxx  xxx
         xA = foo16 bar0 xxx  xxx  xxx

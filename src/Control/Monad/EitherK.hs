@@ -11,11 +11,11 @@
 #endif
 
 ----------------------------------------------------------------
---                                                  ~ 2015.03.29
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Monad.EitherK
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  provisional
 -- Portability :  semi-portable (CPP, Rank2Types, MPTCs, FlexibleInstances)
 --

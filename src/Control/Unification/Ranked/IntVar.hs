@@ -4,12 +4,12 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2012.03.18
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification.Ranked.IntVar
--- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  highly experimental
 -- Portability :  semi-portable (MPTCs,...)
 --
@@ -104,13 +104,13 @@ instance (MonadLogic m, MonadPlus m) => MonadLogic (IntRBindingT t m) where
         where
         coerce Nothing        = Nothing
         coerce (Just (a, m')) = Just (a, IRBT m')
-    
+
     interleave (IRBT l) (IRBT r) = IRBT (interleave l r)
-    
+
     IRBT m >>- f = IRBT (m >>- (unIRBT . f))
-    
+
     ifte (IRBT b) t (IRBT f) = IRBT (ifte b (unIRBT . t) f)
-    
+
     once (IRBT m) = IRBT (once m)
 
 ----------------------------------------------------------------
@@ -133,13 +133,13 @@ execIntRBindingT (IRBT m) = execStateT m emptyIntRBindingState
 instance (Unifiable t, Applicative m, Monad m) =>
     BindingMonad t IntVar (IntRBindingT t m)
     where
-    
+
     lookupVar (IntVar v) = IRBT $ do
         mb <- gets (IM.lookup v . varBindings)
         case mb of
             Nothing           -> return Nothing
             Just (Rank _ mb') -> return mb'
-    
+
     freeVar = IRBT $ do
         ibs <- get
         let v = nextFreeVar ibs
@@ -148,7 +148,7 @@ instance (Unifiable t, Applicative m, Monad m) =>
             else do
                 put $ ibs { nextFreeVar = v+1 }
                 return $ IntVar v
-    
+
     newVar t = IRBT $ do
         ibs <- get
         let v = nextFreeVar ibs
@@ -158,14 +158,14 @@ instance (Unifiable t, Applicative m, Monad m) =>
                 let bs' = IM.insert v (Rank 0 (Just t)) (varBindings ibs)
                 put $ ibs { nextFreeVar = v+1, varBindings = bs' }
                 return $ IntVar v
-    
+
     bindVar (IntVar v) t = IRBT $ do
         ibs <- get
         let bs' = IM.insertWith f v (Rank 0 (Just t)) (varBindings ibs)
             f (Rank _0 jt) (Rank r _) = Rank r jt
         put $ ibs { varBindings = bs' }
-    
-    
+
+
 instance (Unifiable t, Applicative m, Monad m) =>
     RankedBindingMonad t IntVar (IntRBindingT t m)
     where
@@ -174,13 +174,13 @@ instance (Unifiable t, Applicative m, Monad m) =>
         case mb of
             Nothing -> return (Rank 0 Nothing)
             Just rk -> return rk
-    
+
     incrementRank (IntVar v) = IRBT $ do
         ibs <- get
         let bs' = IM.insertWith f v (Rank 1 Nothing) (varBindings ibs)
             f (Rank _1 _n) (Rank r mb) = Rank (r+1) mb
         put $ ibs { varBindings = bs' }
-    
+
     incrementBindVar (IntVar v) t = IRBT $ do
         ibs <- get
         let bs' = IM.insertWith f v (Rank 1 (Just t)) (varBindings ibs)

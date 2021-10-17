@@ -9,12 +9,12 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-deprecations #-}
 ----------------------------------------------------------------
---                                                  ~ 2014.09.17
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  PuttingHR
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --
@@ -47,7 +47,7 @@ import Control.Unification.IntVar
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-type Name = String 
+type Name = String
 
 -- To add multi-branch constructs like case and conditionals, see "unification under a mixed prefix" for typing it <Miller 1992> etc. However, apparently that will type fewer programs than using the equivalence relation induced by two-way subsumption... It also looses the property that if $\Gamma' \vdash^{poly}_\Downarrow t : \sigma$ and $\vdash^{dsk} \Gamma \leq \Gamma'$ then $\Gamma \vdash^poly_\Downarrow t : \sigma$. (Though the checkingness can be regained by adding type annotations.)
 data Term
@@ -64,7 +64,7 @@ data Term
     -- TyApp Term Tau       -- Type application. N.B., predicativity
     deriving (Show)
 
-type ConName = Name 
+type ConName = Name
 data Pat
     = PWild              -- ^ @_@
     | PVar Name          -- ^ @x@
@@ -74,7 +74,7 @@ data Pat
 
 ----------------------------------------------------------------
 
-type Sigma = Type 
+type Sigma = Type
 type Rho   = Type -- ^ No top-level @ForAll@
 type Tau   = Type -- ^ No @ForAll@s anywhere
 type Type  = UTerm Ty MetaTv
@@ -86,18 +86,18 @@ data Ty t
     deriving (Show, Functor, Foldable, Traversable)
 
 -- | Invariant: metas can only be bound to 'Tau'
-type MetaTv = IntVar 
+type MetaTv = IntVar
 
 data TyVar
     = BoundTv  Name      -- ^ A type variable bound by a @ForAll@
     | SkolemTv Name Uniq -- ^ A skolem constant; the Name is just to improve error messages
     deriving (Show, Eq)
 
-type Uniq = Int 
+type Uniq = Int
 
 data TyCon
     = IntT
-    | BoolT 
+    | BoolT
     deriving (Show, Eq)
 
 
@@ -450,18 +450,18 @@ subsCheck sigma1 sigma2 = do -- Rule DEEP-SKOL
         , ppr b
         ]
     ppr (Ann e ty) = pprParendTerm e <+> PP.text "::" <+> pprParendType ty
-    
+
     pprParendTerm :: Term -> PP.Doc
     pprParendTerm e
         | atomicTerm e = ppr e
         | otherwise    = PP.parens (ppr e)
-    
+
     pprApp :: Term -> PP.Doc
     pprApp e = go e []
         where
         go (App e1 e2) es = go e1 (e2:es)
         go e' es = pprParendTerm e' <+> PP.sep (map pprParendTerm es)
-    
+
     pprName :: Name -> PP.Doc
     pprName = PP.text
 
@@ -497,7 +497,7 @@ quantify tvs ty = do
     new_bndrs = take (length tvs) (allBinders \\ used_bndrs)
     bind (tv, name) = writeTv tv (TyVar name)
 
-type Env = [(TyVar, Tau)] 
+type Env = [(TyVar, Tau)]
 
 -- Replace the specified quantified type variables by
 -- given meta type variables
@@ -550,7 +550,7 @@ tcPat (PCon con ps) exp_ty = do
 -- N.B., assumes predicative data types, i.e. no PolymorphicComponents (but then predicativity is assumed everywhere else too)
 instDataCon :: Name -> Tc ([Sigma], Tau)
 instDataCon = undefined
-    
+
 instPatSigma :: Sigma -> Expected Sigma -> Tc ()
 instPatSigma pat_ty (Infer ref)    = writeTcRef ref pat_ty
 instPatSigma pat_ty (Check exp_ty) = subsCheck exp_ty pat_ty

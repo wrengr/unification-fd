@@ -7,12 +7,12 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.05
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification.STVar
--- Copyright   :  Copyright (c) 2007--2011 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  semi-portable (Rank2Types, MPTCs, Undecidable-, FlexibleInstances)
 --
@@ -50,7 +50,7 @@ instance Show (STVar s a) where
 
 instance Variable (STVar s) where
     eqVar (STVar i _) (STVar j _) = i == j
-    
+
     getVarID  (STVar i _) = i
 
 
@@ -120,7 +120,7 @@ _writeSTVar (STVar _ r) = STB . lift . writeSTRef r
 instance BindingWriter (STVar s) t (STBinding s) where
     bindVar    v t = lookupVar v <* bindVar_   v t
     unbindVar  v   = lookupVar v <* unbindVar_ v
-    
+
     bindVar_   v t = _writeSTVar v (Just t)
     unbindVar_ v   = _writeSTVar v Nothing
 

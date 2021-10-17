@@ -9,12 +9,12 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-deprecations #-}
 ----------------------------------------------------------------
---                                                  ~ 2014.09.17
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  PuttingDM
--- Copyright   :  Copyright (c) 2007--2014 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  non-portable
 --

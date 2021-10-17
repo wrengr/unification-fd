@@ -2,12 +2,12 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2011.07.05
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification.IntVar
--- Copyright   :  Copyright (c) 2007--2011 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
 -- Portability :  semi-portable (MPTCs, FlexibleInstances)
 --
@@ -71,7 +71,7 @@ boundedInt2Word i
 
 instance Variable IntVar where
     eqVar (IntVar i) (IntVar j) = i == j
-    
+
     getVarID (IntVar v) = v
 
 
@@ -137,13 +137,13 @@ instance (MonadLogic m) => MonadLogic (IntBindingT t m) where
         where
         coerce Nothing        = Nothing
         coerce (Just (a, m')) = Just (a, IBT m')
-    
+
     interleave (IBT l) (IBT r) = IBT (interleave l r)
-    
+
     IBT m >>- f = IBT (m >>- (unIBT . f))
-    
+
     ifte (IBT b) t (IBT f) = IBT (ifte b (unIBT . t) f)
-    
+
     once (IBT m) = IBT (once m)
 
 ----------------------------------------------------------------
@@ -180,7 +180,7 @@ instance (Applicative m, Monad m) =>
             else do
                 put $ ibs { nextFreeVar = v+1 }
                 return $ IntVar v
-    
+
     newVar t = IBT $ do
         ibs <- get
         let v = nextFreeVar ibs
@@ -201,18 +201,18 @@ instance (Applicative m, Monad m) =>
         let (mt, bs') = IM.insertLookupWithKey (\_ _ -> id) v t bs
         put $ ibs { varBindings = bs' }
         return mt
-    
+
     bindVar_ (IntVar v) t = IBT $ do
         ibs <- get
         put $ ibs { varBindings = IM.insert v t (varBindings ibs) }
-    
+
     unbindVar (IntVar v) = IBT $ do
         ibs <- get
         let bs = varBindings ibs
         let (mt,bs') = IM.updateLookupWithKey (\_ _ -> Nothing) v bs
         put $ ibs { varBindings = bs' }
         return mt
-    
+
     unbindVar_ (IntVar v) = IBT $ do
         ibs <- get
         put $ ibs { varBindings = IM.delete v (varBindings ibs) }

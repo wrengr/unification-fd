@@ -13,7 +13,7 @@ import Distribution.Simple.Program        (userSpecifyArgs)
 main :: IO ()
 main = defaultMainWithHooks
     $ simpleUserHooks `modify_haddockHook` \oldHH pkg lbi hooks flags -> do
-        
+
         -- Call the old haddockHook with a modified LocalBuildInfo
         (\lbi' -> oldHH pkg lbi' hooks flags)
             $ lbi `modify_withPrograms` \oldWP ->

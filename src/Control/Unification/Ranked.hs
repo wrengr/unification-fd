@@ -1,12 +1,12 @@
 {-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleContexts #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs -fno-warn-name-shadowing #-}
 ----------------------------------------------------------------
---                                                  ~ 2015.03.29
+--                                                  ~ 2021.10.17
 -- |
 -- Module      :  Control.Unification.Ranked
--- Copyright   :  Copyright (c) 2007--2015 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
 -- License     :  BSD
--- Maintainer  :  wren@community.haskell.org
+-- Maintainer  :  wren@cpan.org
 -- Stability   :  highly experimental
 -- Portability :  semi-portable (CPP, MPTCs, FlexibleContexts)
 --
@@ -19,7 +19,7 @@ module Control.Unification.Ranked
     (
     -- * Data types, classes, etc
       module Control.Unification.Types
-    
+
     -- * Operations on one term
     , getFreeVars
     , applyBindings
@@ -28,7 +28,7 @@ module Control.Unification.Ranked
     -- unskolemize -- convert Skolemized variables to free variables
     -- skolemize   -- convert free variables to Skolemized variables
     -- getSkolems  -- compute the skolem variables in a term; helpful?
-    
+
     -- * Operations on two terms
     -- ** Symbolic names
     , (===)
@@ -41,7 +41,7 @@ module Control.Unification.Ranked
     , unify
     -- unifyOccurs
     -- subsumes
-    
+
     -- * Operations on many terms
     , getFreeVarsAll
     , applyBindingsAll
@@ -132,7 +132,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
     where
     {-# INLINE (=:) #-}
     v =: t = bindVar v t >> return t
-    
+
     loop tl0 tr0 = do
         tl0 <- lift . lift $ semiprune tl0
         tr0 <- lift . lift $ semiprune tr0
@@ -149,19 +149,19 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                             LT -> do {                    vl =: tr0 }
                             EQ -> do { incrementRank vr ; vl =: tr0 }
                             GT -> do {                    vr =: tl0 }
-                      
+
                         (Nothing, Just tr) -> lift . lift $
                             case cmp of
                             LT -> do {                    vl =: tr0 }
                             EQ -> do { incrementRank vr ; vl =: tr0 }
                             GT -> do { vl `bindVar` tr  ; vr =: tl0 }
-                        
+
                         (Just tl, Nothing) -> lift . lift $
                             case cmp of
                             LT -> do { vr `bindVar` tl  ; vl =: tr0 }
                             EQ -> do { incrementRank vl ; vr =: tl0 }
                             GT -> do {                    vr =: tl0 }
-                        
+
                         (Just (UTerm tl), Just (UTerm tr)) -> do
                             t <- localState $ do
                                 vl `seenAs` tl
@@ -173,7 +173,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                                 EQ -> do { incrementBindVar vl t ; vr =: tl0 }
                                 GT -> do { vl `bindVar` t        ; vr =: tl0 }
                         _ -> error _impossible_unify
-            
+
             (UVar vl, UTerm tr) -> do
                 t <- do
                     mtl <- lift . lift $ lookupVar vl
@@ -186,7 +186,7 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                 lift . lift $ do
                     vl `bindVar` t
                     return tl0
-            
+
             (UTerm tl, UVar vr) -> do
                 t <- do
                     mtr <- lift . lift $ lookupVar vr
@@ -199,14 +199,14 @@ unify tl0 tr0 = evalStateT (loop tl0 tr0) IM.empty
                 lift . lift $ do
                     vr `bindVar` t
                     return tr0
-            
+
             (UTerm tl, UTerm tr) -> match tl tr
-    
+
     match tl tr =
         case zipMatch tl tr of
         Nothing  -> lift . throwError $ mismatchFailure tl tr
         Just tlr -> UTerm <$> mapM loop_ tlr
-    
+
     loop_ (Left  t)       = return t
     loop_ (Right (tl,tr)) = loop tl tr
 
