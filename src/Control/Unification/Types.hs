@@ -19,13 +19,6 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 
--- HACK: in GHC 7.10, Haddock complains about unused imports; but,
--- if we use CPP to avoid including them under Haddock, then it
--- will fail!
-#ifdef __HADDOCK__
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
-#endif
-
 ----------------------------------------------------------------
 --                                                  ~ 2021.10.17
 -- |

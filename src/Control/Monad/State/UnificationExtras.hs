@@ -46,7 +46,7 @@ liftReader :: Reader e a -> State e a
 liftReader = liftReaderT
 
 
--- | A strict version of 'modify'.
+-- | A strict version of 'Control.Monad.State.modify'.
 modify' :: (MonadState s m) => (s -> s) -> m ()
 {-# INLINE modify' #-}
 modify' f = do
