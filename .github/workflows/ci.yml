@@ -1,10 +1,11 @@
 # This GitHub Actions script was modified from from:
-# <https://github.com/haskell/bytestring/blob/master/.github/workflows/ci.yml>
-# commit/784cdd7dc492f283f41c28bfee1ab62a20c4d353
-# For more guidance, see also <https://kodimensional.dev/github-actions>
+#   <https://github.com/haskell/bytestring/blob/master/.github/workflows/ci.yml>
+#   (commit/bd3c32c784bde80c9a46b22ef0029e668c954e70) 2021-10-09
+# with particular changes taken from <https://kodimensional.dev/github-actions>
+# (which has still more stuff we may want to incorporate later).
 #
 # Once Haskell-CI fully supports generating GitHub Actions scripts,
-# we should switch over to useing that rather than maintaining this
+# we should switch over to using that rather than maintaining this
 # file manually.
 name: ci
 on:
@@ -24,14 +25,19 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
+        # Note(2021-10-23): All these versions resolve to using the
+        #   latest Cabal (3.4.0.0); they do *not* use the version of
+        #   Cabal that originally shipped with the version of GHC.
         os: [ubuntu-latest]
-        # Note(2021.10.16): GitHub now has 9.0.1.
         ghc: ['8.0.2', '8.2.2', '8.4.4', '8.6.5', '8.8.4', '8.10.3', '9.0.1']
         include:
+        # This package has no build details sepcific to Win/Mac,
+        # so building for the latest GHC should be sufficent
+        # (in conjunction with the full list above for Ubuntu).
         - os: windows-latest
-          ghc: 'latest' # Lacking Win-specific bits, latest should suffice.
+          ghc: 'latest'
         - os: macOS-latest
-          ghc: 'latest' # Lacking Mac-specific bits, latest should suffice.
+          ghc: 'latest'
     steps:
     - uses: actions/checkout@v2.3.5
     - uses: haskell/actions/setup@v1.2.6
@@ -40,37 +46,42 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
     - name: Update cabal package database
       run: cabal update
+    - name: Configure
+      # Generates the `cabal.project.local` file.
+      # We make sure to enable tests & benchmarks here so that when
+      # we run the tests/benchmarks they don't reconfigure things
+      # and thus cause rebuilding.
+      run: cabal configure --enable-tests --enable-benchmarks --test-show-details=direct
+    - name: Freeze
+      # Generates the `cabal.project.freeze` file.
+      run: cabal freeze
     - uses: actions/cache@v2.1.6
-      name: Cache cabal stuff
+      name: Cache ~/.cabal/store and ./dist-newstyle
+      # TODO(2021-10-23): Do we really want the hash in the key?
+      #   With nix-style builds it shouldn't be necessary (afaict),
+      #   and so it reduces the likelihood of cache hits (albeit
+      #   also reducing the footprint of the cache).
       with:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
-        key: ${{ runner.os }}-${{ matrix.ghc }}
+        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
     - name: Install dependencies
-      run: |
-        cabal build all --only-dependencies
+      run: cabal build all --only-dependencies
     - name: Build
-      run: |
-        cabal build all
-    ## BUG: our Tasty tests aren't hooked into cabal yet...
-    ## TODO: why does bytestring run tests via sdist stuff instead of just directly?
+      run: cabal build all
+    ## TODO: Add a test suite!
     #- name: Test
-    #  run: |
-    #    cabal sdist -z -o .
-    #    cabal get unification-fd-*.tar.gz
-    #    cd unification-fd-*/
-    #    cp ../cabal.project .
-    #    cabal test --test-show-details=direct
-    ## We have no benchmarks yet
+    #  run: cabal test all -j1
+    ## TODO: Add benchmarks!
     #- name: Bench
-    #  run: |
-    #    cd unification-fd-*/
-    #    cabal bench --benchmark-option=-l
+    #  run: cabal bench --benchmark-option=-l all
     - name: Haddock
       run: cabal haddock
 
-  ## BUG: our Tasty tests aren't hooked into cabal yet, so no point in this yet
+  # TODO(2021-10-23): Should probably move to using Cirrus instead,
+  #   since that's what bytestring does since:
+  #   (commit/06cbef10f4869c6afdac210a22d9813b4f7f2fe6) 2021-06-10
   #build-freebsd:
   #  # This job intentionally is using macOS because at the time of
   #  # the writing Linux and Windows environments don't have the
@@ -78,10 +89,10 @@ jobs:
   #  # See <https://github.com/vmactions/freebsd-vm#under-the-hood>
   #  runs-on: macos-latest
   #  steps:
-  #  - uses: actions/checkout@v2
+  #  - uses: actions/checkout@v2.3.5
   #  - name: Test
   #    id: build-freebsd
-  #    uses: vmactions/freebsd-vm@v0.1.2
+  #    uses: vmactions/freebsd-vm@v0.1.5
   #    with:
   #      usesh: true
   #      mem: 4096
