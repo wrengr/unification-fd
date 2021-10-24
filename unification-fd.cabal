@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2021.10.17
+-- wren gayle romano <wren@cpan.org>                ~ 2021.10.23
 ----------------------------------------------------------------
 
 -- Hackage requires us to require Cabal-Version >=1.10; otherwise
@@ -10,7 +10,7 @@ Cabal-Version:  >= 1.10
 Build-Type:     Simple
 
 Name:           unification-fd
-Version:        0.11.1
+Version:        0.11.1.1
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
 Bug-Reports:    https://github.com/wrengr/unification-fd/issues
@@ -27,20 +27,23 @@ Description:
     unification (think of programming in Prolog, or of the metavariables
     in type inference).
 
--- No longer compiles with GHC-6.12.1 since Data.Monoid does not
--- export (<>) in Control.Unification.Types. The backwards compatibility
--- is not considered worth adding CPP noise...
--- FIXME(2021.02.24): versions 7.x are no longer available on GitHub
---   for CI (at least not on ubuntu-latest); so we should probably
---   remove them from here
--- FIXME(2021.02.24): version 9.0.1 is not yet cached on GitHub for CI either.
-Tested-With:
-    GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3,
-    GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5,
-    GHC == 8.8.4, GHC == 8.10.3, GHC == 9.0.1
-
 Extra-source-files:
     AUTHORS, README.md, CHANGELOG
+
+-- This should work as far back as GHC 7.4.2, but we don't verify that by CI.
+-- (No longer compiles with GHC-6.12.1 since "Data.Monoid" does not
+-- export @(<>)@ in "Control.Unification.Types"; and adding the
+-- backwards compatibility isn't worth adding CPP noise...)
+-- <https://github.com/wrengr/unification-fd/actions?query=workflow%3Aci>
+Tested-With:
+    GHC ==8.0.2,
+    GHC ==8.2.2,
+    GHC ==8.4.4,
+    GHC ==8.6.5,
+    GHC ==8.8.4,
+    GHC ==8.10.3,
+    GHC ==9.0.1
+
 Source-Repository head
     Type:     git
     Location: https://github.com/wrengr/unification-fd.git
