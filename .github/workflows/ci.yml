@@ -31,8 +31,8 @@ jobs:
         os: [ubuntu-latest]
         ghc: ['8.0.2', '8.2.2', '8.4.4', '8.6.5', '8.8.4', '8.10.3', '9.0.1']
         include:
-        # This package has no build details sepcific to Win/Mac,
-        # so building for the latest GHC should be sufficent
+        # This package has no build details specific to Win/Mac,
+        # so building for the latest GHC should be sufficient
         # (in conjunction with the full list above for Ubuntu).
         - os: windows-latest
           ghc: 'latest'
