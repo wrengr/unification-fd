@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2021.10.23
+-- wren gayle romano <wren@cpan.org>                ~ 2021.11.02
 ----------------------------------------------------------------
 
 -- Hackage requires us to require Cabal-Version >=1.10; otherwise
@@ -42,7 +42,8 @@ Tested-With:
     GHC ==8.6.5,
     GHC ==8.8.4,
     GHC ==8.10.3,
-    GHC ==9.0.1
+    GHC ==9.0.1,
+    GHC ==9.2.1
 
 Source-Repository head
     Type:     git

@@ -29,7 +29,7 @@ jobs:
         #   latest Cabal (3.4.0.0); they do *not* use the version of
         #   Cabal that originally shipped with the version of GHC.
         os: [ubuntu-latest]
-        ghc: ['8.0.2', '8.2.2', '8.4.4', '8.6.5', '8.8.4', '8.10.3', '9.0.1']
+        ghc: ['8.0.2', '8.2.2', '8.4.4', '8.6.5', '8.8.4', '8.10.3', '9.0.1', '9.2.1']
         include:
         # This package has no build details specific to Win/Mac,
         # so building for the latest GHC should be sufficient
@@ -39,7 +39,7 @@ jobs:
         - os: macOS-latest
           ghc: 'latest'
     steps:
-    - uses: actions/checkout@v2.3.5
+    - uses: actions/checkout@v2.4.0
     - uses: haskell/actions/setup@v1.2.6
       id: setup-haskell-cabal
       with:

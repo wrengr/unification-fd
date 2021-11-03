@@ -1,3 +1,6 @@
+0.11.1.1 (2021-11-02):
+    - Added `Tested-With: GHC == 9.2.1` (didn't actually need to
+      nudge the upper bound on 'base', because it's already lenient)
 0.11.1 (2021-02-24):
     - Migrating from TravisCI to GithubActions
     - Properly fixed the logict-0.7.1 issue.
