@@ -2,6 +2,9 @@
     - Adjusted Applicative/Monad instances to avoid warnings on GHC 9.2
       due to <https://gitlab.haskell.org/ghc/ghc/-/wikis/proposal/monad-of-no-return>
     - Adjusted Alternative/MonadPlus similarly, though not strictly required.
+    - Adjusted the CPP version guard for importing Data.Monoid.(<>)
+      in Control.Unification.Types, to remove an unused-imports warning
+      on GHC 8.8
 0.11.1.1 (2021-11-02):
     - Added `Tested-With: GHC == 9.2.1` (didn't actually need to
       nudge the upper bound on 'base', because it's already lenient)
