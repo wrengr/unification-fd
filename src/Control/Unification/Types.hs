@@ -20,7 +20,7 @@
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 
 ----------------------------------------------------------------
---                                                  ~ 2021.10.17
+--                                                  ~ 2021.11.07
 -- |
 -- Module      :  Control.Unification.Types
 -- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
@@ -54,7 +54,7 @@ import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 
 import Data.Word               (Word8)
 import Data.Functor.Fixedpoint (Fix(..), unFix)
-#if __GLASGOW_HASKELL__ < 810
+#if __GLASGOW_HASKELL__ < 804
 import Data.Monoid             ((<>))
 #endif
 import Data.Traversable        (Traversable(..))
