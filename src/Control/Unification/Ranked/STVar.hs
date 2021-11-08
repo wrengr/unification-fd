@@ -6,7 +6,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2021.10.17
+--                                                  ~ 2021.11.07
 -- |
 -- Module      :  Control.Unification.Ranked.STVar
 -- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
@@ -30,7 +30,6 @@ import Data.Word            (Word8)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative  (Applicative(..))
 #endif
-import Control.Monad        (ap)
 import Control.Monad.Trans  (lift)
 import Control.Monad.ST
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
@@ -76,8 +75,10 @@ newtype STRBinding s a = STRB { unSTRB :: ReaderT (STRef s Int) (ST s) a }
 -- such references. However, in order to remove the references from
 -- terms, you'll need to explicitly apply the bindings.
 runSTRBinding :: (forall s. STRBinding s a) -> a
-runSTRBinding stb =
-    runST (newSTRef minBound >>= runReaderT (unSTRB stb))
+runSTRBinding m =
+    runST (newSTRef minBound >>= runReaderT (unSTRB m))
+    -- N.B., because of the rank-2 quantification, cannot use the
+    -- 'STRB' pattern in lieu of 'unSTRB' here.
 
 
 -- For portability reasons, we're intentionally avoiding
@@ -87,14 +88,22 @@ instance Functor (STRBinding s) where
     fmap f = STRB . fmap f . unSTRB
 
 instance Applicative (STRBinding s) where
-    pure   = return
-    (<*>)  = ap
-    (*>)   = (>>)
-    x <* y = x >>= \a -> y >> return a
+    pure              = STRB . pure
+    STRB m <*> STRB n = STRB (m <*> n)
+    STRB m  *> STRB n = STRB (m  *> n)
+    STRB m <*  STRB n = STRB (m <*  n)
 
+-- Since base-4.8 (ghc-7.10.1) we have the default @return = pure@.
+-- Since ghc-9.2.1 we get a warning about providing any other
+-- definition, and should instead define both 'pure' and @(*>)@
+-- directly, leaving 'return' and @(>>)@ as their defaults so they
+-- can eventually be removed from the class.
+-- <https://gitlab.haskell.org/ghc/ghc/-/wikis/proposal/monad-of-no-return>
 instance Monad (STRBinding s) where
-    return    = STRB . return
-    stb >>= f = STRB (unSTRB stb >>= unSTRB . f)
+#if (!(MIN_VERSION_base(4,8,0)))
+    return       = pure
+#endif
+    STRB m >>= f = STRB (m >>= unSTRB . f)
 
 
 ----------------------------------------------------------------

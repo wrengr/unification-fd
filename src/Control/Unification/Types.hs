@@ -121,7 +121,9 @@ instance (Functor t) => Applicative (UTerm t) where
 -- building terms at least; though bind is inefficient for that.
 -- Should use the cheaper free...
 instance (Functor t) => Monad (UTerm t) where
-    return        = UVar
+#if (!(MIN_VERSION_base(4,8,0)))
+    return = pure
+#endif
     UVar  v >>= f = f v
     UTerm t >>= f = UTerm ((>>= f) <$> t)
 

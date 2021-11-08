@@ -3,7 +3,7 @@
 {-# LANGUAGE CPP, Rank2Types, MultiParamTypeClasses, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2021.10.17
+--                                                  ~ 2021.11.07
 -- |
 -- Module      :  Control.Monad.EitherK
 -- License     :  BSD
@@ -38,7 +38,7 @@ import Data.Monoid          (Monoid(..))
 import Control.Applicative  (Applicative(..))
 #endif
 import Control.Applicative  (Alternative(..))
-import Control.Monad        (MonadPlus(..), ap)
+import Control.Monad        (MonadPlus(..))
 import Control.Monad.Trans  (MonadTrans(..))
 #if (MIN_VERSION_mtl(2,2,1))
 -- aka: transformers(0,4,1)
@@ -108,34 +108,58 @@ eitherK :: (e -> b) -> (a -> b) -> EitherK e a -> b
 {-# INLINE eitherK #-}
 eitherK left right m =
     case runEitherK m of
-        Left  e -> left  e
-        Right a -> right a
+    Left  e -> left  e
+    Right a -> right a
 
 
 instance Functor (EitherK e) where
     fmap f (EK m) = EK (\k -> m (k . f))
+    x <$ EK m     = EK (\k -> m (\_ -> k x))
 
 instance Applicative (EitherK e) where
-    pure   = return
-    (<*>)  = ap
-    (*>)   = (>>)
-    x <* y = x >>= \a -> y >> return a
+    pure x        = EK (\k -> k x)
+    EK m <*> EK n = EK (\k -> m (\f -> n (k . f)))
+    EK m  *> EK n = EK (\k -> m (\_ -> n k))
+    EK m <*  EK n = EK (\k -> m (\x -> n (\_ -> k x)))
 
+-- Since base-4.8 (ghc-7.10.1) we have the default @return = pure@.
+-- Since ghc-9.2.1 we get a warning about providing any other
+-- definition, and should instead define both 'pure' and @(*>)@
+-- directly, leaving 'return' and @(>>)@ as their defaults so they
+-- can eventually be removed from the class.
+-- <https://gitlab.haskell.org/ghc/ghc/-/wikis/proposal/monad-of-no-return>
+--
+-- However, base-4.16 (ghc-9.2.1) still uses the @m >> n = m >>= \_ -> n@
+-- default.  In principle, that ought to compile down to the same
+-- thing as our @(*>)@; however, there's a decent chance the case
+-- analysis on @n@ won't get lifted out from under the lambdas, and
+-- thus the default definition would loose the strictness of the
+-- second argument.  Therefore, we're going to keep defining @(>>)@
+-- until whatever future version of GHC actually removes it from
+-- the class to make it a proper alias of @(*>)@.
 instance Monad (EitherK e) where
-    return a   = EK (\k -> k a)
+#if (!(MIN_VERSION_base(4,8,0)))
+    return     = pure
+#endif
+    (>>)       = (*>)
     EK m >>= f = EK (\k -> m (\a -> case f a of EK n -> n k))
     -- Using case instead of let seems to improve performance
     -- considerably by removing excessive laziness.
 
+-- TODO: is there anything to optimize over the default definitions
+-- of 'some' and 'many'?
 instance (Monoid e) => Alternative (EitherK e) where
-    empty = mzero
-    (<|>) = mplus
+    empty   = throwEitherK mempty
+    m <|> n = catchEitherK m $ \me ->
+              catchEitherK n $ \ne ->
+              throwEitherK   $ me `mappend` ne
 
-instance (Monoid e) => MonadPlus (EitherK e) where
-    mzero       = throwEitherK mempty
-    m `mplus` n = catchEitherK m $ \me ->
-                  catchEitherK n $ \ne ->
-                  throwEitherK   $ me `mappend` ne
+instance (Monoid e) => MonadPlus (EitherK e)
+#if (!(MIN_VERSION_base(4,8,0)))
+  where
+    mzero = empty
+    mplus = (<|>)
+#endif
 
 instance MonadError e (EitherK e) where
     throwError = throwEitherK
@@ -205,36 +229,43 @@ catchEitherKT
     :: (Applicative m, Monad m)
     => EitherKT e m a -> (e -> EitherKT f m a) -> EitherKT f m a
 {-# INLINE catchEitherKT #-}
-catchEitherKT m handler = EKT $ \k -> do
-    ea <- runEitherKT m
+catchEitherKT m handler = EKT $ \k ->
+    runEitherKT m >>= \ea ->
     case ea of
-        Left  e -> case handler e of EKT m' -> m' k
-        Right a -> k a
+    Left  e -> case handler e of EKT n -> n k
+    Right a -> k a
 
 
 instance Functor (EitherKT e m) where
     fmap f (EKT m) = EKT (\k -> m (k . f))
+    x <$ EKT m     = EKT (\k -> m (\_ -> k x))
 
 instance Applicative (EitherKT e m) where
-    pure   = return
-    (<*>)  = ap
-    (*>)   = (>>)
-    x <* y = x >>= \a -> y >> return a
+    pure x          = EKT (\k -> k x)
+    EKT m <*> EKT n = EKT (\k -> m (\f -> n (k . f)))
+    EKT m  *> EKT n = EKT (\k -> m (\_ -> n k))
+    EKT m <*  EKT n = EKT (\k -> m (\x -> n (\_ -> k x)))
 
 instance Monad (EitherKT e m) where
-    return a    = EKT (\k -> k a)
+#if (!(MIN_VERSION_base(4,8,0)))
+    return      = pure
+#endif
+    (>>)        = (*>)
     EKT m >>= f = EKT (\k -> m (\a -> case f a of EKT n -> n k))
 
--- In order to define a @(<|>)@ which only requires @Applicative
--- m@ we'd need a law @m (Either e a) -> Either (m e) (m a)@; or
+-- In order to define a @(<|>)@ which only requires @Applicative m@
+-- we'd need a law @m (Either e a) -> Either (m e) (m a)@; or
 -- equivalently, we'd need to use a 2-CPS style.
 instance (Applicative m, Monad m, Monoid e) => Alternative (EitherKT e m) where
-    empty = mzero
-    (<|>) = mplus
+    empty   = throwEitherKT mempty
+    m <|> n = catchEitherKT m (catchEitherKT n . (throwEitherKT .) . mappend)
 
-instance (Applicative m, Monad m, Monoid e) => MonadPlus (EitherKT e m) where
-    mzero       = throwEitherKT mempty
-    m `mplus` n = catchEitherKT m (catchEitherKT n . (throwEitherKT .) . mappend)
+instance (Applicative m, Monad m, Monoid e) => MonadPlus (EitherKT e m)
+#if (!(MIN_VERSION_base(4,8,0)))
+  where
+    mzero = empty
+    mplus = (<|>)
+#endif
 
 instance (Applicative m, Monad m) => MonadError e (EitherKT e m) where
     throwError = throwEitherKT

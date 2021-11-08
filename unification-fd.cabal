@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2021.11.02
+-- wren gayle romano <wren@cpan.org>                ~ 2021.11.07
 ----------------------------------------------------------------
 
 -- Hackage requires us to require Cabal-Version >=1.10; otherwise
@@ -10,7 +10,7 @@ Cabal-Version:  >= 1.10
 Build-Type:     Simple
 
 Name:           unification-fd
-Version:        0.11.1.1
+Version:        0.11.2
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
 Bug-Reports:    https://github.com/wrengr/unification-fd/issues

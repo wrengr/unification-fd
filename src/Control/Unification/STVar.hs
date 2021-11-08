@@ -6,7 +6,7 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2021.10.17
+--                                                  ~ 2021.11.07
 -- |
 -- Module      :  Control.Unification.STVar
 -- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
@@ -30,7 +30,6 @@ import Data.STRef
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative  (Applicative(..), (<$>))
 #endif
-import Control.Monad        (ap)
 import Control.Monad.Trans  (lift)
 import Control.Monad.ST
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
@@ -77,6 +76,8 @@ newtype STBinding s a = STB { unSTB :: ReaderT (STRef s Int) (ST s) a }
 runSTBinding :: (forall s. STBinding s a) -> a
 runSTBinding stb =
     runST (newSTRef minBound >>= runReaderT (unSTB stb))
+    -- N.B., because of the rank-2 quantification, cannot use the
+    -- 'STB' pattern in lieu of 'unSTB' here.
 
 
 -- For portability reasons, we're intentionally avoiding
@@ -86,14 +87,23 @@ instance Functor (STBinding s) where
     fmap f = STB . fmap f . unSTB
 
 instance Applicative (STBinding s) where
-    pure   = return
-    (<*>)  = ap
-    (*>)   = (>>)
-    x <* y = x >>= \a -> y >> return a
+    pure            = STB . pure
+    STB m <*> STB n = STB (m <*> n)
+    STB m  *> STB n = STB (m  *> n)
+    STB m <*  STB n = STB (m <*  n)
 
+-- Since base-4.8 (ghc-7.10.1) we have the default @return = pure@.
+-- Since ghc-9.2.1 we get a warning about providing any other
+-- definition, and should instead define both 'pure' and @(*>)@
+-- directly, leaving 'return' and @(>>)@ as their defaults so they
+-- can eventually be removed from the class.
+-- <https://gitlab.haskell.org/ghc/ghc/-/wikis/proposal/monad-of-no-return>
 instance Monad (STBinding s) where
-    return    = STB . return
-    stb >>= f = STB (unSTB stb >>= unSTB . f)
+#if (!(MIN_VERSION_base(4,8,0)))
+    return    = pure
+    (>>)      = (*>)
+#endif
+    STB m >>= f = STB (m >>= unSTB . f)
 
 
 ----------------------------------------------------------------

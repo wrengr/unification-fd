@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP, Rank2Types, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2021.10.17
+--                                                  ~ 2021.11.07
 -- |
 -- Module      :  Control.Monad.MaybeK
 -- License     :  BSD
@@ -37,7 +37,7 @@ module Control.Monad.MaybeK
 import Control.Applicative  (Applicative(..))
 #endif
 import Control.Applicative  (Alternative(..))
-import Control.Monad        (MonadPlus(..), ap)
+import Control.Monad        (MonadPlus(..))
 import Control.Monad.Trans  (MonadTrans(..))
 #if (MIN_VERSION_mtl(2,2,1))
 -- aka: transformers(0,4,1)
@@ -92,27 +92,49 @@ maybeK nothing just m =
 
 instance Functor MaybeK where
     fmap f (MK m) = MK (\k -> m (k . f))
+    x <$ MK m     = MK (\k -> m (\_ -> k x))
 
 instance Applicative MaybeK where
-    pure   = return
-    (<*>)  = ap
-    (*>)   = (>>)
-    x <* y = x >>= \a -> y >> return a
+    pure x        = MK (\k -> k x)
+    MK m <*> MK n = MK (\k -> m (\f -> n (k . f)))
+    MK m  *> MK n = MK (\k -> m (\_ -> n k))
+    MK m <*  MK n = MK (\k -> m (\x -> n (\_ -> k x)))
 
+-- Since base-4.8 (ghc-7.10.1) we have the default @return = pure@.
+-- Since ghc-9.2.1 we get a warning about providing any other
+-- definition, and should instead define both 'pure' and @(*>)@
+-- directly, leaving 'return' and @(>>)@ as their defaults so they
+-- can eventually be removed from the class.
+-- <https://gitlab.haskell.org/ghc/ghc/-/wikis/proposal/monad-of-no-return>
+--
+-- However, base-4.16 (ghc-9.2.1) still uses the @m >> n = m >>= \_ -> n@
+-- default.  In principle, that ought to compile down to the same
+-- thing as our @(*>)@; however, there's a decent chance the case
+-- analysis on @n@ won't get lifted out from under the lambdas, and
+-- thus the default definition would loose the strictness of the
+-- second argument.  Therefore, we're going to keep defining @(>>)@
+-- until whatever future version of GHC actually removes it from
+-- the class to make it a proper alias of @(*>)@.
 instance Monad MaybeK where
-    return a   = MK (\k -> k a)
+#if (!(MIN_VERSION_base(4,8,0)))
+    return     = pure
+#endif
+    (>>)       = (*>)
     MK m >>= f = MK (\k -> m (\a -> case f a of MK n -> n k))
     -- Using case instead of let seems to improve performance
     -- considerably by removing excessive laziness.
 
 -- This is non-commutative, but it's the same as Alternative Maybe.
 instance Alternative MaybeK where
-    empty = mzero
-    (<|>) = mplus
+    empty   = MK (\_ -> Nothing)
+    m <|> n = maybeK n pure m
 
-instance MonadPlus MaybeK where
-    mzero       = MK (\_ -> Nothing)
-    m `mplus` n = maybeK n return m
+instance MonadPlus MaybeK
+#if (!(MIN_VERSION_base(4,8,0)))
+  where
+    mzero = empty
+    mplus = (<|>)
+#endif
 
 instance MonadError () MaybeK where
     throwError _   = mzero
@@ -168,40 +190,46 @@ lowerMaybeK = fmap toMaybeK . runMaybeKT
 
 instance Functor (MaybeKT m) where
     fmap f (MKT m) = MKT (\k -> m (k . f))
+    x <$ MKT m     = MKT (\k -> m (\_ -> k x))
 
 instance Applicative (MaybeKT m) where
-    pure   = return
-    (<*>)  = ap
-    (*>)   = (>>)
-    x <* y = x >>= \a -> y >> return a
+    pure x          = MKT (\k -> k x)
+    MKT m <*> MKT n = MKT (\k -> m (\f -> n (k . f)))
+    MKT m  *> MKT n = MKT (\k -> m (\_ -> n k))
+    MKT m <*  MKT n = MKT (\k -> m (\x -> n (\_ -> k x)))
 
 instance Monad (MaybeKT m) where
-    return a    = MKT (\k -> k a)
+#if (!(MIN_VERSION_base(4,8,0)))
+    return      = pure
+#endif
+    (>>)        = (*>)
     MKT m >>= f = MKT (\k -> m (\a -> case f a of MKT n -> n k))
 
--- In order to define a @(<|>)@ which only requires @Applicative
--- m@ we'd need a law @m (Either e a) -> Either (m e) (m a)@; or
+-- In order to define a @(<|>)@ which only requires @Applicative m@
+-- we'd need a law @m (Either e a) -> Either (m e) (m a)@; or
 -- equivalently, we'd need to use a 2-CPS style.
 instance (Applicative m, Monad m) => Alternative (MaybeKT m) where
-    empty = mzero
-    (<|>) = mplus
-
-instance (Applicative m, Monad m) => MonadPlus (MaybeKT m) where
-    mzero = MKT (\_ -> return Nothing)
-
-    m `mplus` n = MKT $ \k -> do
-        mb <- runMaybeKT m
+    empty   = MKT (\_ -> pure Nothing)
+    m <|> n = MKT $ \k ->
+        runMaybeKT m >>= \mb ->
         case mb of
-            Nothing -> case n of MKT n' -> n' k
-            Just a  -> k a
+        Nothing -> case n of MKT n' -> n' k
+        Just a  -> k a
+
+instance (Applicative m, Monad m) => MonadPlus (MaybeKT m)
+#if (!(MIN_VERSION_base(4,8,0)))
+  where
+    mzero = empty
+    mplus = (<|>)
+#endif
 
 instance (Applicative m, Monad m) => MonadError () (MaybeKT m) where
     throwError _   = mzero
-    catchError m f = MKT $ \k -> do
-        mb <- runMaybeKT m
+    catchError m f = MKT $ \k ->
+        runMaybeKT m >>= \mb ->
         case mb of
-            Nothing -> case f () of MKT n -> n k
-            Just a  -> k a
+        Nothing -> case f () of MKT n -> n k
+        Just a  -> k a
 
 instance MonadTrans MaybeKT where
     lift m = MKT (\k -> m >>= k)

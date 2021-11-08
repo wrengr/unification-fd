@@ -1,10 +1,11 @@
-{-# LANGUAGE MultiParamTypeClasses
+{-# LANGUAGE CPP
+           , MultiParamTypeClasses
            , FlexibleInstances
            , UndecidableInstances
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2021.10.17
+--                                                  ~ 2021.11.07
 -- |
 -- Module      :  Control.Unification.IntVar
 -- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
@@ -111,26 +112,37 @@ instance (Functor m) => Functor (IntBindingT t m) where
 
 -- BUG: can't reduce dependency to Applicative because of StateT's instance.
 instance (Functor m, Monad m) => Applicative (IntBindingT t m) where
-    pure    = IBT . pure
-    x <*> y = IBT (unIBT x <*> unIBT y)
-    x  *> y = IBT (unIBT x  *> unIBT y)
-    x <*  y = IBT (unIBT x <*  unIBT y)
+    pure            = IBT . pure
+    IBT m <*> IBT n = IBT (m <*> n)
+    IBT m  *> IBT n = IBT (m  *> n)
+    IBT m <*  IBT n = IBT (m <*  n)
 
+-- Since base-4.8 (ghc-7.10.1) we have the default @return = pure@.
+-- Since ghc-9.2.1 we get a warning about providing any other
+-- definition, and should instead define both 'pure' and @(*>)@
+-- directly, leaving 'return' and @(>>)@ as their defaults so they
+-- can eventually be removed from the class.
+-- <https://gitlab.haskell.org/ghc/ghc/-/wikis/proposal/monad-of-no-return>
 instance (Monad m) => Monad (IntBindingT t m) where
-    return  = IBT . return
-    m >>= f = IBT (unIBT m >>= unIBT . f)
+#if (!(MIN_VERSION_base(4,8,0)))
+    return      = pure
+#endif
+    IBT m >>= f = IBT (m >>= unIBT . f)
 
 instance MonadTrans (IntBindingT t) where
     lift = IBT . lift
 
 -- BUG: can't reduce dependency to Alternative because of StateT's instance.
 instance (Functor m, MonadPlus m) => Alternative (IntBindingT t m) where
-    empty   = IBT empty
-    x <|> y = IBT (unIBT x <|> unIBT y)
+    empty           = IBT empty
+    IBT x <|> IBT y = IBT (x <|> y)
 
-instance (MonadPlus m) => MonadPlus (IntBindingT t m) where
-    mzero       = IBT mzero
-    mplus ml mr = IBT (mplus (unIBT ml) (unIBT mr))
+instance (MonadPlus m) => MonadPlus (IntBindingT t m)
+#if (!(MIN_VERSION_base(4,8,0)))
+  where
+    mzero = empty
+    mplus = (<|>)
+#endif
 
 instance (Monad m) => MonadState (IntBindingState t) (IntBindingT t m) where
     get = IBT get
