@@ -24,7 +24,7 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                    2021.10.17
+--                                                    2021.12.31
 -- |
 -- Module      :  Data.Functor.Fixedpoint
 -- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
@@ -101,14 +101,14 @@ unFix (Fix f) = f
 instance (Show (f (Fix f))) => Show (Fix f) where
     showsPrec p (Fix f) = showsPrec p f
 
+-- (2021.12.31): removed the definition of @(/=)@ for:
+-- <https://github.com/haskell/core-libraries-committee/issues/3>
 instance (Eq (f (Fix f))) => Eq (Fix f) where
     Fix x == Fix y  =  x == y
-    Fix x /= Fix y  =  x /= y
 -- BUGFIX: Inlining causes a code explosion on GHC 8.0.1 and 8.0.2, but
 -- will be fixed in 8.0.3. <https://ghc.haskell.org/trac/ghc/ticket/13081>
 #if __GLASGOW_HASKELL__ == 800
     {-# NOINLINE (==) #-}
-    {-# NOINLINE (/=) #-}
 #endif
 
 instance (Ord (f (Fix f))) => Ord (Fix f) where
