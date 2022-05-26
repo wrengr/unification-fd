@@ -1,5 +1,5 @@
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2021.11.07
+-- wren gayle romano <wren@cpan.org>                ~ 2022.05.25
 ----------------------------------------------------------------
 
 -- Hackage requires us to require Cabal-Version >=1.10; otherwise
@@ -70,7 +70,7 @@ Library
                    -- should be resolved now. Cf.,
                    -- <https://github.com/Bodigrim/logict/issues/20#issuecomment-774528439>
                    -- <https://github.com/wrengr/unification-fd/issues/14>
-    Build-Depends:   logict       >= 0.4 && < 0.7.2
+    Build-Depends:   logict       >= 0.4 && < 0.8.1
                    -- N.B., Tasty requires base>=4.5.0.0; which
                    -- means we aren't CI testing anything older than
                    -- that anymore, so we might as well just require
