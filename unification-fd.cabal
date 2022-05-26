@@ -1,23 +1,25 @@
+Cabal-Version:  2.2
+-- Cabal >=2.2 is required for:
+--    <https://cabal.readthedocs.io/en/latest/cabal-package.html#common-stanzas>
+-- Since 2.1, the Cabal-Version must be the absolutely first thing
+-- in the file, even before comments.  Also, no longer uses ">=".
+--    <https://github.com/haskell/cabal/issues/4899>
+
 ----------------------------------------------------------------
 -- wren gayle romano <wren@cpan.org>                ~ 2022.05.25
 ----------------------------------------------------------------
 
--- Hackage requires us to require Cabal-Version >=1.10; otherwise
--- things should be backwards compatible to >=1.2 (with the exception
--- of the tested-with and source-repository fields which were added
--- in >=1.6).
-Cabal-Version:  >= 1.10
-Build-Type:     Simple
-
 Name:           unification-fd
 Version:        0.11.2
+Build-Type:     Simple
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
 Bug-Reports:    https://github.com/wrengr/unification-fd/issues
 Author:         wren gayle romano
 Maintainer:     wren@cpan.org
-Copyright:      Copyright (c) 2007–2021 wren gayle romano
-License:        BSD3
+Copyright:      2007–2021 wren romano
+-- Cabal-2.2 requires us to say "BSD-3-Clause" not "BSD3"
+License:        BSD-3-Clause
 License-File:   LICENSE
 
 Category:       Algebra, Algorithms, Compilers/Interpreters, Language, Logic, Unification
