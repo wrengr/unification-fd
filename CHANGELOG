@@ -1,3 +1,5 @@
+0.11.2.1 (2022-08-28):
+    - Updated verion bounds for GHC 9.4
 0.11.2 (2022-05-25):
     - Adjusted Applicative/Monad instances to avoid warnings on GHC 9.2
       due to <https://gitlab.haskell.org/ghc/ghc/-/wikis/proposal/monad-of-no-return>
