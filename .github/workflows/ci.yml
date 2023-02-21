@@ -40,7 +40,7 @@ jobs:
           ghc: 'latest'
     steps:
     - uses: actions/checkout@v3
-    - uses: haskell/actions/setup@v2.2.0
+    - uses: haskell/actions/setup@v2.3.3
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -55,7 +55,7 @@ jobs:
     - name: Freeze
       # Generates the `cabal.project.freeze` file.
       run: cabal freeze
-    - uses: actions/cache@v3.2.2
+    - uses: actions/cache@v3.2.6
       name: Cache ~/.cabal/store and ./dist-newstyle
       # TODO(2021-10-23): Do we really want the hash in the key?
       #   With nix-style builds it shouldn't be necessary (afaict),
