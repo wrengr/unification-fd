@@ -29,7 +29,7 @@ jobs:
         #   latest Cabal (3.4.0.0); they do *not* use the version of
         #   Cabal that originally shipped with the version of GHC.
         os: [ubuntu-latest]
-        ghc: ['8.0.2', '8.2.2', '8.4.4', '8.6.5', '8.8.4', '8.10.3', '9.0.1', '9.2.4', '9.4.1']
+        ghc: ['8.0.2', '8.2.2', '8.4.4', '8.6.5', '8.8.4', '8.10.3', '9.0.1', '9.2.4', '9.4.4', '9.6.1']
         include:
         # This package has no build details specific to Win/Mac,
         # so building for the latest GHC should be sufficient
@@ -40,7 +40,7 @@ jobs:
           ghc: 'latest'
     steps:
     - uses: actions/checkout@v3
-    - uses: haskell/actions/setup@v2.3.3
+    - uses: haskell/actions/setup@v2.3.6
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -51,11 +51,11 @@ jobs:
       # We make sure to enable tests & benchmarks here so that when
       # we run the tests/benchmarks they don't reconfigure things
       # and thus cause rebuilding.
-      run: cabal configure --enable-tests --enable-benchmarks --test-show-details=direct
+      run: cabal configure --minimize-conflict-set --enable-tests --enable-benchmarks --test-show-details=direct
     - name: Freeze
       # Generates the `cabal.project.freeze` file.
       run: cabal freeze
-    - uses: actions/cache@v3.2.6
+    - uses: actions/cache@v3.3.1
       name: Cache ~/.cabal/store and ./dist-newstyle
       # TODO(2021-10-23): Do we really want the hash in the key?
       #   With nix-style builds it shouldn't be necessary (afaict),
