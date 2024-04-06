@@ -6,7 +6,7 @@ Cabal-Version:  2.2
 --    <https://github.com/haskell/cabal/issues/4899>
 
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2023.03.19
+-- wren gayle romano <wren@cpan.org>                ~ 2024.04.05
 ----------------------------------------------------------------
 
 Name:           unification-fd
@@ -46,8 +46,9 @@ Tested-With:
     GHC ==8.10.3,
     GHC ==9.0.1,
     GHC ==9.2.4,
-    GHC ==9.4.4,
-    GHC ==9.6.1
+    GHC ==9.4.8,
+    GHC ==9.6.4,
+    GHC ==9.8.1
 
 Source-Repository head
     Type:     git
