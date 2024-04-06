@@ -81,7 +81,7 @@ Library
                    -- that anymore, so we might as well just require
                    -- that version so we can remove the ancient base4
                    -- and splitBase build flags.
-                   , base         >= 4.5 && < 4.19
+                   , base         >= 4.5 && < 4.20
                    , containers
                    -- Require mtl-2 instead of monads-fd; because
                    -- otherwise we get a clash mixing logict with
