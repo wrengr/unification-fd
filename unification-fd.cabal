@@ -6,7 +6,7 @@ Cabal-Version:  2.2
 --    <https://github.com/haskell/cabal/issues/4899>
 
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2024.04.05
+-- wren gayle romano <wren@cpan.org>                ~ 2024-08-28
 ----------------------------------------------------------------
 
 Name:           unification-fd
@@ -17,7 +17,7 @@ Homepage:       https://wrengr.org/software/hackage.html
 Bug-Reports:    https://github.com/wrengr/unification-fd/issues
 Author:         wren gayle romano
 Maintainer:     wren@cpan.org
-Copyright:      2007–2023 wren romano
+Copyright:      2007–2024 wren romano
 -- Cabal-2.2 requires us to say "BSD-3-Clause" not "BSD3"
 License:        BSD-3-Clause
 License-File:   LICENSE
@@ -47,8 +47,9 @@ Tested-With:
     GHC ==9.0.1,
     GHC ==9.2.4,
     GHC ==9.4.8,
-    GHC ==9.6.4,
-    GHC ==9.8.1
+    GHC ==9.6.5,
+    GHC ==9.8.2,
+    GHC ==9.10.1
 
 Source-Repository head
     Type:     git
@@ -75,13 +76,13 @@ Library
                    -- should be resolved now. Cf.,
                    -- <https://github.com/Bodigrim/logict/issues/20#issuecomment-774528439>
                    -- <https://github.com/wrengr/unification-fd/issues/14>
-    Build-Depends:   logict       >= 0.4 && < 0.8.1
+    Build-Depends:   logict       >= 0.4 && < 0.8.2
                    -- N.B., Tasty requires base>=4.5.0.0; which
                    -- means we aren't CI testing anything older than
                    -- that anymore, so we might as well just require
                    -- that version so we can remove the ancient base4
                    -- and splitBase build flags.
-                   , base         >= 4.5 && < 4.20
+                   , base         >= 4.5 && < 4.21
                    , containers
                    -- Require mtl-2 instead of monads-fd; because
                    -- otherwise we get a clash mixing logict with
