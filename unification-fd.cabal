@@ -32,11 +32,10 @@ Description:
 Extra-source-files:
     AUTHORS, README.md, CHANGELOG
 
--- This package is fairly simple in terms of language requirements,
--- and (with minor alterations to deal with changes to the 'Monoid'
--- and 'Functor' classes) should work for ancient versions of GHC
--- (e.g., 7.4).  However, we no longer verify backwards compatibility
--- beyond the versions listed below.
+-- With minor alterations to deal with changes to the 'Monoid' and
+-- 'Functor' classes, this package should still work for ancient
+-- versions of GHC (e.g., 7.4).  However, we no longer verify
+-- backwards compatibility beyond the versions listed below.
 -- <https://github.com/wrengr/unification-fd/actions?query=workflow%3Aci>
 Tested-With:
     GHC ==8.0.2,
