@@ -77,7 +77,7 @@ Library
     -- <https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/libraries/version-history>
                  -- N.B., Tasty requires base>=4.5.0.0
     Build-Depends: base         >= 4.9   && < 4.21
-                 , containers   >= 0.5.7 && < 0.8,
+                 , containers   >= 0.5.7 && < 0.8
                  -- Require mtl-2 instead of monads-fd; because
                  -- otherwise we get a clash mixing logict with
                  -- StateT. And we want stuff from monads-fd, so
