@@ -1,5 +1,7 @@
+0.11.2.3 (2024-08-29):
+    - Updated version lower-bounds, to fix https://github.com/wrengr/unification-fd/issues/71
 0.11.2.2 (2024-08-28):
-    - Updated version bounds for GHC 9.10, and logict-0.8.1
+    - Updated version upper-bounds for GHC 9.10, and logict-0.8.1
 0.11.2.1 (2022-08-28):
     - Updated verion bounds for GHC 9.4
 0.11.2 (2022-05-25):
