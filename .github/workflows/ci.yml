@@ -12,6 +12,8 @@ on:
   push:
     branches:
       - master
+      # TODO: Remove this once we merge into master.
+      - use_datafix
   pull_request: {}
 
 defaults:
