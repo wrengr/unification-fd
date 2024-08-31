@@ -6,11 +6,11 @@ Cabal-Version:  2.2
 --    <https://github.com/haskell/cabal/issues/4899>
 
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2024-08-29
+-- wren gayle romano <wren@cpan.org>                ~ 2024-08-30
 ----------------------------------------------------------------
 
 Name:           unification-fd
-Version:        0.11.2.3
+Version:        0.12.0
 Build-Type:     Simple
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
@@ -32,15 +32,9 @@ Description:
 Extra-source-files:
     AUTHORS, README.md, CHANGELOG
 
--- With minor alterations to deal with changes to the 'Monoid' and
--- 'Functor' classes, this package should still work for ancient
--- versions of GHC (e.g., 7.4).  However, we no longer verify
--- backwards compatibility beyond the versions listed below.
+-- Because of data-fix, we can no longer support GHC older than 8.6.1
 -- <https://github.com/wrengr/unification-fd/actions?query=workflow%3Aci>
 Tested-With:
-    GHC ==8.0.2,
-    GHC ==8.2.2,
-    GHC ==8.4.4,
     GHC ==8.6.5,
     GHC ==8.8.4,
     GHC ==8.10.3,
@@ -72,21 +66,30 @@ Library
                    , Control.Unification.Ranked.STVar
                    , Control.Unification.Ranked.IntVar
 
-    -- To keep the stdlibs matching the Tested-With bounds above, see:
+    -- TODO: Although most versions of mtl don't really care much
+    -- about the version of base, the latest version (mtl-2.3.1) is
+    -- exceptional in that they explicitly exclude base>=4.15&&<4.16.
+    -- We should look into why, just in case that affects us too.
+    --
+    -- To keep the core libs matching the Tested-With bounds above, see:
     -- <https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/libraries/version-history>
-                 -- N.B., Tasty requires base>=4.5.0.0
-    Build-Depends: base         >= 4.9   && < 4.21
-                 , containers   >= 0.5.7 && < 0.8
+    Build-Depends: base         >= 4.12  && < 4.21
+                 , containers   >= 0.6.0 && < 0.8
                  -- Require mtl-2 instead of monads-fd; because
                  -- otherwise we get a clash mixing logict with
                  -- StateT. And we want stuff from monads-fd, so
                  -- we can't just fail over to the older mtl.
-                 , mtl          >= 2.0 && < 2.4
-                 -- N.B., logict 0.7.1 introduced breakage, but that
+                 --
+                 -- NOTE: ghc>=8.4.1 ships with mtl>=2.2.2, so that's where
+                 -- our lower bound comes from (but any mtl>=2.0 should work).
+                 , mtl          >= 2.2.2 && < 2.4
+                 -- NOTE: logict-0.7.1 introduced breakage, but that
                  -- should be resolved now. Cf.,
                  -- <https://github.com/Bodigrim/logict/issues/20#issuecomment-774528439>
                  -- <https://github.com/wrengr/unification-fd/issues/14>
-                 , logict       >= 0.4 && < 0.8.2
+                 , logict       >= 0.4   && < 0.8.2
+                 -- FIXME: What all changed between 0.3.2 and 0.3.4?  And why does my current GHC not want to try 0.3.4?
+                 , data-fix     >= 0.3.2 && < 0.4
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

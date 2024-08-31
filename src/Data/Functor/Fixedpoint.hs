@@ -1,44 +1,34 @@
--- For the Show (Fix f) instance
-{-# LANGUAGE UndecidableInstances #-}
--- For 'build' and 'hmap'
+-- For 'build', 'hmap', and 'hmapM'
 {-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE CPP #-}
-
--- Unfortunately GHC < 6.10 needs -fglasgow-exts in order to actually
--- parse RULES (see -ddump-rules); the -frewrite-rules flag only
--- enables the application of rules, instead of doing what we want.
--- Apparently this is fixed in 6.10. In newer GHC (e.g., 7.6.1) the
--- -frewrite-rules flag is deprecated in favor of -fenable-rewrite-rules.
--- It's unclear whether we can use CPP to switch between -fglasgow-exts
--- -frewrite-rules and -fenable-rewrite-rules based on the GHC
--- version...
---
--- http://hackage.haskell.org/trac/ghc/ticket/2213
--- http://www.mail-archive.com/glasgow-haskell-users@haskell.org/msg14313.html
-{-# OPTIONS_GHC -O2 -fenable-rewrite-rules #-}
-
--- NOTE #1: on GHC >= 7.8 we need to eta expand rules to avoid a
--- warning about the fact that the rule may never fire because (.)
--- might inline first. On GHC >= 8.0 it's even more aggressive about
--- these warnings.
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                    2021.12.31
+--                                                    2024-08-30
 -- |
 -- Module      :  Data.Functor.Fixedpoint
--- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2024 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@cpan.org
--- Stability   :  provisional
+-- Stability   :  deprecated since unification-fd-0.12.0
 -- Portability :  semi-portable (Rank2Types)
 --
--- This module provides a fixed point operator on functor types.
--- For Haskell the least and greatest fixed points coincide, so we
--- needn't distinguish them. This abstract nonsense is helpful in
--- conjunction with other category theoretic tricks like Swierstra's
--- functor coproducts (not provided by this package). For more on
--- the utility of two-level recursive types, see:
+-- This module provides a backwards compatibility shim for users
+-- of older versions of @unification-fd@, before we switched over
+-- to using @data-fix@.  New users should prefer calling @data-fix@
+-- functions directly, whenever possible.  If you use any of the
+-- functions that aren't deprecated ('hoistFixM', 'ymap', 'ymapM',
+-- 'ycata', 'ycataM', 'build'), please let the maintainer know,
+-- so she can focus on getting those incorporated into @data-fix@.
+-- Returning users should beware that this module used to provide
+-- rewrite rules for fusing redundant traversals of data structures
+-- (which @data-fix@ does not).  If you notice any performance loss
+-- since version 0.12.0, please let the maintainer know, so she can
+-- focus on getting those incorporated into @data-fix@.
+--
+-- This abstract nonsense is helpful in conjunction with other
+-- category theoretic tricks like Swierstra's functor coproducts
+-- (not provided by this package). For more on the utility of
+-- two-level recursive types, see:
 --
 --     * Tim Sheard (2001) /Generic Unification via Two-Level Types/
 --         /and Parameterized Modules/, Functional Pearl, ICFP.
@@ -54,9 +44,9 @@
 module Data.Functor.Fixedpoint
     (
     -- * Fixed point operator for functors
-      Fix(..), unFix
+      Data.Fix.Fix(..)
     -- * Maps
-    , hmap,  hmapM
+    , hmap,  hmapM, hoistFixM
     , ymap,  ymapM
     -- * Builders
     , build
@@ -72,138 +62,43 @@ module Data.Functor.Fixedpoint
 import Prelude          hiding (mapM, sequence)
 import Control.Monad    hiding (mapM, sequence)
 import Data.Traversable
+import Data.Fix (Fix())
+import qualified Data.Fix
 
 ----------------------------------------------------------------
-----------------------------------------------------------------
-
--- | @Fix f@ is a fix point of the 'Functor' @f@. Note that in
--- Haskell the least and greatest fixed points coincide, so we don't
--- need to distinguish between @Mu f@ and @Nu f@. This type used
--- to be called @Y@, hence the naming convention for all the @yfoo@
--- functions.
---
--- This type lets us invoke category theory to get recursive types
--- and operations over them without the type checker complaining
--- about infinite types. The 'Show' instance doesn't print the
--- constructors, for legibility.
-newtype Fix f = Fix (f (Fix f))
-
--- Must not phrase this as a record field, or else we can't give
--- it an inline pragma, which in turn means some of the rules will
--- complain about it being inlined too soon.
-unFix :: Fix f -> f (Fix f)
-unFix (Fix f) = f
-{-# INLINE [0] unFix #-}
-
--- This requires UndecidableInstances because the context is larger
--- than the head and so GHC can't guarantee that the instance safely
--- terminates. It is in fact safe, however.
-instance (Show (f (Fix f))) => Show (Fix f) where
-    showsPrec p (Fix f) = showsPrec p f
-
--- (2021.12.31): removed the definition of @(/=)@ for:
--- <https://github.com/haskell/core-libraries-committee/issues/3>
-instance (Eq (f (Fix f))) => Eq (Fix f) where
-    Fix x == Fix y  =  x == y
--- BUGFIX: Inlining causes a code explosion on GHC 8.0.1 and 8.0.2, but
--- will be fixed in 8.0.3. <https://ghc.haskell.org/trac/ghc/ticket/13081>
-#if __GLASGOW_HASKELL__ == 800
-    {-# NOINLINE (==) #-}
-#endif
-
-instance (Ord (f (Fix f))) => Ord (Fix f) where
-    Fix x `compare` Fix y  =  x `compare` y
-    Fix x >  Fix y         =  x >  y
-    Fix x >= Fix y         =  x >= y
-    Fix x <= Fix y         =  x <= y
-    Fix x <  Fix y         =  x <  y
-    Fix x `max` Fix y      =  Fix (max x y)
-    Fix x `min` Fix y      =  Fix (min x y)
--- BUGFIX: Inlining causes a code explosion on GHC 8.0.1 and 8.0.2, but
--- will be fixed in 8.0.3. <https://ghc.haskell.org/trac/ghc/ticket/13081>
-#if __GLASGOW_HASKELL__ == 800
-    {-# NOINLINE compare #-}
-    {-# NOINLINE (>) #-}
-    {-# NOINLINE (>=) #-}
-    {-# NOINLINE (<=) #-}
-    {-# NOINLINE (<) #-}
-    {-# NOINLINE max #-}
-    {-# NOINLINE min #-}
-#endif
-
 ----------------------------------------------------------------
 
 -- | A higher-order map taking a natural transformation @(f -> g)@
 -- and lifting it to operate on @Fix@.
+-- FIXME: Figure out whether this was really equivalent to @hoistFix@ vs @hoistFix'@
 hmap :: (Functor f, Functor g) => (forall a. f a -> g a) -> Fix f -> Fix g
-{-# INLINE [0] hmap #-}
-hmap eps = ana (eps . unFix)
-    -- == cata (Fix . eps) -- But the anamorphism is a better producer.
-
-{-# RULES
--- Alas, rule won't fire because 'id' may inline too early.
--- "hmap id"
---        hmap id = id
-
--- cf., NOTE #1
-"hmap-compose"
-    forall (eps :: forall a. g a -> h a) (eta :: forall a. f a -> g a) x.
-        hmap eps (hmap eta x) = hmap (eps . eta) x
-    #-}
-
+hmap = Data.Fix.hoistFix
+{-# DEPRECATED hmap "Use Data.Fix.hoistFix" #-}
 
 -- | A monadic variant of 'hmap'.
 hmapM
     :: (Functor f, Traversable g, Monad m)
     => (forall a. f a -> m (g a)) -> Fix f -> m (Fix g)
-{-# INLINE [0] hmapM #-}
-hmapM eps = anaM (eps . unFix)
+hmapM = hoistFixM
+{-# DEPRECATED hmapM "Use hoistFixM" #-}
 
-{-# RULES
--- Alas, rule won't fire because 'return' may inline too early.
--- "hmapM return"
---     hmapM return = return
-
--- "hmapM-compose"
---     forall eps eta.
---         hmap eps <=< hmap eta = hmapM (eps <=< eta)
-    #-}
-
+-- | A monadic variant of 'Data.Fix.hoistFix'.
+-- FIXME: Figure out whether this was really equivalent to @hoistFix@ vs @hoistFix'@
+hoistFixM
+    :: (Functor f, Traversable g, Monad m)
+    => (forall a. f a -> m (g a)) -> Fix f -> m (Fix g)
+hoistFixM eps = Data.Fix.unfoldFixM (eps . Data.Fix.unFix)
 
 -- | A version of 'fmap' for endomorphisms on the fixed point. That
 -- is, this maps the function over the first layer of recursive
 -- structure.
 ymap :: (Functor f) => (Fix f -> Fix f) -> Fix f -> Fix f
-{-# INLINE [0] ymap #-}
-ymap f = Fix . fmap f . unFix
-
-{-# RULES
--- Alas, rule won't fire because 'id' may inline too early.
--- "ymap id"
---         ymap id = id
-
--- cf., NOTE #1
-"ymap-compose"
-    forall f g x.
-        ymap f (ymap g x) = ymap (f . g) x
-    #-}
-
+ymap f = Data.Fix.Fix . fmap f . Data.Fix.unFix
 
 -- | A monadic variant of 'ymap'.
 ymapM :: (Traversable f, Monad m)
       => (Fix f -> m (Fix f)) -> Fix f -> m (Fix f)
-{-# INLINE [0] ymapM #-}
-ymapM f = liftM Fix . mapM f . unFix
-
-{-# RULES
--- Alas, rule won't fire because 'return' may inline too early.
--- "ymapM id"
---         ymapM return = return
-
--- "ymapM-compose"
---     forall f g.
---         ymapM f <=< ymapM g = ymapM (f <=< g)
-    #-}
+ymapM f = liftM Data.Fix.Fix . mapM f . Data.Fix.unFix
 
 
 ----------------------------------------------------------------
@@ -212,44 +107,15 @@ ymapM f = liftM Fix . mapM f . unFix
 -- | Take a Church encoding of a fixed point into the data
 -- representation of the fixed point.
 build :: (Functor f) => (forall r. (f r -> r) -> r) -> Fix f
-{-# INLINE [0] build #-}
-build g = g Fix
-
--- N.B., the signature is required on @g@ in order to be Rank-2.
--- The signature is required on @phi@ in order to bring @f@ into
--- scope. Otherwise we'd need -XScopedTypeVariables.
-{-# RULES
-"build/cata" [1]
-    forall (phi :: f a -> a) (g :: forall r. (f r -> r) -> r).
-        cata phi (build g) = g phi
-    #-}
+build g = g Data.Fix.Fix
 
 ----------------------------------------------------------------
 -- | A pure catamorphism over the least fixed point of a functor.
 -- This function applies the @f@-algebra from the bottom up over
 -- @Fix f@ to create some residual value.
 cata :: (Functor f) => (f a -> a) -> (Fix f -> a)
-{-# INLINE [0] cata #-}
-cata phi = self
-    where
-    self = phi . fmap self . unFix
-
-{-# RULES
-"cata-refl"
-        cata Fix = id
-
--- cf., NOTE #1
-"cata-compose"
-    forall (eps :: forall a. f a -> g a) phi x.
-        cata phi (cata (\y -> Fix (eps y)) x) = cata (phi . eps) x
-    #-}
-
--- We can't really use this one because of the implication constraint
-{- RULES
-"cata-fusion"
-    forall f phi. (f . phi) == (phi . fmap f) ==>
-        f . cata phi = cata phi
--}
+cata = Data.Fix.foldFix
+{-# DEPRECATED cata "Use Data.Fix.foldFix" #-}
 
 
 -- | A catamorphism for monadic @f@-algebras. Alas, this isn't wholly
@@ -258,18 +124,8 @@ cata phi = self
 --
 -- N.B., this orders the side effects from the bottom up.
 cataM :: (Traversable f, Monad m) => (f a -> m a) -> (Fix f -> m a)
-{-# INLINE [0] cataM #-}
-cataM phiM = self
-    where
-    self = phiM <=< (mapM self . unFix)
-
--- TODO: other rules for cataM
-{-# RULES
--- Alas, rule won't fire because 'return' may inline too early.
--- "cataM-refl"
---         cataM (return . Fix) = return
-    #-}
-
+cataM = Data.Fix.foldFixM
+{-# DEPRECATED cataM "Use Data.Fix.foldFixM" #-}
 
 -- TODO: remove this, or add similar versions for ana* and hylo*?
 -- | A variant of 'cata' which restricts the return type to being
@@ -279,16 +135,14 @@ cataM phiM = self
 -- If you don't like either @fmap@ or @cata@, then maybe this is
 -- what you were thinking?
 ycata :: (Functor f) => (Fix f -> Fix f) -> Fix f -> Fix f
-{-# INLINE ycata #-}
-ycata f = cata (f . Fix)
+ycata f = Data.Fix.foldFix (f . Data.Fix.Fix)
 
 
 -- TODO: remove this, or add similar versions for ana* and hylo*?
 -- | Monadic variant of 'ycata'.
 ycataM :: (Traversable f, Monad m)
        => (Fix f -> m (Fix f)) -> Fix f -> m (Fix f)
-{-# INLINE ycataM #-}
-ycataM f = cataM (f . Fix)
+ycataM f = Data.Fix.foldFixM (f . Data.Fix.Fix)
 
 
 ----------------------------------------------------------------
@@ -296,31 +150,8 @@ ycataM f = cataM (f . Fix)
 -- functor. This function applies an @f@-coalgebra from the top
 -- down to expand a seed into a @Fix f@.
 ana :: (Functor f) => (a -> f a) -> (a -> Fix f)
-{-# INLINE [0] ana #-}
-ana psi = self
-    where
-    self = Fix . fmap self . psi
-
-
-{-# RULES
-"ana-refl"
-        ana unFix = id
-
--- BUG: I think I dualized this right...
--- cf., NOTE #1
-"ana-compose"
-    forall (eps :: forall a. f a -> g a) psi x.
-        ana (\y -> eps (unFix y)) (ana psi x) = ana (eps . psi) x
-    #-}
-
--- We can't really use this because of the implication constraint
-{- RULES
--- BUG: I think I dualized this right...
-"ana-fusion"
-    forall f psi. (psi . f) == (fmap f . psi) ==>
-        ana psi . f = ana psi
--}
-
+ana = Data.Fix.unfoldFix
+{-# DEPRECATED ana "Use Data.Fix.unfoldFix" #-}
 
 -- | An anamorphism for monadic @f@-coalgebras. Alas, this isn't
 -- wholly generic to @Functor@ since it requires distribution of
@@ -328,38 +159,21 @@ ana psi = self
 --
 -- N.B., this orders the side effects from the top down.
 anaM :: (Traversable f, Monad m) => (a -> m (f a)) -> (a -> m (Fix f))
-{-# INLINE anaM #-}
-anaM psiM = self
-    where
-    self = (liftM Fix . mapM self) <=< psiM
+anaM = Data.Fix.unfoldFixM
+{-# DEPRECATED anaM "Use Data.Fix.unfoldFixM" #-}
 
 
 ----------------------------------------------------------------
--- Is this even worth mentioning? We can amortize the construction
--- of @Fix f@ (which we'd do anyways because of laziness), but we
--- can't fuse the @f@ away unless we inline all of @psi@, @fmap@,
--- and @phi@ at the use sites. Will inlining this definition be
--- sufficient to do that?
-
 -- | @hylo phi psi == cata phi . ana psi@
 hylo :: (Functor f) => (f b -> b) -> (a -> f a) -> (a -> b)
-{-# INLINE hylo #-}
-hylo phi psi = self
-    where
-    self = phi . fmap self . psi
-
--- TODO: rules for hylo?
-
+hylo = Data.Fix.refold
+{-# DEPRECATED hylo "Use Data.Fix.refold" #-}
 
 -- | @hyloM phiM psiM == cataM phiM <=< anaM psiM@
 hyloM :: (Traversable f, Monad m)
       => (f b -> m b) -> (a -> m (f a)) -> (a -> m b)
-{-# INLINE hyloM #-}
-hyloM phiM psiM = self
-    where
-    self = phiM <=< mapM self <=< psiM
-
--- TODO: rules for hyloM?
+hyloM = Data.Fix.refoldM
+{-# DEPRECATED hyloM "Use Data.Fix.refoldM" #-}
 
 ----------------------------------------------------------------
 ----------------------------------------------------------- fin.

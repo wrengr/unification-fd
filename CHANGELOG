@@ -1,3 +1,9 @@
+0.12.0 (2024-08-30):
+    - Switched to using data-fix, which causes several breaking changes.
+      * The oldest supported GHC is now 8.6.1 (September 2018).
+      * Several functions exported from "Data.Functor.Fixedpoint" are now deprecated, with error messages indicating the data-fix function to use instead.
+      * The "Data.Functor.Fixedpoint" module used to have several rewrite rules for fusing various functions (to avoid redundant traversal of data structures); but all of these are no longer active.  If this introduces any performance regressions for you, please let the maintainer know.
+
 0.11.2.3 (2024-08-29):
     - Updated version lower-bounds, to fix https://github.com/wrengr/unification-fd/issues/71
 0.11.2.2 (2024-08-28):
