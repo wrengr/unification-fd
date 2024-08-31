@@ -53,7 +53,7 @@ module Control.Unification.Types
 import Prelude hiding (mapM, sequence, foldr, foldr1, foldl, foldl1)
 
 import Data.Word               (Word8)
-import Data.Functor.Fixedpoint (Fix(..), unFix)
+import Data.Fix                (Fix(..))
 #if __GLASGOW_HASKELL__ < 804
 import Data.Monoid             ((<>))
 #endif
