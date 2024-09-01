@@ -40,7 +40,7 @@ jobs:
           ghc: 'latest'
     steps:
     - uses: actions/checkout@v4
-    - uses: haskell-actions/setup@v2.7.4
+    - uses: haskell-actions/setup@v2.7.6
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
