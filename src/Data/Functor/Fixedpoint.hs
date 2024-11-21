@@ -3,7 +3,7 @@
 
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                    2024-08-30
+--                                                    2024-11-20
 -- |
 -- Module      :  Data.Functor.Fixedpoint
 -- Copyright   :  Copyright (c) 2007--2024 wren gayle romano
@@ -21,9 +21,10 @@
 -- so she can focus on getting those incorporated into @data-fix@.
 -- Returning users should beware that this module used to provide
 -- rewrite rules for fusing redundant traversals of data structures
--- (which @data-fix@ does not).  If you notice any performance loss
--- since version 0.12.0, please let the maintainer know, so she can
--- focus on getting those incorporated into @data-fix@.
+-- (which @data-fix@ does not).  If you notice version >=0.12.0
+-- introducing any performance loss compared to earlier versions,
+-- please let the maintainer know, so she can focus on getting those
+-- incorporated into @data-fix@.
 --
 -- This abstract nonsense is helpful in conjunction with other
 -- category theoretic tricks like Swierstra's functor coproducts
@@ -46,7 +47,7 @@ module Data.Functor.Fixedpoint
     -- * Fixed point operator for functors
       Data.Fix.Fix(..)
     -- * Maps
-    , hmap,  hmapM, hoistFixM
+    , hmap,  hmapM, hoistFixM'
     , ymap,  ymapM
     -- * Builders
     , build
@@ -70,24 +71,34 @@ import qualified Data.Fix
 
 -- | A higher-order map taking a natural transformation @(f -> g)@
 -- and lifting it to operate on @Fix@.
--- FIXME: Figure out whether this was really equivalent to @hoistFix@ vs @hoistFix'@
+--
+-- NOTE: The implementation of @hmap@ prior to version 0.12 was
+-- based on 'ana', and therefore most closely matches the behavior
+-- of 'Data.Fix.hoistFix''.  However, this definition is extensionally
+-- equivalent to an implementation using 'cata' (and therefore most
+-- closely matches the behavior of 'Data.Fix.hoistFix') instead.
 hmap :: (Functor f, Functor g) => (forall a. f a -> g a) -> Fix f -> Fix g
-hmap = Data.Fix.hoistFix
-{-# DEPRECATED hmap "Use Data.Fix.hoistFix" #-}
+hmap = Data.Fix.hoistFix'
+{-# DEPRECATED hmap "Use Data.Fix.hoistFix'" #-}
 
 -- | A monadic variant of 'hmap'.
 hmapM
     :: (Functor f, Traversable g, Monad m)
     => (forall a. f a -> m (g a)) -> Fix f -> m (Fix g)
-hmapM = hoistFixM
-{-# DEPRECATED hmapM "Use hoistFixM" #-}
+hmapM = hoistFixM'
+{-# DEPRECATED hmapM "Use hoistFixM'" #-}
 
--- | A monadic variant of 'Data.Fix.hoistFix'.
--- FIXME: Figure out whether this was really equivalent to @hoistFix@ vs @hoistFix'@
-hoistFixM
+-- | A monadic variant of 'Data.Fix.hoistFix''.
+--
+-- NOTE: The implementation of @hmapM@ prior to version 0.12 was
+-- based on 'anaM', and therefore most closely matches the behavior
+-- of 'Data.Fix.unfoldFixM'. However, there is another function
+-- of the same type which is instead implemented via 'cataM',
+-- which has different semantics for many monads.
+hoistFixM'
     :: (Functor f, Traversable g, Monad m)
     => (forall a. f a -> m (g a)) -> Fix f -> m (Fix g)
-hoistFixM eps = Data.Fix.unfoldFixM (eps . Data.Fix.unFix)
+hoistFixM' eps = Data.Fix.unfoldFixM (eps . Data.Fix.unFix)
 
 -- | A version of 'fmap' for endomorphisms on the fixed point. That
 -- is, this maps the function over the first layer of recursive
