@@ -16,7 +16,7 @@
 -- of older versions of @unification-fd@, before we switched over
 -- to using @data-fix@.  New users should prefer calling @data-fix@
 -- functions directly, whenever possible.  If you use any of the
--- functions that aren't deprecated ('hoistFixM', 'ymap', 'ymapM',
+-- functions that aren't deprecated ('hoistFixM'', 'ymap', 'ymapM',
 -- 'ycata', 'ycataM', 'build'), please let the maintainer know,
 -- so she can focus on getting those incorporated into @data-fix@.
 -- Returning users should beware that this module used to provide

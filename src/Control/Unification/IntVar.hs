@@ -5,10 +5,10 @@
            #-}
 {-# OPTIONS_GHC -Wall -fwarn-tabs #-}
 ----------------------------------------------------------------
---                                                  ~ 2021.11.07
+--                                                  ~ 2024-11-20
 -- |
 -- Module      :  Control.Unification.IntVar
--- Copyright   :  Copyright (c) 2007--2021 wren gayle romano
+-- Copyright   :  Copyright (c) 2007--2024 wren gayle romano
 -- License     :  BSD
 -- Maintainer  :  wren@cpan.org
 -- Stability   :  experimental
@@ -168,16 +168,21 @@ instance (MonadLogic m, MonadPlus m) => MonadLogic (IntBindingT t m) where
 
 ----------------------------------------------------------------
 
+-- | Run the binding computation with the empty initial binding
+-- state, and return both the final value and the final state.
 runIntBindingT :: IntBindingT t m a -> m (a, IntBindingState t)
 runIntBindingT (IBT m) = runStateT m emptyIntBindingState
 
-
--- | N.B., you should explicitly apply bindings before calling this
+-- | Run the binding computation with the empty initial binding
+-- state, and return both the final value but discard the final state.
+--
+-- NOTE: you should explicitly apply bindings before calling this
 -- function, or else the bindings will be lost
 evalIntBindingT :: (Monad m) => IntBindingT t m a -> m a
 evalIntBindingT (IBT m) = evalStateT m emptyIntBindingState
 
-
+-- | Run the binding computation with the empty initial binding
+-- state, and return both the final state but discard the final value.
 execIntBindingT :: (Monad m) => IntBindingT t m a -> m (IntBindingState t)
 execIntBindingT (IBT m) = execStateT m emptyIntBindingState
 
