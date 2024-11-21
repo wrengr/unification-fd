@@ -87,7 +87,7 @@ Library
                  -- should be resolved now. Cf.,
                  -- <https://github.com/Bodigrim/logict/issues/20#issuecomment-774528439>
                  -- <https://github.com/wrengr/unification-fd/issues/14>
-                 , logict       >= 0.4   && < 0.8.2
+                 , logict       >= 0.4   && < 0.9
                  -- FIXME: What all changed between 0.3.2 and 0.3.4?  And why does my current GHC not want to try 0.3.4?
                  , data-fix     >= 0.3.2 && < 0.4
 
