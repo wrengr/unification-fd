@@ -6,11 +6,11 @@ Cabal-Version:  2.2
 --    <https://github.com/haskell/cabal/issues/4899>
 
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2024-08-30
+-- wren gayle romano <wren@cpan.org>                ~ 2024-11-26
 ----------------------------------------------------------------
 
 Name:           unification-fd
-Version:        0.12.0
+Version:        0.12.0.1
 Build-Type:     Simple
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
