@@ -6,18 +6,18 @@ Cabal-Version:  2.2
 --    <https://github.com/haskell/cabal/issues/4899>
 
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2024-11-26
+-- wren gayle romano <wren@cpan.org>                ~ 2025-02-11
 ----------------------------------------------------------------
 
 Name:           unification-fd
-Version:        0.12.0.1
+Version:        0.12.0.2
 Build-Type:     Simple
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
 Bug-Reports:    https://github.com/wrengr/unification-fd/issues
 Author:         wren gayle romano
 Maintainer:     wren@cpan.org
-Copyright:      2007–2024 wren romano
+Copyright:      2007–2025 wren romano
 -- Cabal-2.2 requires us to say "BSD-3-Clause" not "BSD3"
 License:        BSD-3-Clause
 License-File:   LICENSE
@@ -43,7 +43,8 @@ Tested-With:
     GHC ==9.4.8,
     GHC ==9.6.5,
     GHC ==9.8.2,
-    GHC ==9.10.1
+    GHC ==9.10.1,
+    GHC ==9.12.1
 
 Source-Repository head
     Type:     git
@@ -73,7 +74,7 @@ Library
     --
     -- To keep the core libs matching the Tested-With bounds above, see:
     -- <https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/libraries/version-history>
-    Build-Depends: base         >= 4.12  && < 4.21
+    Build-Depends: base         >= 4.12  && < 4.22
                  , containers   >= 0.6.0 && < 0.8
                  -- Require mtl-2 instead of monads-fd; because
                  -- otherwise we get a clash mixing logict with
