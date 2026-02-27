@@ -6,11 +6,11 @@ Cabal-Version:  2.2
 --    <https://github.com/haskell/cabal/issues/4899>
 
 ----------------------------------------------------------------
--- wren gayle romano <wren@cpan.org>                ~ 2025-02-11
+-- wren gayle romano <wren@cpan.org>                ~ 2026-02-26
 ----------------------------------------------------------------
 
 Name:           unification-fd
-Version:        0.12.0.2
+Version:        0.12.0.3
 Build-Type:     Simple
 Stability:      experimental
 Homepage:       https://wrengr.org/software/hackage.html
@@ -44,7 +44,8 @@ Tested-With:
     GHC ==9.6.5,
     GHC ==9.8.2,
     GHC ==9.10.1,
-    GHC ==9.12.1
+    GHC ==9.12.1,
+    GHC ==9.14.1
 
 Source-Repository head
     Type:     git
@@ -74,8 +75,8 @@ Library
     --
     -- To keep the core libs matching the Tested-With bounds above, see:
     -- <https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/libraries/version-history>
-    Build-Depends: base         >= 4.12  && < 4.22
-                 , containers   >= 0.6.0 && < 0.8
+    Build-Depends: base         >= 4.12  && < 4.23
+                 , containers   >= 0.6.0 && < 0.9
                  -- Require mtl-2 instead of monads-fd; because
                  -- otherwise we get a clash mixing logict with
                  -- StateT. And we want stuff from monads-fd, so

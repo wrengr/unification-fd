@@ -1,3 +1,5 @@
+0.12.0.3 (2026-02-26):
+    - Updated version upper-bounds for GHC 9.14
 0.12.0.2 (2025-02-11):
     - Updated version upper-bounds for GHC 9.12
 0.12.0.1 (2024-11-26):
