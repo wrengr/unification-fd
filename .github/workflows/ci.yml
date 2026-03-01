@@ -39,7 +39,7 @@ jobs:
         - os: macOS-latest
           ghc: 'latest'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: haskell-actions/setup@v2.7.11
       id: setup-haskell-cabal
       with:
@@ -89,7 +89,7 @@ jobs:
   #  # See <https://github.com/vmactions/freebsd-vm#under-the-hood>
   #  runs-on: macos-latest
   #  steps:
-  #  - uses: actions/checkout@v4
+  #  - uses: actions/checkout@v6
   #  - name: Test
   #    id: build-freebsd
   #    uses: vmactions/freebsd-vm@v0.1.5
