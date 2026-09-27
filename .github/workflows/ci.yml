@@ -39,8 +39,8 @@ jobs:
         - os: macOS-latest
           ghc: 'latest'
     steps:
-    - uses: actions/checkout@v4
-    - uses: haskell-actions/setup@v2.7.11
+    - uses: actions/checkout@v6
+    - uses: haskell-actions/setup@v2.11.0
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -55,7 +55,7 @@ jobs:
     - name: Freeze
       # Generates the `cabal.project.freeze` file.
       run: cabal freeze
-    - uses: actions/cache@v4.2.3
+    - uses: actions/cache@v5.0.5
       name: Cache ~/.cabal/store and ./dist-newstyle
       # TODO(2021-10-23): Do we really want the hash in the key?
       #   With nix-style builds it shouldn't be necessary (afaict),
@@ -89,7 +89,7 @@ jobs:
   #  # See <https://github.com/vmactions/freebsd-vm#under-the-hood>
   #  runs-on: macos-latest
   #  steps:
-  #  - uses: actions/checkout@v4
+  #  - uses: actions/checkout@v6
   #  - name: Test
   #    id: build-freebsd
   #    uses: vmactions/freebsd-vm@v0.1.5
